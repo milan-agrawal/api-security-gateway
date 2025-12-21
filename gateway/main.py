@@ -1,10 +1,19 @@
 from fastapi import FastAPI, Request, Response, HTTPException
 from gateway.security.rate_limiter import RateLimiter 
 from gateway.security.usage_logger import log_request
+from contextlib import asynccontextmanager
+from .init_db import init_db
 import requests
 import asyncio
 
-app = FastAPI(title="API Security Gateway")
+@asynccontextmanager
+async def lifespan(app:FastAPI):
+    #startup  - Code before yield → runs at startup
+    init_db()
+    yield
+    #shutdown - Code after yield → runs at shutdown
+
+app = FastAPI(title="API Security Gateway", lifespan=lifespan)
 
 BACKEND_URL = "http://127.0.0.1:9000"
 GATEWAY_SECRET = "gateway-internal-secret"
@@ -19,7 +28,7 @@ rate_limiter = RateLimiter(
     max_requests=10,
     window_seconds=60
 )
-
+    
 @app.api_route("/{path:path}", methods=["GET", "POST"])
 async def proxy(request: Request, path: str):
 
