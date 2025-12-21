@@ -15,7 +15,19 @@ VALID_API_KEYS = {
 
 @app.api_route("/{path:path}", methods=["GET", "POST"])
 async def proxy(request: Request, path: str):
+
+    api_key=request.headers.get("X-API-KEY")
+    if api_key not in VALID_API_KEYS:
+            raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Invalid or missing API key"
+        )
+            
     body = await request.body()   # ✅ await the coroutine
+
+    # Add gateway secret header for backend security
+    gateway_headers = dict(request.headers)
+    gateway_headers["X-Gateway-Token"] = GATEWAY_SECRET
 
     backend_response = await asyncio.to_thread(
         requests.request,
@@ -24,7 +36,7 @@ async def proxy(request: Request, path: str):
         headers=gateway_headers,  # Use modified headers with secret for backend LockDown
         data=body
     )
-
+    
     return Response(
         content=backend_response.content,
         status_code=backend_response.status_code,
