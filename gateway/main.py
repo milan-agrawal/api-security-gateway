@@ -1,4 +1,6 @@
 from fastapi import FastAPI, Request, Response, HTTPException
+from gateway.security.rate_limiter import RateLimiter 
+from gateway.security.usage_logger import log_request
 import requests
 import asyncio
 
@@ -13,17 +15,33 @@ VALID_API_KEYS = {
     "Testing-API-Key"
 }
 
+rate_limiter = RateLimiter(
+    max_requests=10,
+    window_seconds=60
+)
+
 @app.api_route("/{path:path}", methods=["GET", "POST"])
 async def proxy(request: Request, path: str):
 
     api_key=request.headers.get("X-API-KEY")
+    
+    allowed = rate_limiter.allow_request(api_key)
+    
+    log_request(api_key = api_key, endpoint=request.url.path, allowed = allowed)
+    
+    if not allowed:
+        return Response(
+            content="Rate limit exceeded",
+            status_code=429
+        )
+    
     if api_key not in VALID_API_KEYS:
             raise HTTPException(
             status_code=401,
             detail="Unauthorized: Invalid or missing API key"
         )
             
-    body = await request.body()   # ✅ await the coroutine
+    body = await request.body()   # await the coroutine
 
     # Add gateway secret header for backend security
     gateway_headers = dict(request.headers)
