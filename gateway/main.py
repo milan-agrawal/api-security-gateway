@@ -8,7 +8,7 @@ BACKEND_URL = "http://127.0.0.1:9000"
 
 @app.api_route("/{path:path}", methods=["GET", "POST"])
 async def proxy(request: Request, path: str):
-    body = await request.body()   # ✅ await the coroutine
+    body = await request.body()
 
     backend_response = await asyncio.to_thread(
         requests.request,
