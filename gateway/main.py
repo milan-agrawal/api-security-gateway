@@ -9,6 +9,10 @@ import requests
 import asyncio
 import uuid
 
+from gateway.ml.async_detector import schedule_behavior_analysis
+from gateway.cache.window_store import record_events
+from gateway.ml.model import model
+
 @asynccontextmanager
 async def lifespan(app:FastAPI):
     #startup  - Code before yield → runs at startup
@@ -94,7 +98,7 @@ async def proxy(request: Request, path: str, db=Depends(get_db)):
     )
     
     # Log successful request
-    log_security_event(
+    event = log_security_event(
         db=db,
         client_ip=request.client.host if request.client else "unknown",
         api_key=api_key,
@@ -103,6 +107,28 @@ async def proxy(request: Request, path: str, db=Depends(get_db)):
         decision="ALLOW",
         reason="OK",
         status_code=backend_response.status_code
+    )
+    
+    # Extract the event ID integer if event is an ORM object and ensure it's an int
+    from sqlalchemy.sql.schema import Column
+
+    event_id = getattr(event, "id", event)  # fallback to event if already int
+    if not isinstance(event_id, int):
+        # Avoid trying to cast SQLAlchemy Column objects to int
+        if not isinstance(event_id, Column):
+            try:
+                event_id = int(event_id)
+            except Exception:
+                event_id = None
+        else:
+            event_id = None
+    if event_id is not None:
+        record_events(api_key, event_id)
+    
+    schedule_behavior_analysis(
+    api_key=api_key,
+    db=db,
+    model=model 
     )
 
     # Step 4.4.1: Return response with backend headers + request ID

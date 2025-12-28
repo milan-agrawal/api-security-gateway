@@ -1,4 +1,6 @@
 from sqlalchemy.orm import Session
+
+from gateway import db
 from .models import SecurityEvent
 
 def log_security_event(
@@ -23,3 +25,5 @@ def log_security_event(
     
     db.add(event)
     db.commit()
+    db.refresh(event)
+    return event.id
