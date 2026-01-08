@@ -15,3 +15,6 @@ baseline = np.array([
 ])
 
 model.fit(baseline)
+
+def is_model_ready() -> bool:
+    return hasattr(model, "estimators_")
