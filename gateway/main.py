@@ -69,6 +69,24 @@ async def proxy(request: Request, path: str, db=Depends(get_db)):
             headers={"X-Request-ID": request_id}
         )
     
+    # Phase 3: Rate Limiting Check
+    if not rate_limiter.allow_request(api_key):
+        log_security_event(
+            db=db,
+            client_ip=client_ip,
+            api_key=api_key,
+            endpoint=request.url.path,
+            http_method=request.method,
+            decision="THROTTLE",
+            reason="RATE_LIMIT_EXCEEDED",
+            status_code=429
+        )
+        return Response(
+            content='{"detail":"Rate limit exceeded. Try again later."}',
+            status_code=429,
+            headers={"X-Request-ID": request_id}
+        )
+    
     # Phase 5.4 Integration - Hybrid Decision Engine
     try:
         # Get historical events for this API key
