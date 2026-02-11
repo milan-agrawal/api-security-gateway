@@ -14,6 +14,13 @@ from gateway.ml.async_detector import schedule_behavior_analysis
 from gateway.cache.window_store import record_events
 from gateway.ml.model import model
 
+# Phase 5.4 - Hybrid Decision Engine
+from gateway.decision.rules import evaluate_rules
+from gateway.ml.inference import infer_ml_signal
+from gateway.decision.correlate import correlate_decisions
+from gateway.analytics.feature_extractor import extract_features
+from gateway.analytics.window_materializer import get_window_events
+
 @asynccontextmanager
 async def lifespan(app:FastAPI):
     #startup  - Code before yield → runs at startup
@@ -43,6 +50,7 @@ async def proxy(request: Request, path: str, db=Depends(get_db)):
     request_id = str(uuid.uuid4())
     
     api_key = request.headers.get("X-API-KEY")
+    client_ip = request.client.host if request.client else "unknown"
     
     # Check if user is currently banned by the ML Engine
     if api_key and redis_client.exists(f"blocked:{api_key}"):
@@ -52,7 +60,7 @@ async def proxy(request: Request, path: str, db=Depends(get_db)):
             headers={"X-Request-ID": request_id}
         )
     
-    allowed = rate_limiter.allow_request(api_key)
+    allowed = rate_limiter.allow_request(api_key) # type: ignore
     log_request(api_key=api_key, endpoint=request.url.path, allowed=allowed)
     
     if not allowed:
@@ -73,11 +81,13 @@ async def proxy(request: Request, path: str, db=Depends(get_db)):
             headers={"X-Request-ID": request_id}
         )
     
+
+    # Validate API key first (security check)
+
     if api_key not in VALID_API_KEYS:
-        # Log security event for invalid API key
         log_security_event(
             db=db,
-            client_ip=request.client.host if request.client else "unknown",
+            client_ip=client_ip,
             api_key=api_key,
             endpoint=request.url.path,
             http_method=request.method,
@@ -90,7 +100,97 @@ async def proxy(request: Request, path: str, db=Depends(get_db)):
             status_code=401,
             headers={"X-Request-ID": request_id}
         )
-            
+    
+    # Phase 3: Rate Limiting Check
+    if not rate_limiter.allow_request(api_key):
+        log_security_event(
+            db=db,
+            client_ip=client_ip,
+            api_key=api_key,
+            endpoint=request.url.path,
+            http_method=request.method,
+            decision="THROTTLE",
+            reason="RATE_LIMIT_EXCEEDED",
+            status_code=429
+        )
+        return Response(
+            content='{"detail":"Rate limit exceeded. Try again later."}',
+            status_code=429,
+            headers={"X-Request-ID": request_id}
+        )
+    
+    # Phase 5.4 Integration - Hybrid Decision Engine
+    try:
+        # Get historical events for this API key
+        events = get_window_events(api_key, db)
+        
+        # Extract behavioral features
+        features = extract_features(events) if events else {}
+        
+        # Phase 5.4.1: Rule-based decision (ENFORCEMENT)
+        rule_decision = evaluate_rules(features)
+        
+        # Phase 5.4.2: ML inference (OBSERVATION) 
+        ml_result = {"label": None, "score": None}
+        if features:
+            # Convert features to ML format
+            feature_vector = [
+                features.get("total_requests", 0),
+                features.get("requests_per_second", 0.0),
+                features.get("blocked_ratio", 0.0),
+                features.get("endpoints_entropy", 0.0),
+                features.get("throttled_ratio", 0.0),
+                0.0,  # placeholder
+                0.0   # placeholder
+            ]
+            ml_result = infer_ml_signal(feature_vector)
+        
+        # Phase 5.4.3: Correlation (EXPLANATION)
+        correlation = correlate_decisions(rule_decision, ml_result.get("label"))
+        
+        # Enforce the rule decision
+        if rule_decision.value == "BLOCK":
+            log_security_event(
+                db=db,
+                client_ip=client_ip,
+                api_key=api_key,
+                endpoint=request.url.path,
+                http_method=request.method,
+                decision="BLOCK",
+                reason=f"RULE_ENGINE_BLOCK: {correlation['summary']}",
+                status_code=403
+            )
+            return Response(
+                content='{"detail":"Request blocked by security policy"}',
+                status_code=403,
+                headers={"X-Request-ID": request_id}
+            )
+        
+        if rule_decision.value == "THROTTLE":
+            log_security_event(
+                db=db,
+                client_ip=client_ip,
+                api_key=api_key,
+                endpoint=request.url.path,
+                http_method=request.method,
+                decision="THROTTLE",
+                reason=f"RULE_ENGINE_THROTTLE: {correlation['summary']}",
+                status_code=429
+            )
+            return Response(
+                content='{"detail":"Request rate limited by security policy"}',
+                status_code=429,
+                headers={"X-Request-ID": request_id}
+            )
+    
+    except Exception as e:
+        # Fallback to safe default if Phase 5.4 fails
+        print(f"Phase 5.4 error: {e}")
+        rule_decision_value = "ALLOW"
+        correlation = {"summary": "Phase 5.4 fallback"}
+        ml_result = {"label": None, "score": None}
+    
+    # If we reach here, decision is ALLOW
     body = await request.body()
 
     # Step 4.4.1: Add gateway secret and request ID to headers forwarded to backend
@@ -106,15 +206,15 @@ async def proxy(request: Request, path: str, db=Depends(get_db)):
         data=body
     )
     
-    # Log successful request
+    # Log successful request with Phase 5.4 data
     event = log_security_event(
         db=db,
-        client_ip=request.client.host if request.client else "unknown",
+        client_ip=client_ip,
         api_key=api_key,
         endpoint=request.url.path,
         http_method=request.method,
         decision="ALLOW",
-        reason="OK",
+        reason=f"RULE_ENGINE_ALLOW: {correlation['summary']} | ML: {ml_result.get('label', 'N/A')}",
         status_code=backend_response.status_code
     )
     
