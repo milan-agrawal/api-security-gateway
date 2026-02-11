@@ -39,10 +39,10 @@ def simulate_user(name, api_key, request_count, delay_between_requests, color):
 if __name__ == "__main__":
     print("Starting API Security Gateway Test (Separate Keys)...\n")
     
-    # Bob uses 'secret123' and spams 15 requests
+    # Bob uses 'secret123' and spams 20 requests
     bob_thread = threading.Thread(
         target=simulate_user, 
-        args=("Bob (Hacker)", BOB_KEY, 15, 0.1, Fore.RED)
+        args=("Bob (Hacker)", BOB_KEY, 20, 0.01, Fore.RED)
     )
     
     # Alice uses 'client-demo-key' and goes slowly
