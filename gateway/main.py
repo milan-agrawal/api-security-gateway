@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request, Response, HTTPException, Depends
 from gateway.security.rate_limiter import RateLimiter 
 from gateway.security.usage_logger import log_request
-from gateway.cache.redis_client import redis_client
 from contextlib import asynccontextmanager
 from .logger import log_security_event
 from .init_db import init_db
@@ -52,38 +51,7 @@ async def proxy(request: Request, path: str, db=Depends(get_db)):
     api_key = request.headers.get("X-API-KEY")
     client_ip = request.client.host if request.client else "unknown"
     
-    # Check if user is currently banned by the ML Engine
-    if api_key and redis_client.exists(f"blocked:{api_key}"):
-        return Response(
-            content='{"detail": "Forbidden: Temporarily banned due to suspicious behavior"}',
-            status_code=403,
-            headers={"X-Request-ID": request_id}
-        )
-    
-    allowed = rate_limiter.allow_request(api_key) # type: ignore
-    log_request(api_key=api_key, endpoint=request.url.path, allowed=allowed)
-    
-    if not allowed:
-        # Log security event for rate limit
-        log_security_event(
-            db=db,
-            client_ip=request.client.host if request.client else "unknown",
-            api_key=api_key,
-            endpoint=request.url.path,
-            http_method=request.method,
-            decision="THROTTLE",
-            reason="RATE_LIMIT_EXCEEDED",
-            status_code=429
-        )
-        return Response(
-            content="Rate limit exceeded",
-            status_code=429,
-            headers={"X-Request-ID": request_id}
-        )
-    
-
     # Validate API key first (security check)
-
     if api_key not in VALID_API_KEYS:
         log_security_event(
             db=db,
