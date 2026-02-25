@@ -7,9 +7,9 @@ from datetime import datetime, timedelta
 import jwt
 import os
 
-from db import engine, Base
-from models import User
-from deps import get_db
+from .db import engine, Base
+from .models import User
+from .deps import get_db
 
 # Create tables
 Base.metadata.create_all(bind=engine)

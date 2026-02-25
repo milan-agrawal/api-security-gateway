@@ -1,5 +1,5 @@
-from db import engine, Base
-from models import User, APIKey
+from .db import engine, Base
+from .models import User, APIKey
 
 def init_database():
     """Create all tables in the database"""
