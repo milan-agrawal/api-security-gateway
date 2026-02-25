@@ -1115,6 +1115,14 @@
     </div>
 
     <script>
+        // Clear localStorage if returning after logout (via URL parameter)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('logout') === 'true') {
+            localStorage.clear();
+            // Clean URL by removing the logout parameter
+            window.history.replaceState({}, document.title, '/login.html');
+        }
+
         const loginForm = document.getElementById('loginForm');
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
@@ -1220,7 +1228,7 @@
             skeletonLoader.classList.add('active');
 
             try {
-                // TODO: Replace with actual API call to http://localhost:8001/auth/login
+                // Call Auth API login endpoint
                 const response = await fetch('http://localhost:8001/auth/login', {
                     method: 'POST',
                     headers: {
@@ -1233,24 +1241,53 @@
                 });
 
                 const data = await response.json();
+                
+                console.log('Login response:', response.ok, data);
 
                 if (response.ok) {
-                    // Store token
+                    // Clear any old login data first
+                    localStorage.clear();
+                    
+                    // Clear logout flag when logging in
+                    sessionStorage.removeItem('loggedOut');
+                    
+                    // Store authentication data
                     localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('userEmail', data.email);
+                    localStorage.setItem('userRole', data.role);
+                    localStorage.setItem('fullName', data.full_name);
+                    
+                    console.log('Stored in localStorage:', {
+                        token: data.token,
+                        email: data.email,
+                        role: data.role,
+                        full_name: data.full_name
+                    });
 
                     // Show success message
                     showAlert('Login successful! Redirecting...', 'success');
 
-                    // Redirect to user panel
+                    // Redirect based on user role with auth data in URL
                     setTimeout(() => {
-                        window.location.href = 'http://localhost:3001';
+                        console.log('Redirecting to:', data.role === 'admin' ? 'admin panel' : 'user panel');
+                        const params = new URLSearchParams({
+                            token: data.token,
+                            email: data.email,
+                            role: data.role,
+                            fullName: data.full_name
+                        });
+                        
+                        if (data.role === 'admin') {
+                            window.location.href = `http://localhost:3002/index.html?${params.toString()}`;
+                        } else {
+                            window.location.href = `http://localhost:3001/index.html?${params.toString()}`;
+                        }
                     }, 1000);
                 } else {
                     // Show error message from server
                     loginCard.classList.remove('loading');
                     skeletonLoader.classList.remove('active');
-                    showAlert(data.message || 'Invalid credentials');
+                    showAlert(data.detail || 'Invalid credentials');
                     triggerShake();
                     submitButton.disabled = false;
                 }

@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>User Dashboard - API Security Gateway</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -181,22 +184,98 @@
     </div>
 
     <script>
-        // Check if user is authenticated
-        window.addEventListener('DOMContentLoaded', () => {
-            const token = localStorage.getItem('token');
-            const userEmail = localStorage.getItem('userEmail');
-            const userRole = localStorage.getItem('userRole');
+        // IMMEDIATE AUTH CHECK - runs before page renders
+        (function() {
+            // First, check URL parameters for auth data from redirect
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlToken = urlParams.get('token');
+            const urlEmail = urlParams.get('email');
+            const urlRole = urlParams.get('role');
+            const urlFullName = urlParams.get('fullName');
 
+            // If URL has auth data, store it in localStorage immediately
+            if (urlToken && urlEmail && urlRole) {
+                localStorage.setItem('token', urlToken);
+                localStorage.setItem('userEmail', urlEmail);
+                localStorage.setItem('userRole', urlRole);
+                localStorage.setItem('fullName', urlFullName || '');
+                
+                // Clear logout flag when logging in
+                sessionStorage.removeItem('loggedOut');
+                
+                // Clean URL by removing parameters
+                window.history.replaceState({}, document.title, '/index.html');
+            }
+
+            // Now check localStorage
+            const token = localStorage.getItem('token');
+            const userRole = localStorage.getItem('userRole');
+            const loggedOut = sessionStorage.getItem('loggedOut');
+            
+            // If user logged out in this session, block access
+            if (loggedOut === 'true') {
+                window.location.replace('http://localhost:3000/login.html');
+                return;
+            }
+            
+            // If no token, redirect immediately
             if (!token) {
-                // Redirect to login if not authenticated
-                window.location.href = '../public-app/login.html';
+                window.location.replace('http://localhost:3000/login.html');
                 return;
             }
 
             // Check if user has correct role
             if (userRole !== 'user') {
                 alert('Access denied. This panel is for users only.');
-                window.location.href = '../public-app/login.html';
+                window.location.replace('http://localhost:3000/login.html');
+                return;
+            }
+        })();
+
+        // Prevent browser back button after logout
+        window.history.pushState(null, null, window.location.href);
+        window.addEventListener('popstate', function() {
+            window.history.pushState(null, null, window.location.href);
+        });
+
+        // Check authentication on every page load (including back button)
+        function checkAuth() {
+            // Check URL parameters first (from redirect)
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlToken = urlParams.get('token');
+            const urlEmail = urlParams.get('email');
+            const urlRole = urlParams.get('role');
+            const urlFullName = urlParams.get('fullName');
+
+            // If URL has auth data, store it in localStorage and clean URL
+            if (urlToken && urlEmail && urlRole) {
+                localStorage.setItem('token', urlToken);
+                localStorage.setItem('userEmail', urlEmail);
+                localStorage.setItem('userRole', urlRole);
+                localStorage.setItem('fullName', urlFullName || '');
+                
+                // Clean URL by removing parameters
+                window.history.replaceState({}, document.title, '/index.html');
+            }
+
+            // Now check localStorage
+            const token = localStorage.getItem('token');
+            const userEmail = localStorage.getItem('userEmail');
+            const userRole = localStorage.getItem('userRole');
+
+            console.log('User Panel - Checking auth:', { token, userEmail, userRole });
+
+            if (!token) {
+                console.log('No token found, redirecting to login');
+                window.location.replace('http://localhost:3000/login.html');
+                return;
+            }
+
+            // Check if user has correct role
+            if (userRole !== 'user') {
+                console.log('Invalid role:', userRole, 'expected: user');
+                alert('Access denied. This panel is for users only.');
+                window.location.replace('http://localhost:3000/login.html');
                 return;
             }
 
@@ -204,16 +283,29 @@
             if (userEmail) {
                 document.getElementById('userEmail').textContent = userEmail;
             }
+            
+            console.log('User authenticated successfully');
+        }
+
+        // Run auth check on page load
+        window.addEventListener('DOMContentLoaded', checkAuth);
+        
+        // Re-check auth when page becomes visible (back button)
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                checkAuth();
+            }
         });
 
         function logout() {
-            // Clear authentication data
-            localStorage.removeItem('token');
-            localStorage.removeItem('userEmail');
-            localStorage.removeItem('userRole');
+            // Set logout flag in sessionStorage (survives page refresh, cleared when browser closes)
+            sessionStorage.setItem('loggedOut', 'true');
             
-            // Redirect to login
-            window.location.href = '../public-app/login.html';
+            // Clear authentication data
+            localStorage.clear();
+            
+            // Use replace with logout parameter to trigger port 3000 cleanup
+            window.location.replace('http://localhost:3000/login.html?logout=true');
         }
     </script>
 </body>
