@@ -10,26 +10,42 @@ import os
 from .db import engine, Base
 from .models import User
 from .deps import get_db
+from .admin import router as admin_router
 
 # Create tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Management API", version="1.0.0")
 
-# CORS middleware
+# Include routers
+app.include_router(admin_router)
+
+# CORS middleware - Restrict to specific origins
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # Public App
+    "http://localhost:3001",  # User Panel  
+    "http://localhost:3002",  # Admin Panel
+    # Add production URLs here when deploying
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,  # ✅ Specific origins only
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],  # Specific methods
+    allow_headers=["Content-Type", "Authorization"],  # Specific headers
 )
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT settings
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+# JWT settings - Require SECRET_KEY to be set
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "JWT_SECRET_KEY environment variable is not set. "
+        "Please set it in .env file for security."
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
 
