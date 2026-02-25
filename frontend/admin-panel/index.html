@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - API Security Gateway</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1A0B1F 0%, #2D1B3D 100%);
+            min-height: 100vh;
+            color: #E5E7EB;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(45, 27, 61, 0.7);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(168, 85, 247, 0.15);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #A855F7;
+            margin-bottom: 10px;
+        }
+
+        .welcome-text {
+            font-size: 18px;
+            color: #9CA3AF;
+            margin-bottom: 20px;
+        }
+
+        .admin-badge {
+            display: inline-block;
+            background: rgba(168, 85, 247, 0.2);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #C084FC;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+
+        .content {
+            background: rgba(45, 27, 61, 0.7);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(168, 85, 247, 0.15);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #A855F7 0%, #9333EA 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .info-text {
+            font-size: 16px;
+            color: #D1D5DB;
+            line-height: 1.8;
+            margin-bottom: 30px;
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .feature-card {
+            background: rgba(15, 10, 20, 0.6);
+            border: 1px solid rgba(168, 85, 247, 0.25);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: left;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(168, 85, 247, 0.5);
+        }
+
+        .feature-card h3 {
+            color: #A855F7;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .feature-card p {
+            color: #9CA3AF;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .privilege-notice {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 30px;
+            color: #FCA5A5;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👑 Admin Dashboard</h1>
+            <p class="welcome-text">Administrator Control Panel - Full System Access</p>
+            <div class="admin-badge">
+                <span id="adminEmail">Loading...</span> | Role: <strong>ADMIN</strong>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="status-badge">✓ Admin Access Granted</div>
+            
+            <p class="info-text">
+                You have successfully authenticated with administrator privileges.<br>
+                This is a sample admin dashboard page. Full functionality coming soon!
+            </p>
+
+            <button class="logout-btn" onclick="logout()">Logout</button>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>📊 Admin Dashboard</h3>
+                    <p>System-wide metrics across all users and organizations</p>
+                </div>
+                <div class="feature-card">
+                    <h3>👥 User Management</h3>
+                    <p>Create, modify, suspend, and delete user accounts</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🏢 Organization Management</h3>
+                    <p>Handle multi-tenant hierarchies and permissions</p>
+                </div>
+                <div class="feature-card">
+                    <h3>📡 API Registry</h3>
+                    <p>All protected endpoints with usage statistics</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🛡️ Global Security Policies</h3>
+                    <p>Configure system-wide rules and enforcement behaviors</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🚨 Attack Intelligence Center</h3>
+                    <p>Real-time monitoring of threats and attack patterns</p>
+                </div>
+                <div class="feature-card">
+                    <h3>📝 Logs & Audit Trails</h3>
+                    <p>Comprehensive queryable access to all system events</p>
+                </div>
+                <div class="feature-card">
+                    <h3>⚙️ Rate Limit Templates</h3>
+                    <p>Reusable quota configurations for user groups</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🔐 Authentication Governance</h3>
+                    <p>Manage OAuth providers, JWT settings, session policies</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🚑 Incident Response Center</h3>
+                    <p>Coordinate responses to security events with workflows</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🔔 Notification Engine</h3>
+                    <p>Configure alert rules, destinations, escalation policies</p>
+                </div>
+                <div class="feature-card">
+                    <h3>⚡ System Configuration</h3>
+                    <p>Manage Redis, PostgreSQL, and ML model parameters</p>
+                </div>
+                <div class="feature-card">
+                    <h3>📈 Platform Analytics</h3>
+                    <p>Aggregate statistics and trends across entire platform</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🧪 Sandbox Oversight</h3>
+                    <p>Monitor test environments and prevent abuse</p>
+                </div>
+            </div>
+
+            <div class="privilege-notice">
+                ⚠️ <strong>Elevated Privileges:</strong> You have full administrative access to all system functions. 
+                Please use these capabilities responsibly.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check if user is authenticated
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            const userEmail = localStorage.getItem('userEmail');
+            const userRole = localStorage.getItem('userRole');
+
+            if (!token) {
+                // Redirect to login if not authenticated
+                window.location.href = '../public-app/login.html';
+                return;
+            }
+
+            // Check if user has admin role
+            if (userRole !== 'admin') {
+                alert('Access denied. This panel is for administrators only.');
+                window.location.href = '../public-app/login.html';
+                return;
+            }
+
+            // Display admin email
+            if (userEmail) {
+                document.getElementById('adminEmail').textContent = userEmail;
+            }
+        });
+
+        function logout() {
+            // Clear authentication data
+            localStorage.removeItem('token');
+            localStorage.removeItem('userEmail');
+            localStorage.removeItem('userRole');
+            
+            // Redirect to login
+            window.location.href = '../public-app/login.html';
+        }
+    </script>
+</body>
+</html>

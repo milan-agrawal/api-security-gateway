@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard - API Security Gateway</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0B0F1A 0%, #1F2933 100%);
+            min-height: 100vh;
+            color: #E5E7EB;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(31, 41, 51, 0.7);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(59, 130, 246, 0.15);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #3B82F6;
+            margin-bottom: 10px;
+        }
+
+        .welcome-text {
+            font-size: 18px;
+            color: #9CA3AF;
+            margin-bottom: 20px;
+        }
+
+        .user-info {
+            display: inline-block;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #60A5FA;
+        }
+
+        .content {
+            background: rgba(31, 41, 51, 0.7);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(59, 130, 246, 0.15);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .info-text {
+            font-size: 16px;
+            color: #D1D5DB;
+            line-height: 1.8;
+            margin-bottom: 30px;
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .feature-card {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: left;
+        }
+
+        .feature-card h3 {
+            color: #3B82F6;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .feature-card p {
+            color: #9CA3AF;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 User Dashboard</h1>
+            <p class="welcome-text">Welcome to your API Security Gateway Control Panel</p>
+            <div class="user-info">
+                <span id="userEmail">Loading...</span> | Role: <strong>User</strong>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="status-badge">✓ Successfully Logged In</div>
+            
+            <p class="info-text">
+                You have successfully authenticated to the API Security Gateway User Panel.<br>
+                This is a sample dashboard page. Full functionality coming soon!
+            </p>
+
+            <button class="logout-btn" onclick="logout()">Logout</button>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>📊 Dashboard</h3>
+                    <p>Overview statistics and quick insights about your API usage</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🔑 API Keys</h3>
+                    <p>Generate, view, and manage your authentication credentials</p>
+                </div>
+                <div class="feature-card">
+                    <h3>📈 Analytics</h3>
+                    <p>Charts and graphs of usage patterns over time</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🚦 Rate Limiting</h3>
+                    <p>View current quotas and usage against limits</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🛡️ Security</h3>
+                    <p>Anomaly alerts and suspicious activity warnings</p>
+                </div>
+                <div class="feature-card">
+                    <h3>📝 Logs</h3>
+                    <p>Detailed history of all API calls with filtering</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check if user is authenticated
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            const userEmail = localStorage.getItem('userEmail');
+            const userRole = localStorage.getItem('userRole');
+
+            if (!token) {
+                // Redirect to login if not authenticated
+                window.location.href = '../public-app/login.html';
+                return;
+            }
+
+            // Check if user has correct role
+            if (userRole !== 'user') {
+                alert('Access denied. This panel is for users only.');
+                window.location.href = '../public-app/login.html';
+                return;
+            }
+
+            // Display user email
+            if (userEmail) {
+                document.getElementById('userEmail').textContent = userEmail;
+            }
+        });
+
+        function logout() {
+            // Clear authentication data
+            localStorage.removeItem('token');
+            localStorage.removeItem('userEmail');
+            localStorage.removeItem('userRole');
+            
+            // Redirect to login
+            window.location.href = '../public-app/login.html';
+        }
+    </script>
+</body>
+</html>
