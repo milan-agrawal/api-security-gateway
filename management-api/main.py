@@ -7,10 +7,10 @@ from datetime import datetime, timedelta
 import jwt
 import os
 
-from .db import engine, Base
-from .models import User
-from .deps import get_db
-from .admin import router as admin_router
+from db import engine, Base
+from models import User
+from deps import get_db
+from admin import router as admin_router
 
 # Create tables
 Base.metadata.create_all(bind=engine)

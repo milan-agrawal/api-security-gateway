@@ -11,10 +11,12 @@ from collections import defaultdict
 import asyncio
 import jwt
 import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ..deps import get_db
-from ..models import User
-from ..utils import generate_secure_password, send_credentials_email
+from deps import get_db
+from models import User
+from utils import generate_secure_password, send_credentials_email
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
