@@ -1,3 +1,25 @@
+// Handle back/forward navigation (bfcache)
+window.addEventListener('pageshow', function(event) {
+    // Only check on bfcache navigations (back/forward button)
+    if (!event.persisted) return;
+    
+    const token = localStorage.getItem('token');
+    const loggedOut = sessionStorage.getItem('loggedOut');
+    
+    // If logged out or no token, stay on login page
+    if (loggedOut === 'true' || !token) {
+        return;
+    }
+    
+    // If still logged in, redirect back to appropriate dashboard
+    const userRole = localStorage.getItem('userRole');
+    if (userRole === 'admin') {
+        window.location.replace('http://localhost:3002/index.html');
+    } else {
+        window.location.replace('http://localhost:3001/index.html');
+    }
+});
+
 // Clear localStorage if returning after logout (via URL parameter)
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get('logout') === 'true') {
@@ -161,7 +183,7 @@ loginForm.addEventListener('submit', async (e) => {
                 });
                 
                 if (data.role === 'admin') {
-                    window.location.href = `http://localhost:3002/userManagement.html?${params.toString()}`;
+                    window.location.href = `http://localhost:3002/index.html?${params.toString()}`;
                 } else {
                     window.location.href = `http://localhost:3001/index.html?${params.toString()}`;
                 }

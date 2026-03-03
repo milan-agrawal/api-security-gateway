@@ -1,5 +1,17 @@
 const API_URL = 'http://localhost:8001';
 
+// Handle back/forward navigation (bfcache)
+window.addEventListener('pageshow', function(event) {
+    if (event.persisted) {
+        // Page was loaded from cache via back/forward button
+        const token = localStorage.getItem('token');
+        const loggedOut = sessionStorage.getItem('loggedOut');
+        if (!token || loggedOut === 'true') {
+            window.location.replace('http://localhost:3000/login.html');
+        }
+    }
+});
+
 // IMMEDIATE AUTH CHECK - runs before page renders
 (function() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -14,7 +26,7 @@ const API_URL = 'http://localhost:8001';
         localStorage.setItem('userRole', urlRole);
         localStorage.setItem('fullName', urlFullName || '');
         sessionStorage.removeItem('loggedOut');
-        window.history.replaceState({}, document.title, '/index.html');
+        window.history.replaceState({}, document.title, '/userManagement.html');
     }
 
     const token = localStorage.getItem('token');
@@ -37,12 +49,6 @@ const API_URL = 'http://localhost:8001';
         return;
     }
 })();
-
-// Prevent browser back button after logout
-window.history.pushState(null, null, window.location.href);
-window.addEventListener('popstate', function() {
-    window.history.pushState(null, null, window.location.href);
-});
 
 // Set admin email on load
 window.addEventListener('DOMContentLoaded', function() {

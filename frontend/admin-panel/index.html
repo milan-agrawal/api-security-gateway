@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Admin Dashboard - API Security Gateway</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assests/css/index.css?v=3">
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">🛡️</div>
+                <span class="logo-text">API Gateway</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+                </svg>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-label">Overview</div>
+                <a href="index.html" class="nav-item active">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    </svg>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    <span class="nav-text">Analytics</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-label">Security</div>
+                <a href="#" class="nav-item">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <span class="nav-text">Threat Monitor</span>
+                    <span class="nav-badge danger">3</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                    <span class="nav-text">Firewall Rules</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                    </svg>
+                    <span class="nav-text">Request Logs</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-label">Management</div>
+                <a href="userManagement.html" class="nav-item">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                    </svg>
+                    <span class="nav-text">User Management</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                    </svg>
+                    <span class="nav-text">API Keys</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    <span class="nav-text">Settings</span>
+                </a>
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="system-status">
+                <div class="status-indicator online"></div>
+                <span class="status-text">All Systems Operational</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="page-title">
+                    <h1>Security Dashboard</h1>
+                    <p class="page-subtitle">Real-time monitoring and threat detection</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="header-actions">
+                    <button class="btn-icon" title="Refresh Data" onclick="refreshData()">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </button>
+                    <button class="btn-icon" title="Notifications">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                        <span class="notification-dot"></span>
+                    </button>
+                </div>
+                <div class="header-divider"></div>
+                <div class="user-menu">
+                    <div class="user-avatar" id="userAvatar">AD</div>
+                    <div class="user-info">
+                        <span class="user-name" id="userName">Admin</span>
+                        <span class="user-role">Administrator</span>
+                    </div>
+                    <button class="btn-logout" onclick="logout()">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Content -->
+        <div class="dashboard">
+            <!-- Metrics Row -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-label">Total Requests</span>
+                        <span class="metric-badge success">Live</span>
+                    </div>
+                    <div class="metric-value" id="totalRequests">1,284,593</div>
+                    <div class="metric-trend positive">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                        <span>+12.5% from last hour</span>
+                    </div>
+                </div>
+
+                <div class="metric-card accent-danger">
+                    <div class="metric-header">
+                        <span class="metric-label">Threats Blocked</span>
+                        <span class="metric-badge danger">Alert</span>
+                    </div>
+                    <div class="metric-value" id="threatsBlocked">847</div>
+                    <div class="metric-trend negative">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/>
+                        </svg>
+                        <span>+23.1% threats detected</span>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-label">Active Users</span>
+                    </div>
+                    <div class="metric-value" id="activeUsers">342</div>
+                    <div class="metric-trend positive">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                        <span>+5.2% from yesterday</span>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span class="metric-label">Avg Response</span>
+                    </div>
+                    <div class="metric-value" id="avgResponse">42<span class="metric-unit">ms</span></div>
+                    <div class="metric-trend positive">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                        <span>-8ms improvement</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts and Activity Row -->
+            <div class="dashboard-grid">
+                <!-- Traffic Chart -->
+                <div class="card chart-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Request Traffic</h3>
+                        <div class="card-actions">
+                            <select class="select-sm" id="chartRange">
+                                <option value="1h">Last Hour</option>
+                                <option value="24h" selected>Last 24 Hours</option>
+                                <option value="7d">Last 7 Days</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container" id="trafficChart">
+                            <!-- Simple CSS chart representation -->
+                            <div class="chart-bars">
+                                <div class="chart-bar-wrapper">
+                                    <div class="chart-bar" style="height: 45%;"></div>
+                                    <span class="chart-label">00:00</span>
+                                </div>
+                                <div class="chart-bar-wrapper">
+                                    <div class="chart-bar" style="height: 55%;"></div>
+                                    <span class="chart-label">04:00</span>
+                                </div>
+                                <div class="chart-bar-wrapper">
+                                    <div class="chart-bar" style="height: 35%;"></div>
+                                    <span class="chart-label">08:00</span>
+                                </div>
+                                <div class="chart-bar-wrapper">
+                                    <div class="chart-bar" style="height: 78%;"></div>
+                                    <span class="chart-label">12:00</span>
+                                </div>
+                                <div class="chart-bar-wrapper">
+                                    <div class="chart-bar" style="height: 92%;"></div>
+                                    <span class="chart-label">16:00</span>
+                                </div>
+                                <div class="chart-bar-wrapper">
+                                    <div class="chart-bar active" style="height: 85%;"></div>
+                                    <span class="chart-label">20:00</span>
+                                </div>
+                                <div class="chart-bar-wrapper">
+                                    <div class="chart-bar" style="height: 65%;"></div>
+                                    <span class="chart-label">Now</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Threat Distribution -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Threat Distribution</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="threat-list">
+                            <div class="threat-item">
+                                <div class="threat-info">
+                                    <span class="threat-type">SQL Injection</span>
+                                    <span class="threat-count">312 blocked</span>
+                                </div>
+                                <div class="threat-bar">
+                                    <div class="threat-progress" style="width: 65%; background: var(--error);"></div>
+                                </div>
+                            </div>
+                            <div class="threat-item">
+                                <div class="threat-info">
+                                    <span class="threat-type">XSS Attacks</span>
+                                    <span class="threat-count">189 blocked</span>
+                                </div>
+                                <div class="threat-bar">
+                                    <div class="threat-progress" style="width: 40%; background: var(--warning);"></div>
+                                </div>
+                            </div>
+                            <div class="threat-item">
+                                <div class="threat-info">
+                                    <span class="threat-type">Rate Limit Exceeded</span>
+                                    <span class="threat-count">156 blocked</span>
+                                </div>
+                                <div class="threat-bar">
+                                    <div class="threat-progress" style="width: 32%; background: var(--accent-cyan);"></div>
+                                </div>
+                            </div>
+                            <div class="threat-item">
+                                <div class="threat-info">
+                                    <span class="threat-type">Auth Failures</span>
+                                    <span class="threat-count">98 blocked</span>
+                                </div>
+                                <div class="threat-bar">
+                                    <div class="threat-progress" style="width: 20%; background: var(--accent-purple);"></div>
+                                </div>
+                            </div>
+                            <div class="threat-item">
+                                <div class="threat-info">
+                                    <span class="threat-type">Path Traversal</span>
+                                    <span class="threat-count">92 blocked</span>
+                                </div>
+                                <div class="threat-bar">
+                                    <div class="threat-progress" style="width: 18%; background: var(--accent-secondary);"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Activity Log -->
+            <div class="card log-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <span class="live-indicator"></span>
+                        Live Activity Log
+                    </h3>
+                    <div class="card-actions">
+                        <button class="btn btn-sm btn-secondary">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                            </svg>
+                            Filter
+                        </button>
+                        <button class="btn btn-sm btn-secondary">Export</button>
+                    </div>
+                </div>
+                <div class="log-viewer" id="logViewer">
+                    <div class="log-entry">
+                        <span class="log-time">14:32:45.123</span>
+                        <span class="log-badge success">200</span>
+                        <span class="log-method get">GET</span>
+                        <span class="log-path">/api/v1/users</span>
+                        <span class="log-ip">192.168.1.105</span>
+                        <span class="log-latency">32ms</span>
+                    </div>
+                    <div class="log-entry critical">
+                        <span class="log-time">14:32:44.891</span>
+                        <span class="log-badge danger">403</span>
+                        <span class="log-method post">POST</span>
+                        <span class="log-path">/api/v1/admin/config</span>
+                        <span class="log-ip">45.33.32.156</span>
+                        <span class="log-latency">8ms</span>
+                        <span class="log-threat">⚠️ SQL Injection Attempt</span>
+                    </div>
+                    <div class="log-entry">
+                        <span class="log-time">14:32:44.567</span>
+                        <span class="log-badge success">201</span>
+                        <span class="log-method post">POST</span>
+                        <span class="log-path">/api/v1/orders</span>
+                        <span class="log-ip">10.0.0.42</span>
+                        <span class="log-latency">156ms</span>
+                    </div>
+                    <div class="log-entry warning">
+                        <span class="log-time">14:32:43.234</span>
+                        <span class="log-badge warning">429</span>
+                        <span class="log-method get">GET</span>
+                        <span class="log-path">/api/v1/products</span>
+                        <span class="log-ip">203.45.67.89</span>
+                        <span class="log-latency">2ms</span>
+                        <span class="log-threat">⚡ Rate Limited</span>
+                    </div>
+                    <div class="log-entry">
+                        <span class="log-time">14:32:42.901</span>
+                        <span class="log-badge success">200</span>
+                        <span class="log-method get">GET</span>
+                        <span class="log-path">/api/v1/analytics</span>
+                        <span class="log-ip">192.168.1.22</span>
+                        <span class="log-latency">245ms</span>
+                    </div>
+                    <div class="log-entry critical">
+                        <span class="log-time">14:32:41.445</span>
+                        <span class="log-badge danger">401</span>
+                        <span class="log-method post">POST</span>
+                        <span class="log-path">/api/v1/auth/login</span>
+                        <span class="log-ip">185.220.101.42</span>
+                        <span class="log-latency">15ms</span>
+                        <span class="log-threat">🔒 Brute Force Attempt</span>
+                    </div>
+                    <div class="log-entry">
+                        <span class="log-time">14:32:40.123</span>
+                        <span class="log-badge success">200</span>
+                        <span class="log-method put">PUT</span>
+                        <span class="log-path">/api/v1/users/profile</span>
+                        <span class="log-ip">10.0.0.15</span>
+                        <span class="log-latency">89ms</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Alerts -->
+            <div class="card alerts-card">
+                <div class="card-header">
+                    <h3 class="card-title">Recent Security Alerts</h3>
+                    <a href="#" class="card-link">View All →</a>
+                </div>
+                <div class="alerts-list">
+                    <div class="alert-item critical">
+                        <div class="alert-icon">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                        </div>
+                        <div class="alert-content">
+                            <div class="alert-title">Critical: SQL Injection Attack Detected</div>
+                            <div class="alert-meta">
+                                <span>IP: 45.33.32.156</span>
+                                <span>•</span>
+                                <span>2 minutes ago</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-danger">Block IP</button>
+                    </div>
+                    <div class="alert-item warning">
+                        <div class="alert-icon">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div class="alert-content">
+                            <div class="alert-title">Warning: Unusual Traffic Pattern</div>
+                            <div class="alert-meta">
+                                <span>Region: Eastern Europe</span>
+                                <span>•</span>
+                                <span>15 minutes ago</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-secondary">Investigate</button>
+                    </div>
+                    <div class="alert-item info">
+                        <div class="alert-icon">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div class="alert-content">
+                            <div class="alert-title">Info: Rate Limit Threshold Reached</div>
+                            <div class="alert-meta">
+                                <span>Endpoint: /api/v1/products</span>
+                                <span>•</span>
+                                <span>1 hour ago</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-secondary">Adjust</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="assests/js/index.js?v=6"></script>
+</body>
+</html>
