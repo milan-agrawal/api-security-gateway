@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:8001';
+var API_URL = 'http://localhost:8001';
 
 // Handle back/forward navigation (bfcache)
 window.addEventListener('pageshow', function(event) {
@@ -58,6 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeUI();
     loadUserInfo();
     initializeSidebar();
+    initializeRouter();
     startLiveUpdates();
 });
 
@@ -317,5 +318,206 @@ style.textContent = `
             transform: translateY(0);
         }
     }
+    .content-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
+        color: var(--text-muted);
+        font-size: 16px;
+    }
+    .content-loading::after {
+        content: '';
+        width: 24px;
+        height: 24px;
+        border: 3px solid var(--border-default);
+        border-top-color: var(--accent-primary);
+        border-radius: 50%;
+        margin-left: 12px;
+        animation: spin 1s linear infinite;
+    }
 `;
 document.head.appendChild(style);
+
+// ============================================
+// SPA ROUTER
+// ============================================
+
+let dashboardContentCache = null;
+let currentRoute = 'dashboard';
+let userManagementScriptLoaded = false;
+
+// Global SPA flag for userManagement.js to detect
+window.isSPAMode = true;
+
+// Initialize Router
+function initializeRouter() {
+    // Store original dashboard content
+    const contentArea = document.getElementById('contentArea');
+    if (contentArea) {
+        dashboardContentCache = contentArea.innerHTML;
+    }
+    
+    // Setup nav click handlers
+    const navItems = document.querySelectorAll('.nav-item[data-route]');
+    navItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const route = item.getAttribute('data-route');
+            navigateTo(route);
+        });
+    });
+    
+    // Handle browser back/forward
+    window.addEventListener('hashchange', () => {
+        const hash = window.location.hash.slice(1) || 'dashboard';
+        if (hash !== currentRoute) {
+            loadRoute(hash, true);
+        }
+    });
+    
+    // Handle initial route from URL hash
+    const initialHash = window.location.hash.slice(1);
+    if (initialHash && initialHash !== 'dashboard') {
+        // Load the route and update nav to match
+        loadRoute(initialHash, true);
+    } else {
+        // Set initial nav state for dashboard
+        currentRoute = 'dashboard';
+        updateActiveNav('dashboard');
+    }
+}
+
+// Update active nav item
+function updateActiveNav(route) {
+    document.querySelectorAll('.nav-item[data-route]').forEach(item => {
+        item.classList.remove('active');
+        if (item.getAttribute('data-route') === route) {
+            item.classList.add('active');
+        }
+    });
+}
+
+// Navigate to route (updates URL and loads content)
+function navigateTo(route) {
+    if (route === currentRoute) return;
+    window.location.hash = route;
+    loadRoute(route, true);
+}
+
+// Load route content
+async function loadRoute(route, updateNav = true) {
+    const contentArea = document.getElementById('contentArea');
+    if (!contentArea) return;
+    
+    // Update current route first
+    currentRoute = route;
+    
+    // Update active nav item
+    if (updateNav) {
+        updateActiveNav(route);
+    }
+    
+    switch (route) {
+        case 'dashboard':
+            loadDashboard(contentArea);
+            break;
+        case 'users':
+            await loadUserManagement(contentArea);
+            break;
+        default:
+            loadDashboard(contentArea);
+    }
+}
+
+// Load Dashboard content
+function loadDashboard(contentArea) {
+    // Restore cached dashboard content
+    if (dashboardContentCache) {
+        contentArea.innerHTML = dashboardContentCache;
+    }
+    
+    // Update header
+    updatePageHeader('Security Dashboard', 'Real-time monitoring and threat detection');
+    
+    // Reinitialize dashboard features
+    updateLogTimestamps();
+    startLiveUpdates();
+}
+
+// Load User Management content
+async function loadUserManagement(contentArea) {
+    // Show loading state
+    contentArea.innerHTML = '<div class="content-loading">Loading User Management</div>';
+    
+    // Update header
+    updatePageHeader('User Management', 'Manage users and administrators');
+    
+    try {
+        // Fetch userManagement.html
+        const response = await fetch('userManagement.html?nocache=' + Date.now());
+        if (!response.ok) throw new Error('Failed to load User Management');
+        
+        const html = await response.text();
+        
+        // Parse HTML and extract .container content
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const container = doc.querySelector('.container');
+        
+        if (container) {
+            // Remove the header from userManagement (we use SPA header)
+            const header = container.querySelector('.header');
+            if (header) header.remove();
+            
+            // Inject content
+            contentArea.innerHTML = container.innerHTML;
+            
+            // Initialize user management - script already loaded via HTML
+            if (typeof loadUsers === 'function') loadUsers();
+            if (typeof loadAdmins === 'function') loadAdmins();
+        } else {
+            throw new Error('Content not found');
+        }
+    } catch (error) {
+        console.error('Error loading User Management:', error);
+        contentArea.innerHTML = `
+            <div class="content-loading" style="flex-direction: column; gap: 16px;">
+                <span style="color: var(--error);">Failed to load User Management</span>
+                <button class="btn btn-primary" onclick="loadRoute('users')">Retry</button>
+            </div>
+        `;
+    }
+}
+
+// Load userManagement.js script dynamically
+function loadUserManagementScript() {
+    return new Promise((resolve) => {
+        if (userManagementScriptLoaded && typeof loadUsers === 'function') {
+            resolve();
+            return;
+        }
+        
+        const script = document.createElement('script');
+        script.src = 'assests/js/userManagement.js?v=7';
+        script.onload = () => {
+            userManagementScriptLoaded = true;
+            // Wait for script to fully execute
+            setTimeout(resolve, 50);
+        };
+        script.onerror = () => {
+            console.error('Failed to load userManagement.js');
+            resolve();
+        };
+        document.body.appendChild(script);
+    });
+}
+
+// Update page header
+function updatePageHeader(title, subtitle) {
+    const titleEl = document.querySelector('.page-title h1');
+    const subtitleEl = document.querySelector('.page-subtitle');
+    
+    if (titleEl) titleEl.textContent = title;
+    if (subtitleEl) subtitleEl.textContent = subtitle;
+}

@@ -1,65 +1,75 @@
-const API_URL = 'http://localhost:8001';
+// API URL - use existing if already defined (SPA mode)
+if (typeof API_URL === 'undefined') {
+    var API_URL = 'http://localhost:8001';
+}
 
-// Handle back/forward navigation (bfcache)
-window.addEventListener('pageshow', function(event) {
-    if (event.persisted) {
-        // Page was loaded from cache via back/forward button
-        const token = localStorage.getItem('token');
-        const loggedOut = sessionStorage.getItem('loggedOut');
-        if (!token || loggedOut === 'true') {
-            window.location.replace('http://localhost:3000/login.html');
+// Check if loaded via SPA (index.js sets window.isSPAMode = true)
+var isSPAMode = window.isSPAMode === true;
+
+// Skip auth checks and auto-init in SPA mode (handled by index.js)
+if (!isSPAMode) {
+    // Handle back/forward navigation (bfcache)
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            // Page was loaded from cache via back/forward button
+            const token = localStorage.getItem('token');
+            const loggedOut = sessionStorage.getItem('loggedOut');
+            if (!token || loggedOut === 'true') {
+                window.location.replace('http://localhost:3000/login.html');
+            }
         }
-    }
-});
+    });
 
-// IMMEDIATE AUTH CHECK - runs before page renders
-(function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('token');
-    const urlEmail = urlParams.get('email');
-    const urlRole = urlParams.get('role');
-    const urlFullName = urlParams.get('fullName');
+    // IMMEDIATE AUTH CHECK - runs before page renders
+    (function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlToken = urlParams.get('token');
+        const urlEmail = urlParams.get('email');
+        const urlRole = urlParams.get('role');
+        const urlFullName = urlParams.get('fullName');
 
-    if (urlToken && urlEmail && urlRole) {
-        localStorage.setItem('token', urlToken);
-        localStorage.setItem('userEmail', urlEmail);
-        localStorage.setItem('userRole', urlRole);
-        localStorage.setItem('fullName', urlFullName || '');
-        sessionStorage.removeItem('loggedOut');
-        window.history.replaceState({}, document.title, '/userManagement.html');
-    }
+        if (urlToken && urlEmail && urlRole) {
+            localStorage.setItem('token', urlToken);
+            localStorage.setItem('userEmail', urlEmail);
+            localStorage.setItem('userRole', urlRole);
+            localStorage.setItem('fullName', urlFullName || '');
+            sessionStorage.removeItem('loggedOut');
+            window.history.replaceState({}, document.title, '/userManagement.html');
+        }
 
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole');
-    const loggedOut = sessionStorage.getItem('loggedOut');
-    
-    if (loggedOut === 'true') {
-        window.location.replace('http://localhost:3000/login.html');
-        return;
-    }
-    
-    if (!token) {
-        window.location.replace('http://localhost:3000/login.html');
-        return;
-    }
+        const token = localStorage.getItem('token');
+        const userRole = localStorage.getItem('userRole');
+        const loggedOut = sessionStorage.getItem('loggedOut');
+        
+        if (loggedOut === 'true') {
+            window.location.replace('http://localhost:3000/login.html');
+            return;
+        }
+        
+        if (!token) {
+            window.location.replace('http://localhost:3000/login.html');
+            return;
+        }
 
-    if (userRole !== 'admin') {
-        alert('Access denied. This panel is for administrators only.');
-        window.location.replace('http://localhost:3000/login.html');
-        return;
-    }
-})();
+        if (userRole !== 'admin') {
+            alert('Access denied. This panel is for administrators only.');
+            window.location.replace('http://localhost:3000/login.html');
+            return;
+        }
+    })();
 
-// Set admin email on load
-window.addEventListener('DOMContentLoaded', function() {
-    const userEmail = localStorage.getItem('userEmail');
-    if (userEmail) {
-        document.getElementById('loggedInAdminEmail').textContent = userEmail;
-    }
-    // Load data
-    loadUsers();
-    loadAdmins();
-});
+    // Set admin email on load (standalone mode)
+    window.addEventListener('DOMContentLoaded', function() {
+        const userEmail = localStorage.getItem('userEmail');
+        if (userEmail) {
+            const emailEl = document.getElementById('loggedInAdminEmail');
+            if (emailEl) emailEl.textContent = userEmail;
+        }
+        // Load data
+        loadUsers();
+        loadAdmins();
+    });
+}
 
 function logout() {
     sessionStorage.setItem('loggedOut', 'true');
@@ -214,17 +224,15 @@ async function createAdmin(event) {
 // Load Users
 async function loadUsers() {
     const tbody = document.getElementById('usersTableBody');
-    tbody.innerHTML = '<tr><td colspan="6" class="loading">Loading users</td></tr>';
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6" class="loading">Loading users...</td></tr>';
 
     try {
-        console.log('Loading users from:', `${API_URL}/admin/users/list?role=user`);
         const response = await fetch(`${API_URL}/admin/users/list?role=user`, {
             headers: getAuthHeaders()
         });
 
-        console.log('Users response status:', response.status);
         const data = await response.json();
-        console.log('Users data:', data);
 
         if (response.ok && data.users.length > 0) {
             document.getElementById('userCount').textContent = `${data.total} User${data.total !== 1 ? 's' : ''}`;
