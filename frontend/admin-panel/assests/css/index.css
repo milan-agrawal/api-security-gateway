@@ -128,6 +128,15 @@ body {
     display: flex;
     align-items: center;
     gap: var(--space-3);
+    cursor: pointer;
+    padding: var(--space-2);
+    margin: calc(-1 * var(--space-2));
+    border-radius: var(--radius-md);
+    transition: background 150ms ease;
+}
+
+.logo:hover {
+    background: var(--bg-elevated);
 }
 
 .logo-icon {
@@ -1026,7 +1035,68 @@ body {
     background: var(--text-muted);
 }
 
-/* Responsive */
+/* ============================================
+   MOBILE MENU BUTTON & OVERLAY
+   ============================================ */
+
+.mobile-menu-btn {
+    display: none;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    align-items: center;
+    justify-content: center;
+    transition: all 150ms ease;
+    flex-shrink: 0;
+}
+
+.mobile-menu-btn:hover {
+    background: var(--bg-elevated);
+}
+
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-overlay);
+    z-index: 99;
+    opacity: 0;
+    transition: opacity 200ms ease;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+/* Extra Large Screens (1600px+) */
+@media (min-width: 1600px) {
+    .dashboard {
+        max-width: 1800px;
+        margin: 0 auto;
+    }
+    
+    .metrics-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .dashboard-grid {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+/* Large Screens (1200px - 1400px) */
 @media (max-width: 1400px) {
     .metrics-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -1035,23 +1105,172 @@ body {
     .dashboard-grid {
         grid-template-columns: 1fr;
     }
+    
+    .metric-value {
+        font-size: 30px;
+    }
 }
 
-@media (max-width: 900px) {
+/* Medium Screens - Tablet Landscape (992px - 1199px) */
+@media (max-width: 1199px) {
+    :root {
+        --sidebar-width: 240px;
+    }
+    
+    .header {
+        padding: 0 var(--space-6);
+    }
+    
+    .dashboard {
+        padding: var(--space-6);
+    }
+    
+    .page-title h1 {
+        font-size: 18px;
+    }
+    
+    .page-subtitle {
+        font-size: 12px;
+    }
+}
+
+/* Tablet Portrait (768px - 991px) */
+@media (max-width: 991px) {
+    .mobile-menu-btn {
+        display: flex;
+    }
+    
     .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 100;
         transform: translateX(-100%);
+        transition: transform 300ms var(--ease-smooth);
+        width: 280px;
     }
     
     .sidebar.open {
         transform: translateX(0);
+        box-shadow: var(--shadow-lg);
+    }
+    
+    .sidebar.collapsed {
+        width: 280px;
+    }
+    
+    .sidebar.collapsed .logo-text,
+    .sidebar.collapsed .nav-label,
+    .sidebar.collapsed .nav-text,
+    .sidebar.collapsed .status-text,
+    .sidebar.collapsed .nav-badge {
+        display: block;
+    }
+    
+    .sidebar.collapsed .nav-badge {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: auto;
+        height: auto;
+        padding: 2px 8px;
+        font-size: 11px;
+    }
+    
+    .sidebar-toggle {
+        display: none;
     }
     
     .main-content {
-        margin-left: 0;
+        margin-left: 0 !important;
     }
     
     .header {
         padding: 0 var(--space-4);
+    }
+    
+    .header-left {
+        gap: var(--space-3);
+    }
+    
+    .dashboard {
+        padding: var(--space-5);
+    }
+    
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-4);
+    }
+    
+    .metric-card {
+        padding: var(--space-5);
+    }
+    
+    .metric-value {
+        font-size: 28px;
+    }
+    
+    .metric-unit {
+        font-size: 16px;
+    }
+    
+    .card-header {
+        padding: var(--space-4) var(--space-5);
+    }
+    
+    .card-body {
+        padding: var(--space-5);
+    }
+    
+    .user-info {
+        display: none;
+    }
+    
+    .btn-logout span {
+        display: none;
+    }
+    
+    .btn-logout {
+        padding: 8px 12px;
+    }
+}
+
+/* Mobile Landscape & Small Tablets (576px - 767px) */
+@media (max-width: 767px) {
+    html {
+        font-size: 13px;
+    }
+    
+    .header {
+        height: 56px;
+        padding: 0 var(--space-3);
+    }
+    
+    .page-title h1 {
+        font-size: 16px;
+    }
+    
+    .page-subtitle {
+        display: none;
+    }
+    
+    .header-actions {
+        gap: 0;
+    }
+    
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .header-divider {
+        display: none;
+    }
+    
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 11px;
     }
     
     .dashboard {
@@ -1060,9 +1279,420 @@ body {
     
     .metrics-grid {
         grid-template-columns: 1fr;
+        gap: var(--space-3);
+    }
+    
+    .metric-card {
+        padding: var(--space-4);
+    }
+    
+    .metric-header {
+        margin-bottom: var(--space-2);
+    }
+    
+    .metric-value {
+        font-size: 26px;
+    }
+    
+    .card {
+        border-radius: var(--radius-md);
+    }
+    
+    .card-header {
+        padding: var(--space-3) var(--space-4);
+        flex-wrap: wrap;
+        gap: var(--space-2);
+    }
+    
+    .card-title {
+        font-size: 14px;
+    }
+    
+    .card-body {
+        padding: var(--space-4);
+    }
+    
+    .chart-container {
+        height: 180px;
+    }
+    
+    .log-viewer {
+        max-height: 250px;
     }
     
     .log-entry {
         flex-wrap: wrap;
+        gap: var(--space-2);
+        padding: var(--space-2) var(--space-3);
+    }
+    
+    .log-time {
+        order: 1;
+        width: auto;
+    }
+    
+    .log-badge {
+        order: 2;
+    }
+    
+    .log-method {
+        order: 3;
+    }
+    
+    .log-path {
+        order: 5;
+        width: 100%;
+        flex: none;
+        font-size: 12px;
+        margin-top: var(--space-1);
+    }
+    
+    .log-ip {
+        order: 4;
+        font-size: 11px;
+    }
+    
+    .log-latency {
+        display: none;
+    }
+    
+    .alert-item {
+        padding: var(--space-3) var(--space-4);
+        gap: var(--space-3);
+    }
+    
+    .alert-icon {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .alert-title {
+        font-size: 13px;
+    }
+    
+    .alert-meta {
+        flex-wrap: wrap;
+    }
+    
+    .dashboard-grid {
+        gap: var(--space-4);
+    }
+}
+
+/* Mobile Portrait (max-width: 575px) */
+@media (max-width: 575px) {
+    html {
+        font-size: 12px;
+    }
+    
+    .mobile-menu-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .sidebar {
+        width: 85vw;
+        max-width: 300px;
+    }
+    
+    .header {
+        height: 52px;
+    }
+    
+    .page-title h1 {
+        font-size: 14px;
+    }
+    
+    .header-right {
+        gap: var(--space-2);
+    }
+    
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .btn-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .user-menu {
+        gap: var(--space-2);
+    }
+    
+    .user-avatar {
+        width: 28px;
+        height: 28px;
+        font-size: 10px;
+    }
+    
+    .btn-logout {
+        padding: 6px 10px;
+    }
+    
+    .btn-logout svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .dashboard {
+        padding: var(--space-3);
+    }
+    
+    .metrics-grid {
+        gap: var(--space-2);
+        margin-bottom: var(--space-4);
+    }
+    
+    .metric-card {
+        padding: var(--space-3);
+    }
+    
+    .metric-label {
+        font-size: 11px;
+    }
+    
+    .metric-value {
+        font-size: 22px;
+        margin-bottom: var(--space-1);
+    }
+    
+    .metric-unit {
+        font-size: 14px;
+    }
+    
+    .metric-trend {
+        font-size: 11px;
+    }
+    
+    .metric-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+    
+    .dashboard-grid {
+        gap: var(--space-3);
+        margin-bottom: var(--space-3);
+    }
+    
+    .card-header {
+        padding: var(--space-3);
+    }
+    
+    .card-body {
+        padding: var(--space-3);
+    }
+    
+    .chart-container {
+        height: 150px;
+    }
+    
+    .chart-bars {
+        gap: var(--space-2);
+    }
+    
+    .chart-label {
+        font-size: 10px;
+    }
+    
+    .threat-list {
+        gap: var(--space-3);
+    }
+    
+    .threat-type {
+        font-size: 12px;
+    }
+    
+    .threat-count {
+        font-size: 11px;
+    }
+    
+    .log-viewer {
+        max-height: 200px;
+        font-size: 11px;
+    }
+    
+    .log-entry {
+        padding: var(--space-2);
+    }
+    
+    .log-time {
+        font-size: 10px;
+    }
+    
+    .log-badge {
+        font-size: 10px;
+        padding: 1px 6px;
+    }
+    
+    .log-method {
+        font-size: 10px;
+        padding: 1px 4px;
+    }
+    
+    .log-path {
+        font-size: 11px;
+    }
+    
+    .log-ip {
+        font-size: 10px;
+    }
+    
+    .alert-item {
+        padding: var(--space-3);
+        gap: var(--space-2);
+    }
+    
+    .alert-icon {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .alert-icon svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .alert-title {
+        font-size: 12px;
+    }
+    
+    .alert-meta {
+        font-size: 10px;
+    }
+    
+    .log-card {
+        margin-bottom: var(--space-4);
+    }
+    
+    .btn {
+        padding: 8px 14px;
+        font-size: 12px;
+    }
+    
+    .btn-sm {
+        padding: 4px 10px;
+        font-size: 11px;
+    }
+    
+    .select-sm {
+        padding: 4px 8px;
+        font-size: 11px;
+    }
+}
+
+/* Very Small Screens (max-width: 359px) */
+@media (max-width: 359px) {
+    .sidebar {
+        width: 100vw;
+        max-width: 100vw;
+    }
+    
+    .header {
+        height: 48px;
+    }
+    
+    .page-title h1 {
+        font-size: 13px;
+    }
+    
+    .mobile-menu-btn {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .mobile-menu-btn svg {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .btn-logout {
+        padding: 4px 8px;
+    }
+    
+    .dashboard {
+        padding: var(--space-2);
+    }
+    
+    .metric-card {
+        padding: var(--space-2);
+    }
+    
+    .metric-value {
+        font-size: 20px;
+    }
+}
+
+/* Touch Device Optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .nav-item,
+    .btn-icon,
+    .metric-card,
+    .log-entry,
+    .alert-item {
+        min-height: 44px;
+    }
+    
+    .sidebar-toggle {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+/* Landscape Orientation for Mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+    .sidebar {
+        overflow-y: auto;
+    }
+    
+    .sidebar-footer {
+        position: relative;
+    }
+    
+    .dashboard {
+        padding: var(--space-3);
+    }
+    
+    .metrics-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .metric-card {
+        padding: var(--space-3);
+    }
+    
+    .metric-value {
+        font-size: 20px;
+    }
+    
+    .log-viewer {
+        max-height: 150px;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .sidebar,
+    .sidebar-overlay,
+    .mobile-menu-btn,
+    .btn-logout,
+    .header-actions {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+    }
+    
+    .dashboard {
+        padding: 0;
+    }
+    
+    .metric-card,
+    .card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ccc;
     }
 }

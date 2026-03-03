@@ -10,21 +10,19 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assests/css/index.css?v=3">
+    <link rel="stylesheet" href="assests/css/index.css?v=5">
 </head>
 <body>
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="logo">
+            <div class="logo" id="sidebarToggle" title="Toggle Sidebar">
                 <div class="logo-icon">🛡️</div>
                 <span class="logo-text">API Gateway</span>
             </div>
-            <button class="sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
-                </svg>
-            </button>
         </div>
 
         <nav class="sidebar-nav">
@@ -104,6 +102,11 @@
         <!-- Header -->
         <header class="header">
             <div class="header-left">
+                <button class="mobile-menu-btn" id="mobileMenuBtn" title="Open Menu">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
                 <div class="page-title">
                     <h1>Security Dashboard</h1>
                     <p class="page-subtitle">Real-time monitoring and threat detection</p>
@@ -447,6 +450,6 @@
         </div>
     </main>
 
-    <script src="assests/js/index.js?v=6"></script>
+    <script src="assests/js/index.js?v=8"></script>
 </body>
 </html>
