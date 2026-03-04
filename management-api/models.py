@@ -24,6 +24,8 @@ class User(Base):
     
     # Relationship to API keys
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
+    # Relationship to password reset tokens
+    password_reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
 
 
 class APIKey(Base):

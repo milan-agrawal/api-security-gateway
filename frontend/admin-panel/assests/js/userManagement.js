@@ -3,6 +3,19 @@ if (typeof API_URL === 'undefined') {
     var API_URL = 'http://localhost:8001';
 }
 
+// Close modals on ESC key or clicking outside
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeEditModal();
+        closeConfirmModal();
+    }
+});
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal-overlay') && e.target.classList.contains('active')) {
+        e.target.classList.remove('active');
+    }
+});
+
 // Check if loaded via SPA (index.js sets window.isSPAMode = true)
 var isSPAMode = window.isSPAMode === true;
 
@@ -249,6 +262,14 @@ async function loadUsers() {
                     <td>${new Date(user.created_at).toLocaleString()}</td>
                     <td>
                         <div class="action-buttons">
+                            <button class="btn-action btn-edit" onclick="openEditModal(${user.id}, '${escapeHtml(user.email)}', '${escapeHtml(user.full_name)}')" title="Edit User">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                <span>Edit</span>
+                            </button>
+                            <button class="btn-action btn-reset" onclick="resetPassword(${user.id}, '${escapeHtml(user.email)}')" title="Reset Password">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                                <span>Reset</span>
+                            </button>
                             <button class="btn-action btn-toggle" onclick="toggleStatus(${user.id}, '${escapeHtml(user.email)}')">
                                 ${user.is_active ? 'Deactivate' : 'Activate'}
                             </button>
@@ -298,6 +319,14 @@ async function loadAdmins() {
                     <td>${new Date(user.created_at).toLocaleString()}</td>
                     <td>
                         <div class="action-buttons">
+                            <button class="btn-action btn-edit" onclick="openEditModal(${user.id}, '${escapeHtml(user.email)}', '${escapeHtml(user.full_name)}')" title="Edit Admin">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                <span>Edit</span>
+                            </button>
+                            <button class="btn-action btn-reset" onclick="resetPassword(${user.id}, '${escapeHtml(user.email)}')" title="Reset Password">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                                <span>Reset</span>
+                            </button>
                             <button class="btn-action btn-toggle" onclick="toggleStatus(${user.id}, '${escapeHtml(user.email)}')">
                                 ${user.is_active ? 'Deactivate' : 'Activate'}
                             </button>
@@ -318,52 +347,219 @@ async function loadAdmins() {
     }
 }
 
-// Toggle User Status
-async function toggleStatus(userId, email) {
-    if (!confirm(`Are you sure you want to toggle status for ${email}?`)) {
-        return;
-    }
+// ==========================================
+//  EDIT USER MODAL
+// ==========================================
 
-    try {
-        const response = await fetch(`${API_URL}/admin/users/${userId}/toggle-status`, {
-            method: 'PATCH',
-            headers: getAuthHeaders()
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            alert(data.message);
-            refreshData();
-        } else {
-            alert(data.detail || 'Error toggling status');
-        }
-    } catch (error) {
-        alert('Network error: ' + error.message);
-    }
+function openEditModal(userId, email, fullName) {
+    document.getElementById('editUserId').value = userId;
+    document.getElementById('editEmail').value = email;
+    document.getElementById('editFullName').value = fullName;
+    document.getElementById('editMessage').style.display = 'none';
+    document.getElementById('editSubmitBtn').disabled = false;
+    document.getElementById('editSubmitBtn').textContent = 'Save Changes';
+    document.getElementById('editUserModal').classList.add('active');
 }
 
-// Delete User
-async function deleteUser(userId, email) {
-    if (!confirm(`Are you sure you want to DELETE ${email}? This action cannot be undone!`)) {
-        return;
-    }
+function closeEditModal() {
+    document.getElementById('editUserModal').classList.remove('active');
+}
+
+async function submitEditUser(event) {
+    event.preventDefault();
+    const userId = document.getElementById('editUserId').value;
+    const email = document.getElementById('editEmail').value;
+    const fullName = document.getElementById('editFullName').value;
+    const submitBtn = document.getElementById('editSubmitBtn');
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
 
     try {
         const response = await fetch(`${API_URL}/admin/users/${userId}`, {
-            method: 'DELETE',
-            headers: getAuthHeaders()
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ email, full_name: fullName })
         });
 
         const data = await response.json();
 
         if (response.ok) {
-            alert(data.message);
-            refreshData();
+            showMessage('editMessage', data.message, 'success');
+            setTimeout(() => {
+                closeEditModal();
+                refreshData();
+            }, 1200);
         } else {
-            alert(data.detail || 'Error deleting user');
+            let errorMsg = 'Error updating user';
+            if (typeof data.detail === 'string') {
+                errorMsg = data.detail;
+            } else if (Array.isArray(data.detail)) {
+                errorMsg = data.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join('; ');
+            }
+            showMessage('editMessage', errorMsg, 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Save Changes';
         }
     } catch (error) {
-        alert('Network error: ' + error.message);
+        showMessage('editMessage', 'Network error: ' + error.message, 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Save Changes';
     }
+}
+
+// ==========================================
+//  CONFIRM MODAL (replaces alert/confirm)
+// ==========================================
+
+let confirmCallback = null;
+
+function showConfirmModal(title, message, extraInfo, btnText, btnClass, callback) {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+    const extraEl = document.getElementById('confirmExtraInfo');
+    extraEl.innerHTML = extraInfo || '';
+    extraEl.style.display = extraInfo ? 'block' : 'none';
+    const actionBtn = document.getElementById('confirmActionBtn');
+    actionBtn.textContent = btnText;
+    actionBtn.className = 'btn-submit btn-confirm-action ' + (btnClass || '');
+    confirmCallback = callback;
+    actionBtn.onclick = async () => {
+        actionBtn.disabled = true;
+        actionBtn.textContent = 'Processing...';
+        await callback();
+        actionBtn.disabled = false;
+    };
+    document.getElementById('confirmModal').classList.add('active');
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirmModal').classList.remove('active');
+    confirmCallback = null;
+}
+
+// ==========================================
+//  RESET PASSWORD
+// ==========================================
+
+function resetPassword(userId, email) {
+    showConfirmModal(
+        '🔑 Reset Password',
+        `Reset password for ${email}?`,
+        '<div class="confirm-warning">⚠️ A new password will be generated and emailed. All existing sessions will be invalidated.</div>',
+        'Reset Password',
+        'btn-reset-confirm',
+        async () => {
+            try {
+                const response = await fetch(`${API_URL}/admin/users/${userId}/reset-password`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    closeConfirmModal();
+                    showToast(data.message, 'success');
+                } else {
+                    closeConfirmModal();
+                    showToast(data.detail || 'Error resetting password', 'error');
+                }
+            } catch (error) {
+                closeConfirmModal();
+                showToast('Network error: ' + error.message, 'error');
+            }
+        }
+    );
+}
+
+// ==========================================
+//  TOGGLE STATUS (with confirm modal)
+// ==========================================
+
+function toggleStatus(userId, email) {
+    showConfirmModal(
+        '🔄 Toggle Status',
+        `Toggle active status for ${email}?`,
+        '',
+        'Toggle Status',
+        '',
+        async () => {
+            try {
+                const response = await fetch(`${API_URL}/admin/users/${userId}/toggle-status`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    closeConfirmModal();
+                    showToast(data.message, 'success');
+                    refreshData();
+                } else {
+                    closeConfirmModal();
+                    showToast(data.detail || 'Error toggling status', 'error');
+                }
+            } catch (error) {
+                closeConfirmModal();
+                showToast('Network error: ' + error.message, 'error');
+            }
+        }
+    );
+}
+
+// ==========================================
+//  DELETE USER (with confirm modal)
+// ==========================================
+
+function deleteUser(userId, email) {
+    showConfirmModal(
+        '🗑️ Delete User',
+        `Permanently delete ${email}?`,
+        '<div class="confirm-warning confirm-danger">⚠️ This action cannot be undone. All user data, API keys, and sessions will be destroyed.</div>',
+        'Delete User',
+        'btn-delete-confirm',
+        async () => {
+            try {
+                const response = await fetch(`${API_URL}/admin/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    closeConfirmModal();
+                    showToast(data.message, 'success');
+                    refreshData();
+                } else {
+                    closeConfirmModal();
+                    showToast(data.detail || 'Error deleting user', 'error');
+                }
+            } catch (error) {
+                closeConfirmModal();
+                showToast('Network error: ' + error.message, 'error');
+            }
+        }
+    );
+}
+
+// ==========================================
+//  TOAST NOTIFICATION (replaces alert())
+// ==========================================
+
+function showToast(message, type = 'info') {
+    // Remove existing toast if any
+    const existing = document.querySelector('.toast-notification');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+    toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-msg">${escapeHtml(message)}</span>`;
+    document.body.appendChild(toast);
+
+    // Trigger animation
+    requestAnimationFrame(() => toast.classList.add('show'));
+
+    // Auto remove after 4s
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
 }

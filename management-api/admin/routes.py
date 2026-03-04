@@ -126,6 +126,23 @@ class CreateUserRequest(BaseModel):
             raise ValueError('Role must be either \"user\" or \"admin\"')
         return v
 
+
+class UpdateUserRequest(BaseModel):
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = None
+    
+    @validator('full_name')
+    def validate_full_name(cls, v):
+        if v is not None:
+            if len(v.strip()) == 0:
+                raise ValueError('Full name cannot be empty')
+            if len(v) > 100:
+                raise ValueError('Full name cannot exceed 100 characters')
+            if '\n' in v or '\r' in v:
+                raise ValueError('Full name cannot contain newline characters')
+            return v.strip()
+        return v
+
 class CreateUserResponse(BaseModel):
     success: bool
     message: str
@@ -389,4 +406,116 @@ def toggle_user_status(
         "success": True,
         "message": f"User {user.email} is now {'active' if user.is_active else 'inactive'}",
         "is_active": user.is_active
+    }
+
+
+@router.patch("/users/{user_id}")
+def update_user(
+    user_id: int,
+    request: UpdateUserRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    """
+    Update user profile (email, full_name) by ID (Admin only)
+    Only provided fields are updated.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found"
+        )
+    
+    changes = []
+    
+    # Update email if provided and different
+    if request.email is not None and request.email != user.email:
+        # Check if new email is already taken
+        existing = db.query(User).filter(User.email == request.email, User.id != user_id).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Email {request.email} is already in use"
+            )
+        old_email = user.email
+        user.email = request.email
+        changes.append(f"email changed from {old_email} to {request.email}")
+    
+    # Update full_name if provided and different
+    if request.full_name is not None and request.full_name != user.full_name:
+        user.full_name = request.full_name
+        changes.append(f"name updated to {request.full_name}")
+    
+    if not changes:
+        return {
+            "success": True,
+            "message": "No changes were made"
+        }
+    
+    user.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": f"User updated: {'; '.join(changes)}",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role
+        }
+    }
+
+
+@router.post("/users/{user_id}/reset-password")
+def reset_user_password(
+    user_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    """
+    Admin-triggered password reset for a user.
+    Generates a new secure password, emails it, and invalidates existing sessions.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found"
+        )
+    
+    # Prevent resetting own password through this endpoint
+    if user.id == admin.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot reset your own password through this endpoint. Use the profile settings instead."
+        )
+    
+    # Generate new secure password
+    new_password = generate_secure_password(14)
+    user.password_hash = pwd_context.hash(new_password)
+    
+    # Increment token_version to invalidate all existing sessions/JWTs
+    user.token_version = (user.token_version or 0) + 1
+    user.updated_at = datetime.now(timezone.utc)
+    
+    db.commit()
+    
+    # Send new credentials via email in background
+    background_tasks.add_task(
+        send_credentials_email,
+        recipient_email=user.email,
+        full_name=user.full_name,
+        password=new_password,
+        role=user.role,
+        mfa_enabled=user.mfa_enabled
+    )
+    
+    return {
+        "success": True,
+        "message": f"Password reset for {user.email}. New credentials sent via email. All existing sessions have been invalidated."
     }

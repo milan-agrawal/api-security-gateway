@@ -1,4 +1,47 @@
 ﻿<!-- User Management SPA Partial -->
+
+<!-- Edit User Modal -->
+<div class="modal-overlay" id="editUserModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>✏️ Edit User</h3>
+            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <form id="editUserForm" onsubmit="submitEditUser(event)">
+            <input type="hidden" id="editUserId">
+            <div class="form-group">
+                <label for="editEmail">Email Address</label>
+                <input type="email" id="editEmail" placeholder="user@example.com" required>
+            </div>
+            <div class="form-group">
+                <label for="editFullName">Full Name</label>
+                <input type="text" id="editFullName" placeholder="John Doe" required>
+            </div>
+            <div id="editMessage" class="message"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn-submit" id="editSubmitBtn">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3 id="confirmTitle">Confirm Action</h3>
+            <button class="modal-close" onclick="closeConfirmModal()">&times;</button>
+        </div>
+        <p class="modal-body-text" id="confirmMessage">Are you sure?</p>
+        <div id="confirmExtraInfo" class="confirm-extra-info"></div>
+        <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick="closeConfirmModal()">Cancel</button>
+            <button type="button" class="btn-submit btn-confirm-action" id="confirmActionBtn">Confirm</button>
+        </div>
+    </div>
+</div>
+
 <!-- Forms -->
 <div class="forms-grid">
     <!-- Add User Form -->
