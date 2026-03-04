@@ -58,3 +58,19 @@ class PasswordResetToken(Base):
     request_user_agent = Column(String, nullable=True)
 
     user = relationship("User")
+
+
+class SecurityEvent(Base):
+    """Read-only mirror of the gateway's security_events table for admin analytics."""
+    __tablename__ = "security_events"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=datetime.now(timezone.utc))
+    client_ip = Column(String, nullable=False)
+    api_key = Column(String, nullable=True)
+    endpoint = Column(String, nullable=False)
+    http_method = Column(String, nullable=False)
+    decision = Column(String, nullable=False)
+    reason = Column(String, nullable=False)
+    status_code = Column(Integer, nullable=False)

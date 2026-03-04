@@ -1,21 +1,24 @@
 """
 Admin endpoints for user management
 """
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Header
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Header, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel, EmailStr, validator
 from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import Optional, List
 from collections import defaultdict
 import asyncio
+import csv
+import io
 import jwt
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from deps import get_db
-from models import User, APIKey
+from models import User, APIKey, SecurityEvent
 from utils import generate_secure_password, send_credentials_email
 from db import DATABASE_URL, SessionLocal
 
@@ -592,4 +595,242 @@ def revoke_user_sessions(
     return {
         "success": True,
         "message": f"All sessions revoked for {user.email}. They will need to log in again."
+    }
+
+
+@router.get("/users/{user_id}/activity")
+def get_user_activity(
+    user_id: int,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    """
+    Get a user's API activity from gateway security logs.
+    Joins the user's API keys with security_events to show request history.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found"
+        )
+
+    # Get all API key values belonging to this user
+    key_rows = db.query(APIKey.key_value).filter(APIKey.user_id == user_id).all()
+    key_values = [k[0] for k in key_rows]
+
+    if not key_values:
+        return {
+            "events": [],
+            "summary": {
+                "total_requests": 0,
+                "allowed": 0,
+                "blocked": 0,
+                "unique_endpoints": 0,
+                "last_activity": None
+            },
+            "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None
+        }
+
+    # Summary stats
+    total = db.query(func.count(SecurityEvent.id)).filter(
+        SecurityEvent.api_key.in_(key_values)
+    ).scalar() or 0
+
+    allowed = db.query(func.count(SecurityEvent.id)).filter(
+        SecurityEvent.api_key.in_(key_values),
+        SecurityEvent.decision == "allowed"
+    ).scalar() or 0
+
+    blocked = total - allowed
+
+    unique_endpoints = db.query(func.count(func.distinct(SecurityEvent.endpoint))).filter(
+        SecurityEvent.api_key.in_(key_values)
+    ).scalar() or 0
+
+    # Recent events (newest first)
+    events = db.query(SecurityEvent).filter(
+        SecurityEvent.api_key.in_(key_values)
+    ).order_by(SecurityEvent.timestamp.desc()).limit(min(limit, 100)).all()
+
+    last_activity = events[0].timestamp.isoformat() if events else None
+
+    return {
+        "events": [
+            {
+                "id": e.id,
+                "timestamp": e.timestamp.isoformat() if e.timestamp else None,
+                "endpoint": e.endpoint,
+                "http_method": e.http_method,
+                "decision": e.decision,
+                "reason": e.reason,
+                "status_code": e.status_code,
+                "client_ip": e.client_ip
+            }
+            for e in events
+        ],
+        "summary": {
+            "total_requests": total,
+            "allowed": allowed,
+            "blocked": blocked,
+            "unique_endpoints": unique_endpoints,
+            "last_activity": last_activity
+        },
+        "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None
+    }
+
+
+@router.post("/users/import-csv")
+async def import_users_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    """
+    Bulk import users from a CSV file.
+    CSV columns: email, full_name, role (optional, defaults to 'user'), enable_2fa (optional, defaults to false)
+    """
+    # Validate file type
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only .csv files are accepted"
+        )
+
+    # Read file content
+    try:
+        content = await file.read()
+        text = content.decode('utf-8-sig')  # Handle BOM
+    except UnicodeDecodeError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File must be UTF-8 encoded"
+        )
+
+    reader = csv.DictReader(io.StringIO(text))
+
+    # Validate headers
+    if not reader.fieldnames:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="CSV file is empty or has no headers"
+        )
+
+    required_fields = {'email', 'full_name'}
+    headers_lower = {h.strip().lower() for h in reader.fieldnames}
+    missing = required_fields - headers_lower
+    if missing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Missing required CSV columns: {', '.join(missing)}. Required: email, full_name"
+        )
+
+    # Normalize header mapping
+    header_map = {h.strip().lower(): h for h in reader.fieldnames}
+
+    results = {"created": [], "skipped": [], "errors": []}
+    row_num = 1  # Start after header
+
+    for row in reader:
+        row_num += 1
+        # Get values using normalized headers
+        email = row.get(header_map.get('email', ''), '').strip().lower()
+        full_name = row.get(header_map.get('full_name', ''), '').strip()
+        role = row.get(header_map.get('role', ''), 'user').strip().lower() or 'user'
+        enable_2fa_str = row.get(header_map.get('enable_2fa', ''), 'false').strip().lower()
+
+        # Validate email
+        if not email or '@' not in email:
+            results["errors"].append({"row": row_num, "email": email or '(empty)', "reason": "Invalid email"})
+            continue
+
+        # Validate full_name
+        if not full_name:
+            results["errors"].append({"row": row_num, "email": email, "reason": "Full name is empty"})
+            continue
+
+        if len(full_name) > 100:
+            results["errors"].append({"row": row_num, "email": email, "reason": "Full name exceeds 100 chars"})
+            continue
+
+        # Validate role
+        if role not in ('user', 'admin'):
+            results["errors"].append({"row": row_num, "email": email, "reason": f"Invalid role '{role}'"})
+            continue
+
+        # Check duplicate in DB
+        existing = db.query(User).filter(User.email == email).first()
+        if existing:
+            results["skipped"].append({"row": row_num, "email": email, "reason": "Email already exists"})
+            continue
+
+        # Determine 2FA
+        enable_2fa = enable_2fa_str in ('true', '1', 'yes')
+        mfa_enabled = role == 'admin' or enable_2fa
+
+        # Generate password and create user
+        plain_password = generate_secure_password(12)
+        password_hash = pwd_context.hash(plain_password)
+
+        new_user = User(
+            email=email,
+            password_hash=password_hash,
+            full_name=full_name,
+            role=role,
+            is_active=True,
+            mfa_enabled=mfa_enabled,
+            mfa_setup_complete=False,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
+        )
+        db.add(new_user)
+
+        try:
+            db.flush()  # Get ID without committing yet
+            results["created"].append({
+                "row": row_num,
+                "email": email,
+                "full_name": full_name,
+                "role": role,
+                "user_id": new_user.id
+            })
+            # Send credentials email (best effort, don't block)
+            try:
+                send_credentials_email(
+                    recipient_email=email,
+                    full_name=full_name,
+                    password=plain_password,
+                    role=role,
+                    mfa_enabled=mfa_enabled
+                )
+            except Exception:
+                pass  # Email failure shouldn't block import
+        except Exception as e:
+            db.rollback()
+            results["errors"].append({"row": row_num, "email": email, "reason": str(e)})
+            continue
+
+    # Commit all successfully created users
+    if results["created"]:
+        try:
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            return {
+                "success": False,
+                "message": f"Database commit failed: {str(e)}",
+                "created": 0,
+                "skipped": len(results["skipped"]),
+                "errors": len(results["errors"]) + len(results["created"]),
+                "details": results
+            }
+
+    return {
+        "success": True,
+        "message": f"Import complete: {len(results['created'])} created, {len(results['skipped'])} skipped, {len(results['errors'])} errors",
+        "created": len(results["created"]),
+        "skipped": len(results["skipped"]),
+        "errors": len(results["errors"]),
+        "details": results
     }

@@ -437,8 +437,12 @@ function changeAdminPage(delta) {
 }
 
 // ==========================================
-//  USER DETAILS SLIDE PANEL
+//  USER DETAILS SLIDE PANEL (Tabbed: Overview | Activity)
 // ==========================================
+
+var currentDetailUserId = null;
+var cachedDetailData = null;
+var cachedActivityData = null;
 
 function openUserDetail(userId) {
     const overlay = document.getElementById('userDetailOverlay');
@@ -446,9 +450,16 @@ function openUserDetail(userId) {
     const body = document.getElementById('userDetailBody');
     if (!panel || !body) return;
 
+    currentDetailUserId = userId;
+    cachedDetailData = null;
+    cachedActivityData = null;
+
     body.innerHTML = '<div class="detail-loading">Loading user details...</div>';
     overlay.classList.add('active');
     panel.classList.add('active');
+
+    // Reset tabs to Overview
+    switchPanelTab('overview');
 
     // Fetch full user details from backend
     fetch(`${API_URL}/admin/users/${userId}`, {
@@ -457,96 +468,8 @@ function openUserDetail(userId) {
     .then(res => res.json())
     .then(data => {
         if (data.id) {
-            const createdDate = data.created_at ? new Date(data.created_at) : null;
-            const updatedDate = data.updated_at ? new Date(data.updated_at) : null;
-            const lastLogin = data.last_login_at ? new Date(data.last_login_at) : null;
-            const accountAge = createdDate ? getAccountAge(createdDate) : 'Unknown';
-
-            body.innerHTML = `
-                <div class="detail-profile">
-                    <div class="detail-avatar">${escapeHtml(data.full_name.charAt(0).toUpperCase())}</div>
-                    <div class="detail-name">${escapeHtml(data.full_name)}</div>
-                    <div class="detail-email">${escapeHtml(data.email)}</div>
-                    <div class="detail-badges">
-                        <span class="detail-role-badge role-${data.role}">${data.role === 'admin' ? '👑 Admin' : '👤 User'}</span>
-                        <span class="status-badge ${data.is_active ? 'active' : 'inactive'}">${data.is_active ? 'Active' : 'Inactive'}</span>
-                    </div>
-                </div>
-
-                <div class="detail-section">
-                    <h4 class="detail-section-title">Account Info</h4>
-                    <div class="detail-grid">
-                        <div class="detail-item">
-                            <span class="detail-label">User ID</span>
-                            <span class="detail-value">#${data.id}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Account Age</span>
-                            <span class="detail-value">${accountAge}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Created</span>
-                            <span class="detail-value">${createdDate ? createdDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Last Updated</span>
-                            <span class="detail-value">${updatedDate ? updatedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="detail-section">
-                    <h4 class="detail-section-title">Security</h4>
-                    <div class="detail-grid">
-                        <div class="detail-item">
-                            <span class="detail-label">MFA Enabled</span>
-                            <span class="detail-value detail-mfa ${data.mfa_enabled ? 'mfa-on' : 'mfa-off'}">
-                                ${data.mfa_enabled ? '🔒 Enabled' : '🔓 Disabled'}
-                            </span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">MFA Setup</span>
-                            <span class="detail-value">${data.mfa_setup_complete ? '✅ Complete' : '⏳ Pending'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Last Login</span>
-                            <span class="detail-value">${lastLogin ? lastLogin.toLocaleString() : 'Never'}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="detail-section">
-                    <h4 class="detail-section-title">API Keys</h4>
-                    <div class="detail-grid">
-                        <div class="detail-item">
-                            <span class="detail-label">Total Keys</span>
-                            <span class="detail-value detail-keys">${data.api_keys_count}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Active Keys</span>
-                            <span class="detail-value detail-keys">${data.active_api_keys}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="detail-danger-zone">
-                    <h4 class="detail-section-title danger-title">Danger Zone</h4>
-                    <div class="detail-actions-row">
-                        <button class="btn-action btn-reset" onclick="closeUserDetail(); resetPassword(${data.id}, '${escapeHtml(data.email)}')">
-                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
-                            <span>Reset Password</span>
-                        </button>
-                        <button class="btn-action btn-revoke" onclick="closeUserDetail(); revokeSessions(${data.id}, '${escapeHtml(data.email)}')">
-                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                            <span>Revoke Sessions</span>
-                        </button>
-                    </div>
-                    <button class="btn-action btn-delete detail-delete-btn" onclick="closeUserDetail(); deleteUser(${data.id}, '${escapeHtml(data.email)}')">
-                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                        <span>Delete User Permanently</span>
-                    </button>
-                </div>
-            `;
+            cachedDetailData = data;
+            renderOverviewTab(data);
         } else {
             body.innerHTML = '<div class="detail-loading" style="color: #FCA5A5;">User not found</div>';
         }
@@ -554,6 +477,218 @@ function openUserDetail(userId) {
     .catch(err => {
         body.innerHTML = `<div class="detail-loading" style="color: #FCA5A5;">Error: ${err.message}</div>`;
     });
+}
+
+function switchPanelTab(tab) {
+    const tabOverview = document.getElementById('tabOverview');
+    const tabActivity = document.getElementById('tabActivity');
+    if (tabOverview) tabOverview.classList.toggle('active', tab === 'overview');
+    if (tabActivity) tabActivity.classList.toggle('active', tab === 'activity');
+
+    if (tab === 'overview' && cachedDetailData) {
+        renderOverviewTab(cachedDetailData);
+    } else if (tab === 'activity') {
+        loadActivityTab();
+    }
+}
+
+function renderOverviewTab(data) {
+    const body = document.getElementById('userDetailBody');
+    if (!body) return;
+
+    const createdDate = data.created_at ? new Date(data.created_at) : null;
+    const updatedDate = data.updated_at ? new Date(data.updated_at) : null;
+    const lastLogin = data.last_login_at ? new Date(data.last_login_at) : null;
+    const accountAge = createdDate ? getAccountAge(createdDate) : 'Unknown';
+
+    body.innerHTML = `
+        <div class="detail-profile">
+            <div class="detail-avatar">${escapeHtml(data.full_name.charAt(0).toUpperCase())}</div>
+            <div class="detail-name">${escapeHtml(data.full_name)}</div>
+            <div class="detail-email">${escapeHtml(data.email)}</div>
+            <div class="detail-badges">
+                <span class="detail-role-badge role-${data.role}">${data.role === 'admin' ? '👑 Admin' : '👤 User'}</span>
+                <span class="status-badge ${data.is_active ? 'active' : 'inactive'}">${data.is_active ? 'Active' : 'Inactive'}</span>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h4 class="detail-section-title">Account Info</h4>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">User ID</span>
+                    <span class="detail-value">#${data.id}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Account Age</span>
+                    <span class="detail-value">${accountAge}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Created</span>
+                    <span class="detail-value">${createdDate ? createdDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Last Updated</span>
+                    <span class="detail-value">${updatedDate ? updatedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h4 class="detail-section-title">Security</h4>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">MFA Enabled</span>
+                    <span class="detail-value detail-mfa ${data.mfa_enabled ? 'mfa-on' : 'mfa-off'}">
+                        ${data.mfa_enabled ? '🔒 Enabled' : '🔓 Disabled'}
+                    </span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">MFA Setup</span>
+                    <span class="detail-value">${data.mfa_setup_complete ? '✅ Complete' : '⏳ Pending'}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Last Login</span>
+                    <span class="detail-value">${lastLogin ? lastLogin.toLocaleString() : 'Never'}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-section">
+            <h4 class="detail-section-title">API Keys</h4>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Total Keys</span>
+                    <span class="detail-value detail-keys">${data.api_keys_count}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Active Keys</span>
+                    <span class="detail-value detail-keys">${data.active_api_keys}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-danger-zone">
+            <h4 class="detail-section-title danger-title">Danger Zone</h4>
+            <div class="detail-actions-row">
+                <button class="btn-action btn-reset" onclick="closeUserDetail(); resetPassword(${data.id}, '${escapeHtml(data.email)}')">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                    <span>Reset Password</span>
+                </button>
+                <button class="btn-action btn-revoke" onclick="closeUserDetail(); revokeSessions(${data.id}, '${escapeHtml(data.email)}')">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    <span>Revoke Sessions</span>
+                </button>
+            </div>
+            <button class="btn-action btn-delete detail-delete-btn" onclick="closeUserDetail(); deleteUser(${data.id}, '${escapeHtml(data.email)}')">
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                <span>Delete User Permanently</span>
+            </button>
+        </div>
+    `;
+}
+
+function loadActivityTab() {
+    const body = document.getElementById('userDetailBody');
+    if (!body || !currentDetailUserId) return;
+
+    // Use cache if available
+    if (cachedActivityData) {
+        renderActivityTab(cachedActivityData);
+        return;
+    }
+
+    body.innerHTML = '<div class="detail-loading">Loading activity log...</div>';
+
+    fetch(`${API_URL}/admin/users/${currentDetailUserId}/activity?limit=50`, {
+        headers: getAuthHeaders()
+    })
+    .then(res => res.json())
+    .then(data => {
+        cachedActivityData = data;
+        renderActivityTab(data);
+    })
+    .catch(err => {
+        body.innerHTML = `<div class="detail-loading" style="color: #FCA5A5;">Error loading activity: ${err.message}</div>`;
+    });
+}
+
+function renderActivityTab(data) {
+    const body = document.getElementById('userDetailBody');
+    if (!body) return;
+
+    const s = data.summary || {};
+    const events = data.events || [];
+    const lastLogin = data.last_login_at ? new Date(data.last_login_at).toLocaleString() : 'Never';
+
+    let eventsHtml = '';
+    if (events.length === 0) {
+        eventsHtml = '<div class="activity-empty">No API activity recorded yet.</div>';
+    } else {
+        eventsHtml = `
+            <div class="activity-table-wrap">
+                <table class="activity-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Method</th>
+                            <th>Endpoint</th>
+                            <th>Decision</th>
+                            <th>Status</th>
+                            <th>IP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${events.map(e => {
+                            const t = e.timestamp ? new Date(e.timestamp) : null;
+                            const timeStr = t ? t.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+                            const decisionClass = e.decision === 'allowed' ? 'decision-allowed' : 'decision-blocked';
+                            const methodClass = 'method-' + (e.http_method || 'GET').toLowerCase();
+                            return `
+                                <tr>
+                                    <td class="activity-time">${timeStr}</td>
+                                    <td><span class="activity-method ${methodClass}">${escapeHtml(e.http_method || '')}</span></td>
+                                    <td class="activity-endpoint" title="${escapeHtml(e.endpoint || '')}">${escapeHtml(e.endpoint || '')}</td>
+                                    <td><span class="activity-decision ${decisionClass}">${escapeHtml(e.decision || '')}</span></td>
+                                    <td class="activity-status">${e.status_code || ''}</td>
+                                    <td class="activity-ip">${escapeHtml(e.client_ip || '')}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    body.innerHTML = `
+        <div class="activity-summary">
+            <div class="activity-stat">
+                <span class="activity-stat-value">${s.total_requests || 0}</span>
+                <span class="activity-stat-label">Total Requests</span>
+            </div>
+            <div class="activity-stat stat-allowed">
+                <span class="activity-stat-value">${s.allowed || 0}</span>
+                <span class="activity-stat-label">Allowed</span>
+            </div>
+            <div class="activity-stat stat-blocked">
+                <span class="activity-stat-value">${s.blocked || 0}</span>
+                <span class="activity-stat-label">Blocked</span>
+            </div>
+            <div class="activity-stat">
+                <span class="activity-stat-value">${s.unique_endpoints || 0}</span>
+                <span class="activity-stat-label">Endpoints</span>
+            </div>
+        </div>
+        <div class="activity-meta">
+            <span>Last Login: <strong>${lastLogin}</strong></span>
+            <span>Last API Activity: <strong>${s.last_activity ? new Date(s.last_activity).toLocaleString() : 'Never'}</strong></span>
+        </div>
+        <div class="detail-section">
+            <h4 class="detail-section-title">Recent API Requests</h4>
+            ${eventsHtml}
+        </div>
+    `;
 }
 
 function closeUserDetail() {
@@ -826,3 +961,203 @@ function showToast(message, type = 'info') {
         setTimeout(() => toast.remove(), 300);
     }, 4000);
 }
+
+// ==========================================
+//  CSV IMPORT
+// ==========================================
+
+var csvParsedRows = [];
+
+function openCsvModal() {
+    clearCsvFile();
+    document.getElementById('csvImportResult').style.display = 'none';
+    document.getElementById('csvImportResult').innerHTML = '';
+    const modal = document.getElementById('csvImportModal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeCsvModal() {
+    const modal = document.getElementById('csvImportModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function clearCsvFile() {
+    csvParsedRows = [];
+    const fileInput = document.getElementById('csvFileInput');
+    if (fileInput) fileInput.value = '';
+    document.getElementById('csvFileInfo').style.display = 'none';
+    document.getElementById('csvPreviewWrap').style.display = 'none';
+    document.getElementById('csvImportBtn').disabled = true;
+    document.getElementById('csvImportResult').style.display = 'none';
+    document.getElementById('csvDropZone').style.display = '';
+}
+
+function handleCsvFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (!file.name.endsWith('.csv')) {
+        showToast('Please select a .csv file', 'error');
+        return;
+    }
+
+    document.getElementById('csvFileName').textContent = file.name + ' (' + formatFileSize(file.size) + ')';
+    document.getElementById('csvFileInfo').style.display = 'flex';
+    document.getElementById('csvDropZone').style.display = 'none';
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        parseCsvPreview(e.target.result);
+    };
+    reader.readAsText(file);
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function parseCsvPreview(text) {
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) {
+        showToast('CSV must have a header row and at least one data row', 'error');
+        clearCsvFile();
+        return;
+    }
+
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/^["']|["']$/g, ''));
+    if (!headers.includes('email') || !headers.includes('full_name')) {
+        showToast('CSV must have "email" and "full_name" columns', 'error');
+        clearCsvFile();
+        return;
+    }
+
+    csvParsedRows = [];
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const values = lines[i].split(',').map(v => v.trim().replace(/^["']|["']$/g, ''));
+        const row = {};
+        headers.forEach((h, idx) => { row[h] = values[idx] || ''; });
+        csvParsedRows.push(row);
+    }
+
+    if (csvParsedRows.length === 0) {
+        showToast('No data rows found in CSV', 'error');
+        clearCsvFile();
+        return;
+    }
+
+    // Render preview
+    document.getElementById('csvRowCount').textContent = `(${csvParsedRows.length} rows)`;
+    const table = document.getElementById('csvPreviewTable');
+    const displayHeaders = ['email', 'full_name', 'role', 'enable_2fa'];
+    table.innerHTML = `
+        <thead><tr>${displayHeaders.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
+        <tbody>
+            ${csvParsedRows.slice(0, 10).map(row => `
+                <tr>${displayHeaders.map(h => `<td>${escapeHtml(row[h] || (h === 'role' ? 'user' : h === 'enable_2fa' ? 'false' : ''))}</td>`).join('')}</tr>
+            `).join('')}
+            ${csvParsedRows.length > 10 ? `<tr><td colspan="${displayHeaders.length}" style="text-align:center; color: var(--text-muted); font-style:italic;">... and ${csvParsedRows.length - 10} more rows</td></tr>` : ''}
+        </tbody>
+    `;
+    document.getElementById('csvPreviewWrap').style.display = 'block';
+    document.getElementById('csvImportBtn').disabled = false;
+}
+
+async function submitCsvImport() {
+    const fileInput = document.getElementById('csvFileInput');
+    if (!fileInput.files[0]) {
+        showToast('No file selected', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('csvImportBtn');
+    btn.disabled = true;
+    btn.textContent = 'Importing...';
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/admin/users/import-csv`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+        const data = await response.json();
+
+        const resultDiv = document.getElementById('csvImportResult');
+        resultDiv.style.display = 'block';
+
+        if (response.ok) {
+            let html = `
+                <div class="csv-result-summary">
+                    <div class="csv-result-stat csv-stat-created">
+                        <span class="csv-stat-num">${data.created}</span>
+                        <span class="csv-stat-label">Created</span>
+                    </div>
+                    <div class="csv-result-stat csv-stat-skipped">
+                        <span class="csv-stat-num">${data.skipped}</span>
+                        <span class="csv-stat-label">Skipped</span>
+                    </div>
+                    <div class="csv-result-stat csv-stat-errors">
+                        <span class="csv-stat-num">${data.errors}</span>
+                        <span class="csv-stat-label">Errors</span>
+                    </div>
+                </div>
+            `;
+
+            if (data.details && data.details.skipped && data.details.skipped.length > 0) {
+                html += `<div class="csv-result-detail"><strong>Skipped:</strong><ul>${data.details.skipped.map(s => `<li>${escapeHtml(s.email)} — ${escapeHtml(s.reason)}</li>`).join('')}</ul></div>`;
+            }
+            if (data.details && data.details.errors && data.details.errors.length > 0) {
+                html += `<div class="csv-result-detail csv-result-errors"><strong>Errors:</strong><ul>${data.details.errors.map(e => `<li>Row ${e.row}: ${escapeHtml(e.email)} — ${escapeHtml(e.reason)}</li>`).join('')}</ul></div>`;
+            }
+
+            resultDiv.innerHTML = html;
+
+            if (data.created > 0) {
+                showToast(data.message, 'success');
+                refreshData();
+            } else {
+                showToast(data.message, 'info');
+            }
+        } else {
+            resultDiv.innerHTML = `<div class="csv-result-errors"><strong>Error:</strong> ${escapeHtml(data.detail || 'Import failed')}</div>`;
+            showToast(data.detail || 'Import failed', 'error');
+        }
+    } catch (error) {
+        showToast('Network error: ' + error.message, 'error');
+    } finally {
+        btn.textContent = 'Import Users';
+        btn.disabled = false;
+    }
+}
+
+// Drag & drop support for CSV upload
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        const dropZone = document.getElementById('csvDropZone');
+        if (!dropZone) return;
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        dropZone.addEventListener('dragleave', function() {
+            dropZone.classList.remove('drag-over');
+        });
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                const fileInput = document.getElementById('csvFileInput');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                fileInput.files = dt.files;
+                handleCsvFile(fileInput);
+            }
+        });
+    }, 500);
+});
