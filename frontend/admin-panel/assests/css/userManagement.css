@@ -888,16 +888,36 @@
 }
 
 /* --- Detail Panel Actions --- */
-.detail-actions {
+.detail-actions-row {
     display: flex;
     gap: var(--space-3);
-    margin-top: var(--space-5);
-    padding-top: var(--space-5);
-    border-top: 1px solid var(--border-subtle);
+    margin-bottom: var(--space-3);
 }
 
-.detail-actions .btn-action {
+.detail-actions-row .btn-action {
     flex: 1;
+    justify-content: center;
+    padding: 10px;
+    font-size: 13px;
+}
+
+/* --- Danger Zone --- */
+.detail-danger-zone {
+    margin-top: var(--space-5);
+    padding: var(--space-4);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: var(--radius-lg);
+    background: rgba(239, 68, 68, 0.04);
+}
+
+.detail-danger-zone .danger-title {
+    color: var(--error);
+    border-bottom-color: rgba(239, 68, 68, 0.15);
+    margin-bottom: var(--space-3);
+}
+
+.detail-delete-btn {
+    width: 100%;
     justify-content: center;
     padding: 10px;
     font-size: 13px;
