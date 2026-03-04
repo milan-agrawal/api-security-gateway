@@ -32,8 +32,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,  # ✅ Specific origins only
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE"],  # Specific methods
-    allow_headers=["Content-Type", "Authorization"],  # Specific headers
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],  # Include OPTIONS for preflight
+    allow_headers=["*"],  # Allow all headers for preflight compatibility
 )
 
 # Password hashing

@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from deps import get_db
 from models import User
 from utils import generate_secure_password, send_credentials_email
+from db import DATABASE_URL, SessionLocal
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -138,12 +139,12 @@ class UsersListResponse(BaseModel):
 
 
 # Background task to activate account after 2 minutes
-async def activate_account_after_delay(user_id: int, db_url: str):
+def activate_account_after_delay(user_id: int):
     """Activate user account after 2 minutes (120 seconds)"""
-    await asyncio.sleep(120)  # Wait 2 minutes
+    import time
+    time.sleep(120)  # Wait 2 minutes
     
     # Create new DB session for background task
-    from ..db import SessionLocal
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.id == user_id).first()
@@ -224,8 +225,9 @@ def create_user(
     db.commit()
     db.refresh(new_user)
     
-    # Send credentials email
-    email_sent = send_credentials_email(
+    # Send credentials email in background (avoid blocking the response)
+    background_tasks.add_task(
+        send_credentials_email,
         recipient_email=request.email,
         full_name=request.full_name,
         password=plain_password,
@@ -233,11 +235,9 @@ def create_user(
     )
     
     # Schedule account activation for 2 minutes later
-    from ..db import DATABASE_URL
     background_tasks.add_task(
         activate_account_after_delay,
-        new_user.id,
-        DATABASE_URL
+        new_user.id
     )
     
     # Track successful creation for rate limiting

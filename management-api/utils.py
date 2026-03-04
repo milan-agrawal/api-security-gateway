@@ -8,6 +8,10 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
 from typing import Optional
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 
 def generate_secure_password(length: int = 12) -> str:
