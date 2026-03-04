@@ -99,7 +99,7 @@ body {
 
 .sidebar {
     width: var(--sidebar-width);
-    min-height: 100vh;
+    height: 100vh;
     background: var(--bg-secondary);
     border-right: none;
     display: flex;
@@ -109,6 +109,7 @@ body {
     top: 0;
     z-index: 100;
     transition: width 200ms var(--ease-smooth);
+    overflow: hidden;
 }
 
 /* Draw the right border only below the header so top bar looks seamless */
@@ -205,6 +206,25 @@ body {
     flex: 1;
     padding: var(--space-4);
     overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Custom scrollbar for sidebar */
+.sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
 }
 
 .nav-section {
@@ -304,6 +324,7 @@ body {
 .sidebar-footer {
     padding: var(--space-4);
     border-top: 1px solid var(--border-subtle);
+    flex-shrink: 0;
 }
 
 .system-status {
