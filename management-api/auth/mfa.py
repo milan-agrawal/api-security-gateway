@@ -130,7 +130,13 @@ def get_current_user_from_token(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             )
-        
+        # Enforce token_version for session invalidation
+        token_version = payload.get("token_version", 0)
+        if getattr(user, "token_version", 0) != token_version:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked"
+            )
         return user
         
     except jwt.ExpiredSignatureError:
@@ -211,13 +217,14 @@ def _clear_mfa_attempts(user_id: int):
     _mfa_verify_attempts.pop(user_id, None)
 
 
-def create_full_access_token(email: str, role: str, full_name: str, user_id: int = None) -> str:
-    """Create the actual access token after successful MFA"""
+def create_full_access_token(email: str, role: str, full_name: str, user_id: int = None, token_version: int = 0) -> str:
+    """Create the actual access token after successful MFA and include token_version."""
     expire = datetime.utcnow() + timedelta(hours=24)
     payload = {
         "sub": email,
         "role": role,
         "full_name": full_name,
+        "token_version": token_version,
         "exp": expire
     }
     if user_id is not None:
@@ -326,7 +333,7 @@ def verify_mfa_setup(
     db.commit()
     
     # Generate full access token
-    token = create_full_access_token(user.email, user.role, user.full_name, user.id)
+    token = create_full_access_token(user.email, user.role, user.full_name, user.id, token_version=getattr(user, "token_version", 0))
     
     return MFAVerifySetupResponse(
         token=token,
@@ -389,8 +396,8 @@ def verify_mfa(
     
     _clear_mfa_attempts(user.id)
     
-    # Generate full access token
-    token = create_full_access_token(user.email, user.role, user.full_name, user.id)
+    # Generate full access token (include token_version)
+    token = create_full_access_token(user.email, user.role, user.full_name, user.id, token_version=getattr(user, "token_version", 0))
     
     return MFAVerifyResponse(
         token=token,

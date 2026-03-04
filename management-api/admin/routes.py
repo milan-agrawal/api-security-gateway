@@ -79,6 +79,13 @@ def get_current_admin(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Admin account not found or inactive"
             )
+        # Enforce token_version for session invalidation
+        token_version = payload.get("token_version", 0)
+        if getattr(admin, "token_version", 0) != token_version:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked"
+            )
         
         return admin
         

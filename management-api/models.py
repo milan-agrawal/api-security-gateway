@@ -20,6 +20,7 @@ class User(Base):
     mfa_secret = Column(String, nullable=True)  # TOTP secret key (encrypted)
     mfa_setup_complete = Column(Boolean, default=False, nullable=False)  # Has user completed setup
     mfa_backup_codes = Column(Text, nullable=True)  # JSON array of hashed backup codes
+    token_version = Column(Integer, default=0, nullable=False)  # Increment to invalidate JWTs
     
     # Relationship to API keys
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
@@ -39,3 +40,18 @@ class APIKey(Base):
     
     # Relationship to user
     user = relationship("User", back_populates="api_keys")
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String, nullable=False, unique=True, index=True)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False, nullable=False)
+    request_ip = Column(String, nullable=True)
+    request_user_agent = Column(String, nullable=True)
+
+    user = relationship("User")

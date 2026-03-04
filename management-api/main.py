@@ -13,6 +13,7 @@ from models import User
 from deps import get_db
 from admin import router as admin_router
 from auth.mfa import router as mfa_router, create_mfa_temp_token
+from auth.password_reset import router as password_reset_router
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -22,6 +23,7 @@ app = FastAPI(title="Management API", version="1.0.0")
 # Include routers
 app.include_router(admin_router)
 app.include_router(mfa_router)
+app.include_router(password_reset_router)
 
 # CORS middleware - Restrict to specific origins
 ALLOWED_ORIGINS = [
@@ -72,9 +74,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify password against hash"""
     return pwd_context.verify(plain_password, hashed_password)
 
-def create_access_token(data: dict) -> str:
-    """Create JWT access token"""
+def create_access_token(data: dict, token_version: int = 0) -> str:
+    """Create JWT access token and include token_version for session invalidation."""
     to_encode = data.copy()
+    to_encode.update({"token_version": token_version})
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -139,7 +142,7 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
         "role": user.role,
         "user_id": user.id
     }
-    token = create_access_token(token_data)
+    token = create_access_token(token_data, token_version=user.token_version)
     
     return LoginResponse(
         token=token,

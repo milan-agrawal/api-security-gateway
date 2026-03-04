@@ -886,3 +886,111 @@ def format_backup_codes_for_display(codes: list[str]) -> str:
         pair = codes[i:i+2]
         formatted.append("  •  ".join(pair))
     return "\n".join(formatted)
+
+def send_password_reset_email(recipient_email: str, token: str, expires_minutes: int = 60) -> bool:
+    """
+    Send a password reset email containing a one-time link with the raw token.
+    Returns True if sent successfully.
+    """
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    from_email = os.getenv("FROM_EMAIL", smtp_user)
+
+    if not smtp_user or not smtp_password:
+        print("ERROR: SMTP credentials not configured in .env file")
+        return False
+
+    reset_link = f"http://localhost:3000/reset-password.html?token={token}"
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Reset your API Security Gateway password"
+        msg["From"] = f"API Security Gateway <{from_email}>"
+        msg["To"] = recipient_email
+
+        html_body = f"""
+        <html>
+        <body>
+        <p>Hello,</p>
+        <p>We received a request to reset the password for your API Security Gateway account.</p>
+        <p>Please click the link below to reset your password. This link will expire in {expires_minutes} minutes and can be used only once.</p>
+        <p><a href=\"{reset_link}\">Reset your password</a></p>
+        <p>If you did not request this, you can safely ignore this email.</p>
+        </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(html_body, "html"))
+
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(from_email, recipient_email, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"ERROR: Failed to send password reset email to {recipient_email}: {str(e)}")
+        return False
+
+
+def send_password_changed_notification(recipient_email: str, ip_address: str = "Unknown") -> bool:
+    """
+    Send a notification email to the user that their password was changed.
+    This alerts them to unauthorized access if they didn't initiate the reset.
+    Returns True if sent successfully.
+    """
+    from datetime import datetime
+    
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    from_email = os.getenv("FROM_EMAIL", smtp_user)
+
+    if not smtp_user or not smtp_password:
+        print("ERROR: SMTP credentials not configured in .env file")
+        return False
+
+    change_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "⚠️ Your API Security Gateway password was changed"
+        msg["From"] = f"API Security Gateway <{from_email}>"
+        msg["To"] = recipient_email
+
+        html_body = f"""
+        <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #EF4444;">🔒 Password Changed</h2>
+            <p>Hello,</p>
+            <p>This is a confirmation that the password for your API Security Gateway account (<strong>{recipient_email}</strong>) was successfully changed.</p>
+            <table style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0; width: 100%;">
+                <tr><td><strong>Time:</strong></td><td>{change_time}</td></tr>
+                <tr><td><strong>IP Address:</strong></td><td>{ip_address}</td></tr>
+            </table>
+            <p><strong>If you made this change</strong>, no further action is required.</p>
+            <p style="color: #EF4444;"><strong>If you did NOT make this change</strong>, your account may be compromised. Please contact your administrator immediately.</p>
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+            <p style="color: #666; font-size: 12px;">This is an automated security notification from API Security Gateway.</p>
+        </div>
+        </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(html_body, "html"))
+
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(from_email, recipient_email, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"ERROR: Failed to send password change notification to {recipient_email}: {str(e)}")
+        return False
