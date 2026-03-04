@@ -55,18 +55,10 @@ window.addEventListener('pageshow', function(event) {
 
 // DOM Ready
 document.addEventListener('DOMContentLoaded', function() {
-    initializeUI();
     loadUserInfo();
     initializeSidebar();
     initializeRouter();
-    startLiveUpdates();
 });
-
-// Initialize UI
-function initializeUI() {
-    // Set current date in logs
-    updateLogTimestamps();
-}
 
 // Load user information
 function loadUserInfo() {
@@ -175,148 +167,12 @@ function logout() {
     window.location.replace('http://localhost:3000/login.html?logout=true');
 }
 
-// Refresh data
-function refreshData() {
-    // Show refresh animation
-    const refreshBtn = document.querySelector('.btn-icon[title="Refresh Data"]');
-    if (refreshBtn) {
-        refreshBtn.style.animation = 'spin 1s ease-in-out';
-        setTimeout(() => {
-            refreshBtn.style.animation = '';
-        }, 1000);
-    }
-    
-    // Update metrics with random values for demo
-    updateMetrics();
-    
-    // Add new log entry
-    addNewLogEntry();
-}
-
-// Update metrics with simulated data
-function updateMetrics() {
-    const totalRequests = document.getElementById('totalRequests');
-    const threatsBlocked = document.getElementById('threatsBlocked');
-    const activeUsers = document.getElementById('activeUsers');
-    const avgResponse = document.getElementById('avgResponse');
-    
-    if (totalRequests) {
-        const current = parseInt(totalRequests.textContent.replace(/,/g, ''));
-        totalRequests.textContent = (current + Math.floor(Math.random() * 100)).toLocaleString();
-    }
-    
-    if (threatsBlocked) {
-        const current = parseInt(threatsBlocked.textContent);
-        threatsBlocked.textContent = current + Math.floor(Math.random() * 5);
-    }
-    
-    if (activeUsers) {
-        const current = parseInt(activeUsers.textContent);
-        activeUsers.textContent = current + Math.floor(Math.random() * 10) - 5;
-    }
-    
-    if (avgResponse) {
-        avgResponse.innerHTML = (35 + Math.floor(Math.random() * 20)) + '<span class="metric-unit">ms</span>';
-    }
-}
-
-// Add new log entry
-function addNewLogEntry() {
-    const logViewer = document.getElementById('logViewer');
-    if (!logViewer) return;
-    
-    const methods = ['get', 'post', 'put', 'delete'];
-    const paths = ['/api/v1/users', '/api/v1/products', '/api/v1/orders', '/api/v1/analytics'];
-    const statuses = [
-        { code: '200', class: 'success' },
-        { code: '201', class: 'success' },
-        { code: '401', class: 'danger' },
-        { code: '429', class: 'warning' }
-    ];
-    
-    const method = methods[Math.floor(Math.random() * methods.length)];
-    const path = paths[Math.floor(Math.random() * paths.length)];
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-    const latency = Math.floor(Math.random() * 200) + 10;
-    const ip = `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
-    
-    const now = new Date();
-    const time = now.toTimeString().split(' ')[0] + '.' + now.getMilliseconds().toString().padStart(3, '0');
-    
-    const isCritical = status.class === 'danger';
-    const isWarning = status.class === 'warning';
-    
-    const entry = document.createElement('div');
-    entry.className = `log-entry ${isCritical ? 'critical' : isWarning ? 'warning' : ''}`;
-    entry.innerHTML = `
-        <span class="log-time">${time}</span>
-        <span class="log-badge ${status.class}">${status.code}</span>
-        <span class="log-method ${method}">${method.toUpperCase()}</span>
-        <span class="log-path">${path}</span>
-        <span class="log-ip">${ip}</span>
-        <span class="log-latency">${latency}ms</span>
-        ${isCritical ? '<span class="log-threat">⚠️ Blocked</span>' : ''}
-        ${isWarning ? '<span class="log-threat">⚡ Rate Limited</span>' : ''}
-    `;
-    
-    // Add at the top
-    logViewer.insertBefore(entry, logViewer.firstChild);
-    
-    // Remove old entries if too many
-    while (logViewer.children.length > 20) {
-        logViewer.removeChild(logViewer.lastChild);
-    }
-    
-    // Highlight animation
-    entry.style.animation = 'slideIn 300ms ease-out';
-}
-
-// Update log timestamps
-function updateLogTimestamps() {
-    const logEntries = document.querySelectorAll('.log-time');
-    const now = new Date();
-    
-    logEntries.forEach((entry, index) => {
-        const time = new Date(now - (index * 1234)); // Stagger times
-        entry.textContent = time.toTimeString().split(' ')[0] + '.' + time.getMilliseconds().toString().padStart(3, '0');
-    });
-}
-
-// Start live updates
-function startLiveUpdates() {
-    // Update metrics every 5 seconds
-    setInterval(() => {
-        const totalRequests = document.getElementById('totalRequests');
-        if (totalRequests) {
-            const current = parseInt(totalRequests.textContent.replace(/,/g, ''));
-            totalRequests.textContent = (current + Math.floor(Math.random() * 50) + 10).toLocaleString();
-        }
-    }, 5000);
-    
-    // Add random log entries every 10 seconds
-    setInterval(() => {
-        if (Math.random() > 0.5) {
-            addNewLogEntry();
-        }
-    }, 10000);
-}
-
-// Add CSS animation for spin
+// Add CSS for SPA loading state
 const style = document.createElement('style');
 style.textContent = `
     @keyframes spin {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
-    }
-    @keyframes slideIn {
-        from { 
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
     }
     .content-loading {
         display: flex;
@@ -343,21 +199,14 @@ document.head.appendChild(style);
 // SPA ROUTER
 // ============================================
 
-let dashboardContentCache = null;
 let currentRoute = 'dashboard';
-let userManagementScriptLoaded = false;
+
 
 // Global SPA flag for userManagement.js to detect
 window.isSPAMode = true;
 
 // Initialize Router
 function initializeRouter() {
-    // Store original dashboard content
-    const contentArea = document.getElementById('contentArea');
-    if (contentArea) {
-        dashboardContentCache = contentArea.innerHTML;
-    }
-    
     // Setup nav click handlers
     const navItems = document.querySelectorAll('.nav-item[data-route]');
     navItems.forEach(item => {
@@ -377,15 +226,8 @@ function initializeRouter() {
     });
     
     // Handle initial route from URL hash
-    const initialHash = window.location.hash.slice(1);
-    if (initialHash && initialHash !== 'dashboard') {
-        // Load the route and update nav to match
-        loadRoute(initialHash, true);
-    } else {
-        // Set initial nav state for dashboard
-        currentRoute = 'dashboard';
-        updateActiveNav('dashboard');
-    }
+    const initialHash = window.location.hash.slice(1) || 'dashboard';
+    loadRoute(initialHash, true);
 }
 
 // Update active nav item
@@ -418,100 +260,13 @@ async function loadRoute(route, updateNav = true) {
         updateActiveNav(route);
     }
     
-    switch (route) {
-        case 'dashboard':
-            loadDashboard(contentArea);
-            break;
-        case 'users':
-            await loadUserManagement(contentArea);
-            break;
-        default:
-            loadDashboard(contentArea);
+    // Use router.js for all pages
+    if (typeof loadPagePartial === 'function') {
+        await loadPagePartial(route, contentArea);
     }
 }
 
-// Load Dashboard content
-function loadDashboard(contentArea) {
-    // Restore cached dashboard content
-    if (dashboardContentCache) {
-        contentArea.innerHTML = dashboardContentCache;
-    }
-    
-    // Update header
-    updatePageHeader('Security Dashboard', 'Real-time monitoring and threat detection');
-    
-    // Reinitialize dashboard features
-    updateLogTimestamps();
-    startLiveUpdates();
-}
 
-// Load User Management content
-async function loadUserManagement(contentArea) {
-    // Show loading state
-    contentArea.innerHTML = '<div class="content-loading">Loading User Management</div>';
-    
-    // Update header
-    updatePageHeader('User Management', 'Manage users and administrators');
-    
-    try {
-        // Fetch userManagement.html
-        const response = await fetch('userManagement.html?nocache=' + Date.now());
-        if (!response.ok) throw new Error('Failed to load User Management');
-        
-        const html = await response.text();
-        
-        // Parse HTML and extract .container content
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const container = doc.querySelector('.container');
-        
-        if (container) {
-            // Remove the header from userManagement (we use SPA header)
-            const header = container.querySelector('.header');
-            if (header) header.remove();
-            
-            // Inject content
-            contentArea.innerHTML = container.innerHTML;
-            
-            // Initialize user management - script already loaded via HTML
-            if (typeof loadUsers === 'function') loadUsers();
-            if (typeof loadAdmins === 'function') loadAdmins();
-        } else {
-            throw new Error('Content not found');
-        }
-    } catch (error) {
-        console.error('Error loading User Management:', error);
-        contentArea.innerHTML = `
-            <div class="content-loading" style="flex-direction: column; gap: 16px;">
-                <span style="color: var(--error);">Failed to load User Management</span>
-                <button class="btn btn-primary" onclick="loadRoute('users')">Retry</button>
-            </div>
-        `;
-    }
-}
-
-// Load userManagement.js script dynamically
-function loadUserManagementScript() {
-    return new Promise((resolve) => {
-        if (userManagementScriptLoaded && typeof loadUsers === 'function') {
-            resolve();
-            return;
-        }
-        
-        const script = document.createElement('script');
-        script.src = 'assests/js/userManagement.js?v=7';
-        script.onload = () => {
-            userManagementScriptLoaded = true;
-            // Wait for script to fully execute
-            setTimeout(resolve, 50);
-        };
-        script.onerror = () => {
-            console.error('Failed to load userManagement.js');
-            resolve();
-        };
-        document.body.appendChild(script);
-    });
-}
 
 // Update page header
 function updatePageHeader(title, subtitle) {
