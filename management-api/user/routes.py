@@ -1,0 +1,358 @@
+"""
+User Self-Service Routes
+========================
+Endpoints for the user panel — users manage their own profile, password, etc.
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, status, Header
+from sqlalchemy.orm import Session
+from pydantic import BaseModel, EmailStr
+from passlib.context import CryptContext
+from typing import Optional
+from datetime import datetime, timezone
+import jwt
+import os
+import re
+import json
+
+from deps import get_db
+from models import User, APIKey
+from utils import (
+    generate_mfa_secret,
+    generate_qr_code_base64,
+    verify_totp,
+    generate_backup_codes,
+    encrypt_secret,
+    decrypt_secret,
+)
+
+router = APIRouter(prefix="/user", tags=["User Self-Service"])
+
+# Password hashing (same config as main.py)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# JWT settings
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+ALGORITHM = "HS256"
+
+
+# ============================================================================
+# Auth Dependency
+# ============================================================================
+
+def get_current_user(
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+) -> User:
+    """Extract and verify user from JWT token."""
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header missing"
+        )
+    try:
+        if not authorization.startswith("Bearer "):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authorization header format"
+            )
+        token = authorization.split(" ")[1]
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload"
+            )
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        # Enforce token_version for session invalidation
+        token_version = payload.get("token_version", 0)
+        if getattr(user, "token_version", 0) != token_version:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked"
+            )
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired"
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+
+
+# ============================================================================
+# Pydantic Schemas
+# ============================================================================
+
+class ProfileResponse(BaseModel):
+    id: int
+    email: str
+    full_name: str
+    role: str
+    is_active: bool
+    created_at: str
+    updated_at: str
+    last_login_at: Optional[str] = None
+    mfa_enabled: bool
+    mfa_setup_complete: bool
+    api_key_count: int
+    active_api_key_count: int
+
+class ProfileUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+
+class ProfileUpdateResponse(BaseModel):
+    message: str
+    email: str
+    full_name: str
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+class ChangePasswordResponse(BaseModel):
+    message: str
+
+class DeleteAccountRequest(BaseModel):
+    password: str
+    confirmation: str  # Must be "DELETE MY ACCOUNT"
+
+
+# ============================================================================
+# Endpoints
+# ============================================================================
+
+@router.get("/profile", response_model=ProfileResponse)
+def get_profile(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get the current user's profile information."""
+    total_keys = db.query(APIKey).filter(APIKey.user_id == user.id).count()
+    active_keys = db.query(APIKey).filter(
+        APIKey.user_id == user.id,
+        APIKey.is_active == True
+    ).count()
+
+    return ProfileResponse(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role,
+        is_active=user.is_active,
+        created_at=user.created_at.isoformat() if user.created_at else "",
+        updated_at=user.updated_at.isoformat() if user.updated_at else "",
+        last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
+        mfa_enabled=user.mfa_enabled,
+        mfa_setup_complete=user.mfa_setup_complete,
+        api_key_count=total_keys,
+        active_api_key_count=active_keys,
+    )
+
+
+@router.patch("/profile", response_model=ProfileUpdateResponse)
+def update_profile(
+    data: ProfileUpdateRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update current user's profile (name and/or email)."""
+    if data.full_name is not None:
+        name = data.full_name.strip()
+        if len(name) < 2:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Full name must be at least 2 characters"
+            )
+        if len(name) > 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Full name must be less than 100 characters"
+            )
+        user.full_name = name
+
+    if data.email is not None:
+        new_email = data.email.lower().strip()
+        if new_email != user.email:
+            # Check for duplicate
+            existing = db.query(User).filter(User.email == new_email).first()
+            if existing:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Email already in use"
+                )
+            user.email = new_email
+
+    user.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(user)
+
+    return ProfileUpdateResponse(
+        message="Profile updated successfully",
+        email=user.email,
+        full_name=user.full_name,
+    )
+
+
+@router.post("/change-password", response_model=ChangePasswordResponse)
+def change_password(
+    data: ChangePasswordRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Change current user's password. Requires current password."""
+    # Verify current password
+    if not pwd_context.verify(data.current_password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+
+    # Validate new password strength
+    new_pw = data.new_password
+    if len(new_pw) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 8 characters"
+        )
+    if not re.search(r"[A-Z]", new_pw):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must contain at least one uppercase letter"
+        )
+    if not re.search(r"[a-z]", new_pw):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must contain at least one lowercase letter"
+        )
+    if not re.search(r"\d", new_pw):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must contain at least one digit"
+        )
+
+    # Hash and save
+    user.password_hash = pwd_context.hash(new_pw)
+    # Bump token_version to invalidate all other sessions
+    user.token_version = (user.token_version or 0) + 1
+    user.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return ChangePasswordResponse(message="Password changed successfully. You will be logged out of other sessions.")
+
+
+@router.post("/delete-account")
+def delete_account(
+    data: DeleteAccountRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Permanently delete the current user's account."""
+    # Verify password
+    if not pwd_context.verify(data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password is incorrect"
+        )
+
+    # Verify confirmation text
+    if data.confirmation != "DELETE MY ACCOUNT":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='You must type "DELETE MY ACCOUNT" to confirm'
+        )
+
+    # Delete user (cascade will remove API keys & password reset tokens)
+    db.delete(user)
+    db.commit()
+
+    return {"message": "Account deleted successfully"}
+
+
+# ============================================================================
+# MFA — Authenticated Setup (for Profile page)
+# ============================================================================
+
+class MfaSetupCodeRequest(BaseModel):
+    code: str
+
+
+@router.post("/mfa/setup")
+def user_mfa_setup(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Start MFA setup for an already-authenticated user.
+    Returns QR code and secret for the authenticator app.
+    """
+    if user.mfa_enabled and user.mfa_setup_complete:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="MFA is already enabled. Disable it first to re-setup."
+        )
+
+    # Generate new secret
+    secret = generate_mfa_secret()
+    user.mfa_secret = encrypt_secret(secret)
+    db.commit()
+
+    qr_code = generate_qr_code_base64(secret, user.email)
+
+    return {
+        "qr_code": qr_code,
+        "secret": secret,
+        "message": "Scan the QR code with your authenticator app, then verify with the 6-digit code."
+    }
+
+
+@router.post("/mfa/verify-setup")
+def user_mfa_verify_setup(
+    data: MfaSetupCodeRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Verify the first TOTP code and complete MFA setup (authenticated user).
+    Returns backup codes on success.
+    """
+    if user.mfa_enabled and user.mfa_setup_complete:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="MFA is already set up."
+        )
+
+    if not user.mfa_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="MFA setup not started. Call /user/mfa/setup first."
+        )
+
+    secret_plain = decrypt_secret(user.mfa_secret)
+    if not verify_totp(secret_plain, data.code):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid code. Please try again with the current code from your authenticator."
+        )
+
+    # Generate backup codes
+    plain_codes, hashed_codes = generate_backup_codes(8)
+    user.mfa_backup_codes = json.dumps(hashed_codes)
+    user.mfa_setup_complete = True
+    user.mfa_enabled = True
+    user.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {
+        "success": True,
+        "backup_codes": plain_codes,
+        "message": "MFA setup complete! Save your backup codes securely."
+    }

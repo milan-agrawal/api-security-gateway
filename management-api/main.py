@@ -14,6 +14,7 @@ from deps import get_db
 from admin import router as admin_router
 from auth.mfa import router as mfa_router, create_mfa_temp_token
 from auth.password_reset import router as password_reset_router
+from user import router as user_router
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -24,6 +25,7 @@ app = FastAPI(title="Management API", version="1.0.0")
 app.include_router(admin_router)
 app.include_router(mfa_router)
 app.include_router(password_reset_router)
+app.include_router(user_router)
 
 # CORS middleware - Restrict to specific origins
 ALLOWED_ORIGINS = [

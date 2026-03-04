@@ -1,1 +1,962 @@
-﻿Need To be Done
+﻿<style>
+/* ============================================================
+   PROFILE & MFA PAGE STYLES
+   ============================================================ */
+
+.profile-page {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* --- Profile Header Card --- */
+.profile-header-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    padding: 32px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.profile-avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.profile-header-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.profile-header-info h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+}
+
+.profile-header-info .profile-email {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0 0 10px 0;
+}
+
+.profile-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.profile-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.profile-badge.role {
+    background: rgba(88, 166, 255, 0.15);
+    color: var(--accent-primary);
+}
+
+.profile-badge.mfa-on {
+    background: rgba(63, 185, 80, 0.15);
+    color: var(--success);
+}
+
+.profile-badge.mfa-off {
+    background: rgba(248, 81, 73, 0.15);
+    color: var(--error);
+}
+
+.profile-badge.keys {
+    background: rgba(163, 113, 247, 0.15);
+    color: var(--accent-secondary);
+}
+
+.profile-header-stats {
+    display: flex;
+    gap: 24px;
+    flex-shrink: 0;
+}
+
+.profile-stat {
+    text-align: center;
+}
+
+.profile-stat .stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.profile-stat .stat-label {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* --- Section Cards --- */
+.profile-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.profile-section.danger {
+    border-color: rgba(248, 81, 73, 0.3);
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.section-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-header h3 svg {
+    width: 18px;
+    height: 18px;
+    color: var(--text-tertiary);
+}
+
+.section-body {
+    padding: 24px;
+}
+
+/* --- Form Styles --- */
+.profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.form-group input {
+    padding: 10px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+}
+
+.form-group input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.form-group .input-hint {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 8px;
+}
+
+/* Buttons */
+.p-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.p-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.p-btn-primary {
+    background: var(--accent-primary);
+    color: #fff;
+    border-color: var(--accent-primary);
+}
+
+.p-btn-primary:hover:not(:disabled) {
+    background: #4393e6;
+}
+
+.p-btn-secondary {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--border-primary);
+}
+
+.p-btn-secondary:hover:not(:disabled) {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.p-btn-danger {
+    background: rgba(248, 81, 73, 0.1);
+    color: var(--error);
+    border-color: rgba(248, 81, 73, 0.3);
+}
+
+.p-btn-danger:hover:not(:disabled) {
+    background: var(--error);
+    color: #fff;
+}
+
+.p-btn-success {
+    background: rgba(63, 185, 80, 0.1);
+    color: var(--success);
+    border-color: rgba(63, 185, 80, 0.3);
+}
+
+.p-btn-success:hover:not(:disabled) {
+    background: var(--success);
+    color: #fff;
+}
+
+.p-btn-sm {
+    padding: 6px 14px;
+    font-size: 13px;
+}
+
+/* --- Password Strength Meter --- */
+.password-strength {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.strength-bar-track {
+    height: 4px;
+    background: var(--bg-secondary);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.strength-bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 2px;
+    transition: width 0.3s, background 0.3s;
+}
+
+.strength-bar-fill.weak { width: 25%; background: var(--error); }
+.strength-bar-fill.fair { width: 50%; background: #d29922; }
+.strength-bar-fill.good { width: 75%; background: var(--accent-primary); }
+.strength-bar-fill.strong { width: 100%; background: var(--success); }
+
+.strength-text {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.strength-text.weak { color: var(--error); }
+.strength-text.fair { color: #d29922; }
+.strength-text.good { color: var(--accent-primary); }
+.strength-text.strong { color: var(--success); }
+
+/* --- MFA Section --- */
+.mfa-status-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.mfa-status-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.mfa-status-icon.enabled {
+    background: rgba(63, 185, 80, 0.15);
+    color: var(--success);
+}
+
+.mfa-status-icon.disabled {
+    background: rgba(248, 81, 73, 0.15);
+    color: var(--error);
+}
+
+.mfa-status-info {
+    flex: 1;
+}
+
+.mfa-status-info h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+}
+
+.mfa-status-info p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.mfa-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* QR Code Area */
+.mfa-setup-area {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 24px;
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    text-align: center;
+}
+
+.mfa-setup-area.active {
+    display: flex;
+}
+
+.mfa-setup-area h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.mfa-setup-area p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+    max-width: 400px;
+}
+
+.qr-code-wrapper {
+    padding: 16px;
+    background: #fff;
+    border-radius: 12px;
+    display: inline-block;
+}
+
+.qr-code-wrapper img {
+    width: 200px;
+    height: 200px;
+    display: block;
+}
+
+.mfa-secret-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    color: var(--accent-primary);
+    letter-spacing: 2px;
+}
+
+.mfa-secret-display button {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 4px;
+}
+
+.mfa-secret-display button:hover {
+    color: var(--text-primary);
+}
+
+.mfa-verify-form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.mfa-verify-form input {
+    padding: 10px 14px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 16px;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 4px;
+    text-align: center;
+    width: 160px;
+}
+
+.mfa-verify-form input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+}
+
+/* Backup Codes */
+.backup-codes-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 16px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    margin: 12px 0;
+}
+
+.backup-code {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    color: var(--text-primary);
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    text-align: center;
+    letter-spacing: 1px;
+}
+
+/* --- Danger Zone --- */
+.danger-zone-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.danger-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid rgba(248, 81, 73, 0.15);
+}
+
+.danger-action-info h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+}
+
+.danger-action-info p {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    margin: 0;
+}
+
+/* --- Info Grid (read-only profile fields) --- */
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.info-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-value {
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* --- Modal (for delete account confirmation) --- */
+.profile-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-modal-overlay.active {
+    display: flex;
+}
+
+.profile-modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    width: 440px;
+    max-width: 90vw;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.profile-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.profile-modal-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--error);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.profile-modal-close {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+}
+
+.profile-modal-close:hover {
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+}
+
+.profile-modal-body {
+    padding: 24px;
+}
+
+.profile-modal-body p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0 0 16px 0;
+    line-height: 1.5;
+}
+
+.profile-modal-body .warning-box {
+    background: rgba(248, 81, 73, 0.08);
+    border: 1px solid rgba(248, 81, 73, 0.2);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--error);
+    line-height: 1.5;
+}
+
+.profile-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-primary);
+}
+
+/* --- Loading Skeleton --- */
+.skeleton {
+    background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-card) 50%, var(--bg-secondary) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-text { height: 16px; width: 60%; display: inline-block; }
+.skeleton-text.w-40 { width: 40%; }
+.skeleton-text.w-80 { width: 80%; }
+.skeleton-heading { height: 24px; width: 50%; margin-bottom: 8px; display: inline-block; }
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .profile-header-card {
+        flex-direction: column;
+        text-align: center;
+        padding: 24px;
+    }
+
+    .profile-header-stats {
+        justify-content: center;
+    }
+
+    .profile-badges {
+        justify-content: center;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mfa-status-card {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .danger-action {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .backup-codes-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<div class="profile-page">
+
+    <!-- ============================================================
+         PROFILE HEADER CARD
+         ============================================================ -->
+    <div class="profile-header-card" id="profileHeaderCard">
+        <div class="profile-avatar-large" id="profileAvatar">
+            <span class="skeleton" style="display:block;width:80px;height:80px;border-radius:50%"></span>
+        </div>
+        <div class="profile-header-info">
+            <h2 id="profileName"><span class="skeleton skeleton-heading"></span></h2>
+            <p class="profile-email" id="profileEmail"><span class="skeleton skeleton-text"></span></p>
+            <div class="profile-badges" id="profileBadges"></div>
+        </div>
+        <div class="profile-header-stats" id="profileStats">
+            <div class="profile-stat">
+                <div class="stat-value" id="statApiKeys">-</div>
+                <div class="stat-label">API Keys</div>
+            </div>
+            <div class="profile-stat">
+                <div class="stat-value" id="statActiveKeys">-</div>
+                <div class="stat-label">Active</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         ACCOUNT DETAILS (read-only overview)
+         ============================================================ -->
+    <div class="profile-section">
+        <div class="section-header">
+            <h3>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Account Details
+            </h3>
+        </div>
+        <div class="section-body">
+            <div class="info-grid" id="accountDetailsGrid">
+                <div class="info-item">
+                    <span class="info-label">Account ID</span>
+                    <span class="info-value" id="infoAccountId">—</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Role</span>
+                    <span class="info-value" id="infoRole">—</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Member Since</span>
+                    <span class="info-value" id="infoCreatedAt">—</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Last Login</span>
+                    <span class="info-value" id="infoLastLogin">—</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Account Status</span>
+                    <span class="info-value" id="infoStatus">—</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Last Updated</span>
+                    <span class="info-value" id="infoUpdatedAt">—</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         EDIT PROFILE
+         ============================================================ -->
+    <div class="profile-section">
+        <div class="section-header">
+            <h3>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                Edit Profile
+            </h3>
+        </div>
+        <div class="section-body">
+            <form class="profile-form" id="editProfileForm" onsubmit="handleUpdateProfile(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editFullName">Full Name</label>
+                        <input type="text" id="editFullName" placeholder="Enter your full name" required minlength="2" maxlength="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="editEmail">Email Address</label>
+                        <input type="email" id="editEmail" placeholder="Enter your email" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="p-btn p-btn-secondary" onclick="resetEditForm()">Cancel</button>
+                    <button type="submit" class="p-btn p-btn-primary" id="btnSaveProfile">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         CHANGE PASSWORD
+         ============================================================ -->
+    <div class="profile-section">
+        <div class="section-header">
+            <h3>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                Change Password
+            </h3>
+        </div>
+        <div class="section-body">
+            <form class="profile-form" id="changePasswordForm" onsubmit="handleChangePassword(event)">
+                <div class="form-group">
+                    <label for="currentPassword">Current Password</label>
+                    <input type="password" id="currentPassword" placeholder="Enter current password" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="newPassword">New Password</label>
+                        <input type="password" id="newPassword" placeholder="Enter new password" required minlength="8" oninput="updatePasswordStrength()">
+                        <div class="password-strength">
+                            <div class="strength-bar-track">
+                                <div class="strength-bar-fill" id="strengthBarFill"></div>
+                            </div>
+                            <span class="strength-text" id="strengthText"></span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm New Password</label>
+                        <input type="password" id="confirmPassword" placeholder="Confirm new password" required minlength="8">
+                        <span class="input-hint" id="passwordMatchHint"></span>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="p-btn p-btn-secondary" onclick="resetPasswordForm()">Cancel</button>
+                    <button type="submit" class="p-btn p-btn-primary" id="btnChangePassword">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        Update Password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         MFA / TWO-FACTOR AUTHENTICATION
+         ============================================================ -->
+    <div class="profile-section">
+        <div class="section-header">
+            <h3>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                Two-Factor Authentication (2FA)
+            </h3>
+        </div>
+        <div class="section-body">
+            <!-- MFA Status Card -->
+            <div class="mfa-status-card" id="mfaStatusCard">
+                <div class="mfa-status-icon disabled" id="mfaStatusIcon">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                </div>
+                <div class="mfa-status-info">
+                    <h4 id="mfaStatusTitle">Loading...</h4>
+                    <p id="mfaStatusDesc">Checking MFA status...</p>
+                </div>
+                <div class="mfa-actions" id="mfaActionButtons">
+                    <!-- Buttons inserted by JS -->
+                </div>
+            </div>
+
+            <!-- MFA Setup Area (hidden until user clicks Enable) -->
+            <div class="mfa-setup-area" id="mfaSetupArea">
+                <h4>Set Up Authenticator App</h4>
+                <p>Scan the QR code below with your authenticator app (Google Authenticator, Authy, etc.)</p>
+                <div class="qr-code-wrapper" id="mfaQrWrapper">
+                    <img id="mfaQrImage" src="" alt="MFA QR Code">
+                </div>
+                <p style="font-size:12px;color:var(--text-tertiary)">Can't scan? Enter this secret manually:</p>
+                <div class="mfa-secret-display">
+                    <span id="mfaSecretKey">—</span>
+                    <button type="button" onclick="copyToClipboard(document.getElementById('mfaSecretKey').textContent)" title="Copy secret">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    </button>
+                </div>
+                <div class="mfa-verify-form">
+                    <input type="text" id="mfaVerifyCode" placeholder="000000" maxlength="6" pattern="\d{6}" autocomplete="one-time-code">
+                    <button type="button" class="p-btn p-btn-primary" onclick="handleVerifyMfaSetup()">Verify & Enable</button>
+                </div>
+            </div>
+
+            <!-- Backup Codes Area (hidden until user views them) -->
+            <div class="mfa-setup-area" id="mfaBackupArea">
+                <h4>Backup Codes</h4>
+                <p>Save these codes in a safe place. Each code can only be used once.</p>
+                <div class="backup-codes-grid" id="backupCodesGrid">
+                    <!-- Filled by JS -->
+                </div>
+                <div style="display:flex;gap:10px">
+                    <button type="button" class="p-btn p-btn-secondary p-btn-sm" onclick="copyBackupCodes()">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                        Copy All
+                    </button>
+                    <button type="button" class="p-btn p-btn-secondary p-btn-sm" onclick="hideBackupCodes()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         DANGER ZONE
+         ============================================================ -->
+    <div class="profile-section danger">
+        <div class="section-header" style="border-bottom-color: rgba(248,81,73,0.15)">
+            <h3 style="color: var(--error)">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                Danger Zone
+            </h3>
+        </div>
+        <div class="section-body">
+            <div class="danger-zone-content">
+                <div class="danger-action">
+                    <div class="danger-action-info">
+                        <h4>Delete Account</h4>
+                        <p>Permanently delete your account and all associated data. This action cannot be undone.</p>
+                    </div>
+                    <button class="p-btn p-btn-danger p-btn-sm" onclick="openDeleteAccountModal()">Delete Account</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     DELETE ACCOUNT MODAL
+     ============================================================ -->
+<div class="profile-modal-overlay" id="deleteAccountModal">
+    <div class="profile-modal">
+        <div class="profile-modal-header">
+            <h3>
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                Delete Account
+            </h3>
+            <button class="profile-modal-close" onclick="closeDeleteAccountModal()">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="profile-modal-body">
+            <div class="warning-box">
+                This will permanently delete your account, all API keys, and all associated data. This action <strong>cannot be undone</strong>.
+            </div>
+            <p>To confirm, enter your password and type <strong>DELETE MY ACCOUNT</strong> below.</p>
+            <form class="profile-form" id="deleteAccountForm" onsubmit="handleDeleteAccount(event)">
+                <div class="form-group">
+                    <label for="deletePassword">Password</label>
+                    <input type="password" id="deletePassword" placeholder="Enter your password" required>
+                </div>
+                <div class="form-group">
+                    <label for="deleteConfirmation">Type "DELETE MY ACCOUNT"</label>
+                    <input type="text" id="deleteConfirmation" placeholder="DELETE MY ACCOUNT" required>
+                </div>
+            </form>
+        </div>
+        <div class="profile-modal-footer">
+            <button class="p-btn p-btn-secondary" onclick="closeDeleteAccountModal()">Cancel</button>
+            <button class="p-btn p-btn-danger" id="btnConfirmDelete" onclick="handleDeleteAccount(event)">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                Delete My Account
+            </button>
+        </div>
+    </div>
+</div>
