@@ -129,6 +129,26 @@
             <h2>👥 User Accounts</h2>
             <span class="table-badge" id="userCount">0 Users</span>
         </div>
+        <!-- Search & Filter Toolbar -->
+        <div class="table-toolbar" id="userToolbar">
+            <div class="toolbar-search">
+                <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M21 21l-4.35-4.35"/></svg>
+                <input type="text" id="userSearchInput" placeholder="Search by name or email..." oninput="filterUsers()">
+            </div>
+            <div class="toolbar-filters">
+                <select id="userStatusFilter" onchange="filterUsers()">
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+                <select id="userSortFilter" onchange="filterUsers()">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="name-asc">Name A-Z</option>
+                    <option value="name-desc">Name Z-A</option>
+                </select>
+            </div>
+        </div>
         <div class="table-wrapper">
             <table id="usersTable">
                 <thead>
@@ -137,16 +157,29 @@
                         <th>Email</th>
                         <th>Full Name</th>
                         <th>Status</th>
+                        <th>2FA</th>
                         <th>Created</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="usersTableBody">
                     <tr>
-                        <td colspan="6" class="loading">Loading users</td>
+                        <td colspan="7" class="loading">Loading users</td>
                     </tr>
                 </tbody>
             </table>
+        </div>
+        <!-- Pagination -->
+        <div class="table-pagination" id="userPagination">
+            <button class="pagination-btn" id="userPrevBtn" onclick="changeUserPage(-1)" disabled>
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                Prev
+            </button>
+            <span class="pagination-info" id="userPageInfo">Page 1 of 1</span>
+            <button class="pagination-btn" id="userNextBtn" onclick="changeUserPage(1)" disabled>
+                Next
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
         </div>
     </div>
 
@@ -156,6 +189,26 @@
             <h2>👑 Administrator Accounts</h2>
             <span class="table-badge" id="adminCount">0 Admins</span>
         </div>
+        <!-- Search & Filter Toolbar -->
+        <div class="table-toolbar" id="adminToolbar">
+            <div class="toolbar-search">
+                <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M21 21l-4.35-4.35"/></svg>
+                <input type="text" id="adminSearchInput" placeholder="Search by name or email..." oninput="filterAdmins()">
+            </div>
+            <div class="toolbar-filters">
+                <select id="adminStatusFilter" onchange="filterAdmins()">
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+                <select id="adminSortFilter" onchange="filterAdmins()">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="name-asc">Name A-Z</option>
+                    <option value="name-desc">Name Z-A</option>
+                </select>
+            </div>
+        </div>
         <div class="table-wrapper">
             <table id="adminsTable">
                 <thead>
@@ -164,16 +217,41 @@
                         <th>Email</th>
                         <th>Full Name</th>
                         <th>Status</th>
+                        <th>2FA</th>
                         <th>Created</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="adminsTableBody">
                     <tr>
-                        <td colspan="6" class="loading">Loading admins</td>
+                        <td colspan="7" class="loading">Loading admins</td>
                     </tr>
                 </tbody>
             </table>
         </div>
+        <!-- Pagination -->
+        <div class="table-pagination" id="adminPagination">
+            <button class="pagination-btn" id="adminPrevBtn" onclick="changeAdminPage(-1)" disabled>
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                Prev
+            </button>
+            <span class="pagination-info" id="adminPageInfo">Page 1 of 1</span>
+            <button class="pagination-btn" id="adminNextBtn" onclick="changeAdminPage(1)" disabled>
+                Next
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- User Details Slide Panel -->
+<div class="slide-panel-overlay" id="userDetailOverlay" onclick="closeUserDetail()"></div>
+<div class="slide-panel" id="userDetailPanel">
+    <div class="slide-panel-header">
+        <h3>User Details</h3>
+        <button class="slide-panel-close" onclick="closeUserDetail()">&times;</button>
+    </div>
+    <div class="slide-panel-body" id="userDetailBody">
+        <div class="detail-loading">Loading user details...</div>
     </div>
 </div>

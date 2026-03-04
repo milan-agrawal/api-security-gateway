@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import jwt
 import os
@@ -143,6 +143,10 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
         "user_id": user.id
     }
     token = create_access_token(token_data, token_version=user.token_version)
+    
+    # Update last login timestamp
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
     
     return LoginResponse(
         token=token,

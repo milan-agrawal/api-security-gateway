@@ -15,7 +15,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from deps import get_db
-from models import User
+from models import User, APIKey
 from utils import generate_secure_password, send_credentials_email
 from db import DATABASE_URL, SessionLocal
 
@@ -157,6 +157,8 @@ class UserListItem(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    mfa_enabled: bool
+    mfa_setup_complete: bool
     created_at: datetime
 
 class UsersListResponse(BaseModel):
@@ -328,12 +330,50 @@ def list_users(
                 full_name=user.full_name,
                 role=user.role,
                 is_active=user.is_active,
+                mfa_enabled=user.mfa_enabled,
+                mfa_setup_complete=user.mfa_setup_complete,
                 created_at=user.created_at
             )
             for user in users
         ],
         total=len(users)
     )
+
+
+@router.get("/users/{user_id}")
+def get_user_detail(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    """
+    Get detailed user info by ID (Admin only).
+    Returns profile, MFA status, API key count, and last login.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found"
+        )
+
+    api_keys_count = db.query(APIKey).filter(APIKey.user_id == user_id).count()
+    active_keys = db.query(APIKey).filter(APIKey.user_id == user_id, APIKey.is_active == True).count()
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "role": user.role,
+        "is_active": user.is_active,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "updated_at": user.updated_at.isoformat() if user.updated_at else None,
+        "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
+        "mfa_enabled": user.mfa_enabled,
+        "mfa_setup_complete": user.mfa_setup_complete,
+        "api_keys_count": api_keys_count,
+        "active_api_keys": active_keys
+    }
 
 
 @router.delete("/users/{user_id}")
@@ -518,4 +558,38 @@ def reset_user_password(
     return {
         "success": True,
         "message": f"Password reset for {user.email}. New credentials sent via email. All existing sessions have been invalidated."
+    }
+
+
+@router.post("/users/{user_id}/revoke-sessions")
+def revoke_user_sessions(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    """
+    Force logout a user by incrementing their token_version.
+    All existing JWTs become invalid immediately.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found"
+        )
+
+    if user.id == admin.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot revoke your own sessions through this endpoint"
+        )
+
+    user.token_version = (user.token_version or 0) + 1
+    user.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"All sessions revoked for {user.email}. They will need to log in again."
     }

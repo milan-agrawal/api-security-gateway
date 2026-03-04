@@ -8,6 +8,7 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         closeEditModal();
         closeConfirmModal();
+        closeUserDetail();
     }
 });
 document.addEventListener('click', function(e) {
@@ -234,6 +235,15 @@ async function createAdmin(event) {
     }
 }
 
+// ==========================================
+//  DATA STORES & PAGINATION STATE
+// ==========================================
+var allUsers = [];
+var allAdmins = [];
+var userPage = 1;
+var adminPage = 1;
+var PAGE_SIZE = 10;
+
 // Load Users
 async function loadUsers() {
     const tbody = document.getElementById('usersTableBody');
@@ -247,45 +257,19 @@ async function loadUsers() {
 
         const data = await response.json();
 
-        if (response.ok && data.users.length > 0) {
+        if (response.ok) {
+            allUsers = data.users || [];
             document.getElementById('userCount').textContent = `${data.total} User${data.total !== 1 ? 's' : ''}`;
-            tbody.innerHTML = data.users.map(user => `
-                <tr>
-                    <td>${user.id}</td>
-                    <td>${escapeHtml(user.email)}</td>
-                    <td>${escapeHtml(user.full_name)}</td>
-                    <td>
-                        <span class="status-badge ${user.is_active ? 'active' : 'inactive'}">
-                            ${user.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                    </td>
-                    <td>${new Date(user.created_at).toLocaleString()}</td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="btn-action btn-edit" onclick="openEditModal(${user.id}, '${escapeHtml(user.email)}', '${escapeHtml(user.full_name)}')" title="Edit User">
-                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                <span>Edit</span>
-                            </button>
-                            <button class="btn-action btn-reset" onclick="resetPassword(${user.id}, '${escapeHtml(user.email)}')" title="Reset Password">
-                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
-                                <span>Reset</span>
-                            </button>
-                            <button class="btn-action btn-toggle" onclick="toggleStatus(${user.id}, '${escapeHtml(user.email)}')">
-                                ${user.is_active ? 'Deactivate' : 'Activate'}
-                            </button>
-                            <button class="btn-action btn-delete" onclick="deleteUser(${user.id}, '${escapeHtml(user.email)}')">
-                                Delete
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
+            userPage = 1;
+            filterUsers();
         } else {
             document.getElementById('userCount').textContent = '0 Users';
+            allUsers = [];
             tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="empty-state-icon">👤</div><div>No users found</div></td></tr>';
         }
     } catch (error) {
         console.error('Error loading users:', error);
+        allUsers = [];
         tbody.innerHTML = `<tr><td colspan="6" class="empty-state" style="color: #FCA5A5;">Error loading users: ${error.message}</td></tr>`;
     }
 }
@@ -296,55 +280,305 @@ async function loadAdmins() {
     tbody.innerHTML = '<tr><td colspan="6" class="loading">Loading admins</td></tr>';
 
     try {
-        // removed debug log
         const response = await fetch(`${API_URL}/admin/users/list?role=admin`, {
             headers: getAuthHeaders()
         });
 
         const data = await response.json();
-        // removed debug logs
 
-        if (response.ok && data.users.length > 0) {
+        if (response.ok) {
+            allAdmins = data.users || [];
             document.getElementById('adminCount').textContent = `${data.total} Admin${data.total !== 1 ? 's' : ''}`;
-            tbody.innerHTML = data.users.map(user => `
-                <tr>
-                    <td>${user.id}</td>
-                    <td>${escapeHtml(user.email)}</td>
-                    <td>${escapeHtml(user.full_name)}</td>
-                    <td>
-                        <span class="status-badge ${user.is_active ? 'active' : 'inactive'}">
-                            ${user.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                    </td>
-                    <td>${new Date(user.created_at).toLocaleString()}</td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="btn-action btn-edit" onclick="openEditModal(${user.id}, '${escapeHtml(user.email)}', '${escapeHtml(user.full_name)}')" title="Edit Admin">
-                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                <span>Edit</span>
-                            </button>
-                            <button class="btn-action btn-reset" onclick="resetPassword(${user.id}, '${escapeHtml(user.email)}')" title="Reset Password">
-                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
-                                <span>Reset</span>
-                            </button>
-                            <button class="btn-action btn-toggle" onclick="toggleStatus(${user.id}, '${escapeHtml(user.email)}')">
-                                ${user.is_active ? 'Deactivate' : 'Activate'}
-                            </button>
-                            <button class="btn-action btn-delete" onclick="deleteUser(${user.id}, '${escapeHtml(user.email)}')">
-                                Delete
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
+            adminPage = 1;
+            filterAdmins();
         } else {
             document.getElementById('adminCount').textContent = '0 Admins';
+            allAdmins = [];
             tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="empty-state-icon">👑</div><div>No admins found</div></td></tr>';
         }
     } catch (error) {
         console.error('Error loading admins:', error);
+        allAdmins = [];
         tbody.innerHTML = `<tr><td colspan="6" class="empty-state" style="color: #FCA5A5;">Error loading admins: ${error.message}</td></tr>`;
     }
+}
+
+// ==========================================
+//  CLIENT-SIDE FILTER, SORT & PAGINATION
+// ==========================================
+
+function applyFilters(items, searchId, statusId, sortId) {
+    const search = (document.getElementById(searchId)?.value || '').toLowerCase().trim();
+    const statusVal = document.getElementById(statusId)?.value || 'all';
+    const sortVal = document.getElementById(sortId)?.value || 'newest';
+
+    let filtered = items.slice();
+
+    // Search by name or email
+    if (search) {
+        filtered = filtered.filter(u =>
+            u.email.toLowerCase().includes(search) ||
+            u.full_name.toLowerCase().includes(search)
+        );
+    }
+
+    // Status filter
+    if (statusVal === 'active') {
+        filtered = filtered.filter(u => u.is_active);
+    } else if (statusVal === 'inactive') {
+        filtered = filtered.filter(u => !u.is_active);
+    }
+
+    // Sort
+    switch (sortVal) {
+        case 'oldest':
+            filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            break;
+        case 'newest':
+            filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            break;
+        case 'name-asc':
+            filtered.sort((a, b) => a.full_name.localeCompare(b.full_name));
+            break;
+        case 'name-desc':
+            filtered.sort((a, b) => b.full_name.localeCompare(a.full_name));
+            break;
+    }
+
+    return filtered;
+}
+
+function renderTableRows(filtered, page, tbodyId, pageInfoId, prevBtnId, nextBtnId, emptyIcon) {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (page > totalPages) page = totalPages;
+    const start = (page - 1) * PAGE_SIZE;
+    const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state"><div class="empty-state-icon">${emptyIcon}</div><div>No results found</div></td></tr>`;
+    } else {
+        tbody.innerHTML = pageItems.map(user => {
+            let mfaBadge;
+            if (user.mfa_enabled && user.mfa_setup_complete) {
+                mfaBadge = '<span class="mfa-badge mfa-active">🔒 Active</span>';
+            } else if (user.mfa_enabled && !user.mfa_setup_complete) {
+                mfaBadge = '<span class="mfa-badge mfa-pending">⏳ Pending</span>';
+            } else {
+                mfaBadge = '<span class="mfa-badge mfa-disabled">🔓 Off</span>';
+            }
+            return `
+            <tr>
+                <td>${user.id}</td>
+                <td>${escapeHtml(user.email)}</td>
+                <td>${escapeHtml(user.full_name)}</td>
+                <td>
+                    <span class="status-badge ${user.is_active ? 'active' : 'inactive'}">
+                        ${user.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                </td>
+                <td>${mfaBadge}</td>
+                <td>${new Date(user.created_at).toLocaleString()}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-action btn-view" onclick="openUserDetail(${user.id})" title="View Details">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            <span>View</span>
+                        </button>
+                        <button class="btn-action btn-edit" onclick="openEditModal(${user.id}, '${escapeHtml(user.email)}', '${escapeHtml(user.full_name)}')" title="Edit User">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            <span>Edit</span>
+                        </button>
+                        <button class="btn-action btn-reset" onclick="resetPassword(${user.id}, '${escapeHtml(user.email)}')" title="Reset Password">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                            <span>Reset</span>
+                        </button>
+                        <button class="btn-action btn-toggle" onclick="toggleStatus(${user.id}, '${escapeHtml(user.email)}')">
+                            ${user.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button class="btn-action btn-revoke" onclick="revokeSessions(${user.id}, '${escapeHtml(user.email)}')" title="Force Logout">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                            <span>Logout</span>
+                        </button>
+                        <button class="btn-action btn-delete" onclick="deleteUser(${user.id}, '${escapeHtml(user.email)}')">
+                            Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        }).join('');
+    }
+
+    // Update pagination
+    const pageInfoEl = document.getElementById(pageInfoId);
+    const prevBtn = document.getElementById(prevBtnId);
+    const nextBtn = document.getElementById(nextBtnId);
+    if (pageInfoEl) pageInfoEl.textContent = `Page ${page} of ${totalPages}` + (filtered.length > 0 ? ` (${filtered.length} results)` : '');
+    if (prevBtn) prevBtn.disabled = page <= 1;
+    if (nextBtn) nextBtn.disabled = page >= totalPages;
+}
+
+function filterUsers() {
+    const filtered = applyFilters(allUsers, 'userSearchInput', 'userStatusFilter', 'userSortFilter');
+    userPage = 1;
+    renderTableRows(filtered, userPage, 'usersTableBody', 'userPageInfo', 'userPrevBtn', 'userNextBtn', '👤');
+}
+
+function filterAdmins() {
+    const filtered = applyFilters(allAdmins, 'adminSearchInput', 'adminStatusFilter', 'adminSortFilter');
+    adminPage = 1;
+    renderTableRows(filtered, adminPage, 'adminsTableBody', 'adminPageInfo', 'adminPrevBtn', 'adminNextBtn', '👑');
+}
+
+function changeUserPage(delta) {
+    const filtered = applyFilters(allUsers, 'userSearchInput', 'userStatusFilter', 'userSortFilter');
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    userPage = Math.max(1, Math.min(totalPages, userPage + delta));
+    renderTableRows(filtered, userPage, 'usersTableBody', 'userPageInfo', 'userPrevBtn', 'userNextBtn', '👤');
+}
+
+function changeAdminPage(delta) {
+    const filtered = applyFilters(allAdmins, 'adminSearchInput', 'adminStatusFilter', 'adminSortFilter');
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    adminPage = Math.max(1, Math.min(totalPages, adminPage + delta));
+    renderTableRows(filtered, adminPage, 'adminsTableBody', 'adminPageInfo', 'adminPrevBtn', 'adminNextBtn', '👑');
+}
+
+// ==========================================
+//  USER DETAILS SLIDE PANEL
+// ==========================================
+
+function openUserDetail(userId) {
+    const overlay = document.getElementById('userDetailOverlay');
+    const panel = document.getElementById('userDetailPanel');
+    const body = document.getElementById('userDetailBody');
+    if (!panel || !body) return;
+
+    body.innerHTML = '<div class="detail-loading">Loading user details...</div>';
+    overlay.classList.add('active');
+    panel.classList.add('active');
+
+    // Fetch full user details from backend
+    fetch(`${API_URL}/admin/users/${userId}`, {
+        headers: getAuthHeaders()
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.id) {
+            const createdDate = data.created_at ? new Date(data.created_at) : null;
+            const updatedDate = data.updated_at ? new Date(data.updated_at) : null;
+            const lastLogin = data.last_login_at ? new Date(data.last_login_at) : null;
+            const accountAge = createdDate ? getAccountAge(createdDate) : 'Unknown';
+
+            body.innerHTML = `
+                <div class="detail-profile">
+                    <div class="detail-avatar">${escapeHtml(data.full_name.charAt(0).toUpperCase())}</div>
+                    <div class="detail-name">${escapeHtml(data.full_name)}</div>
+                    <div class="detail-email">${escapeHtml(data.email)}</div>
+                    <div class="detail-badges">
+                        <span class="detail-role-badge role-${data.role}">${data.role === 'admin' ? '👑 Admin' : '👤 User'}</span>
+                        <span class="status-badge ${data.is_active ? 'active' : 'inactive'}">${data.is_active ? 'Active' : 'Inactive'}</span>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4 class="detail-section-title">Account Info</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">User ID</span>
+                            <span class="detail-value">#${data.id}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Account Age</span>
+                            <span class="detail-value">${accountAge}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Created</span>
+                            <span class="detail-value">${createdDate ? createdDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Last Updated</span>
+                            <span class="detail-value">${updatedDate ? updatedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4 class="detail-section-title">Security</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">MFA Enabled</span>
+                            <span class="detail-value detail-mfa ${data.mfa_enabled ? 'mfa-on' : 'mfa-off'}">
+                                ${data.mfa_enabled ? '🔒 Enabled' : '🔓 Disabled'}
+                            </span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">MFA Setup</span>
+                            <span class="detail-value">${data.mfa_setup_complete ? '✅ Complete' : '⏳ Pending'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Last Login</span>
+                            <span class="detail-value">${lastLogin ? lastLogin.toLocaleString() : 'Never'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4 class="detail-section-title">API Keys</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Total Keys</span>
+                            <span class="detail-value detail-keys">${data.api_keys_count}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Active Keys</span>
+                            <span class="detail-value detail-keys">${data.active_api_keys}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-actions">
+                    <button class="btn-action btn-edit" onclick="closeUserDetail(); openEditModal(${data.id}, '${escapeHtml(data.email)}', '${escapeHtml(data.full_name)}')">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        <span>Edit Profile</span>
+                    </button>
+                    <button class="btn-action btn-reset" onclick="closeUserDetail(); resetPassword(${data.id}, '${escapeHtml(data.email)}')">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                        <span>Reset Password</span>
+                    </button>
+                </div>
+            `;
+        } else {
+            body.innerHTML = '<div class="detail-loading" style="color: #FCA5A5;">User not found</div>';
+        }
+    })
+    .catch(err => {
+        body.innerHTML = `<div class="detail-loading" style="color: #FCA5A5;">Error: ${err.message}</div>`;
+    });
+}
+
+function closeUserDetail() {
+    const overlay = document.getElementById('userDetailOverlay');
+    const panel = document.getElementById('userDetailPanel');
+    if (overlay) overlay.classList.remove('active');
+    if (panel) panel.classList.remove('active');
+}
+
+function getAccountAge(createdDate) {
+    const now = new Date();
+    const diff = now - createdDate;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days < 1) return 'Today';
+    if (days === 1) return '1 day';
+    if (days < 30) return `${days} days`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months} month${months > 1 ? 's' : ''}`;
+    const years = Math.floor(months / 12);
+    const rem = months % 12;
+    return rem > 0 ? `${years}y ${rem}m` : `${years} year${years > 1 ? 's' : ''}`;
 }
 
 // ==========================================
@@ -496,6 +730,39 @@ function toggleStatus(userId, email) {
                 } else {
                     closeConfirmModal();
                     showToast(data.detail || 'Error toggling status', 'error');
+                }
+            } catch (error) {
+                closeConfirmModal();
+                showToast('Network error: ' + error.message, 'error');
+            }
+        }
+    );
+}
+
+// ==========================================
+//  REVOKE SESSIONS / FORCE LOGOUT
+// ==========================================
+
+function revokeSessions(userId, email) {
+    showConfirmModal(
+        '🚪 Force Logout',
+        `Revoke all sessions for ${email}?`,
+        '<div class="confirm-warning">⚠️ The user will be logged out everywhere immediately and must log in again.</div>',
+        'Revoke Sessions',
+        'btn-revoke-confirm',
+        async () => {
+            try {
+                const response = await fetch(`${API_URL}/admin/users/${userId}/revoke-sessions`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    closeConfirmModal();
+                    showToast(data.message, 'success');
+                } else {
+                    closeConfirmModal();
+                    showToast(data.detail || 'Error revoking sessions', 'error');
                 }
             } catch (error) {
                 closeConfirmModal();

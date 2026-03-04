@@ -330,6 +330,10 @@ def verify_mfa_setup(
     user.mfa_setup_complete = True
     user.mfa_enabled = True
     user.updated_at = datetime.now(timezone.utc)
+    
+    # Update last login timestamp
+    user.last_login_at = datetime.now(timezone.utc)
+    
     db.commit()
     
     # Generate full access token
@@ -395,6 +399,10 @@ def verify_mfa(
         )
     
     _clear_mfa_attempts(user.id)
+    
+    # Update last login timestamp
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
     
     # Generate full access token (include token_version)
     token = create_full_access_token(user.email, user.role, user.full_name, user.id, token_version=getattr(user, "token_version", 0))

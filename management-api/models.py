@@ -21,6 +21,7 @@ class User(Base):
     mfa_setup_complete = Column(Boolean, default=False, nullable=False)  # Has user completed setup
     mfa_backup_codes = Column(Text, nullable=True)  # JSON array of hashed backup codes
     token_version = Column(Integer, default=0, nullable=False)  # Increment to invalidate JWTs
+    last_login_at = Column(DateTime, nullable=True)  # Last successful login timestamp
     
     # Relationship to API keys
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
