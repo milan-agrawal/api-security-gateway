@@ -198,6 +198,16 @@ async function handleUpdateProfile(e) {
 // CHANGE PASSWORD
 // ============================================================
 
+function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    btn.querySelector('.eye-open').style.display = isHidden ? 'none' : '';
+    btn.querySelector('.eye-closed').style.display = isHidden ? '' : 'none';
+    btn.title = isHidden ? 'Hide password' : 'Show password';
+}
+
 function resetPasswordForm() {
     document.getElementById('changePasswordForm').reset();
     const fill = document.getElementById('strengthBarFill');
@@ -214,6 +224,16 @@ function resetPasswordForm() {
             const icon = li.querySelector('.req-icon');
             if (icon) icon.textContent = '\u25cb';
         }
+    });
+    // Reset eye toggles back to hidden state
+    document.querySelectorAll('#changePasswordForm .pw-eye-toggle').forEach(btn => {
+        const input = btn.closest('.input-password-wrap')?.querySelector('input');
+        if (input) input.type = 'password';
+        const open = btn.querySelector('.eye-open');
+        const closed = btn.querySelector('.eye-closed');
+        if (open) open.style.display = '';
+        if (closed) closed.style.display = 'none';
+        btn.title = 'Show password';
     });
 }
 
