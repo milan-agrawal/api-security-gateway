@@ -206,6 +206,15 @@ function resetPasswordForm() {
     if (text) { text.className = 'strength-text'; text.textContent = ''; }
     const hint = document.getElementById('passwordMatchHint');
     if (hint) hint.textContent = '';
+    // Reset requirement checklist
+    ['reqLength', 'reqUpper', 'reqLower', 'reqDigit'].forEach(id => {
+        const li = document.getElementById(id);
+        if (li) {
+            li.className = '';
+            const icon = li.querySelector('.req-icon');
+            if (icon) icon.textContent = '\u25cb';
+        }
+    });
 }
 
 function updatePasswordStrength() {
@@ -214,11 +223,36 @@ function updatePasswordStrength() {
     const text = document.getElementById('strengthText');
     if (!fill || !text) return;
 
+    // Check individual requirements
+    const checks = {
+        reqLength: pw.length >= 8,
+        reqUpper: /[A-Z]/.test(pw),
+        reqLower: /[a-z]/.test(pw),
+        reqDigit: /\d/.test(pw),
+    };
+
+    // Update requirement checklist icons
+    for (const [id, met] of Object.entries(checks)) {
+        const li = document.getElementById(id);
+        if (!li) continue;
+        const icon = li.querySelector('.req-icon');
+        if (pw.length === 0) {
+            li.className = '';
+            if (icon) icon.textContent = '○';
+        } else if (met) {
+            li.className = 'met';
+            if (icon) icon.textContent = '✓';
+        } else {
+            li.className = 'fail';
+            if (icon) icon.textContent = '✗';
+        }
+    }
+
     let score = 0;
-    if (pw.length >= 8) score++;
-    if (/[A-Z]/.test(pw)) score++;
-    if (/[a-z]/.test(pw)) score++;
-    if (/\d/.test(pw)) score++;
+    if (checks.reqLength) score++;
+    if (checks.reqUpper) score++;
+    if (checks.reqLower) score++;
+    if (checks.reqDigit) score++;
     if (/[^A-Za-z0-9]/.test(pw)) score++;
 
     const levels = ['', 'weak', 'fair', 'good', 'strong', 'strong'];
@@ -251,6 +285,18 @@ function checkPasswordMatch() {
     }
 }
 
+/**
+ * Validate new password client-side before calling API.
+ * Returns an error string or null if valid.
+ */
+function validateNewPassword(pw) {
+    if (pw.length < 8) return 'Password must be at least 8 characters';
+    if (!/[A-Z]/.test(pw)) return 'Password must contain at least one uppercase letter';
+    if (!/[a-z]/.test(pw)) return 'Password must contain at least one lowercase letter';
+    if (!/\d/.test(pw)) return 'Password must contain at least one digit';
+    return null;
+}
+
 async function handleChangePassword(e) {
     e.preventDefault();
     const btn = document.getElementById('btnChangePassword');
@@ -258,7 +304,19 @@ async function handleChangePassword(e) {
     const newPw = document.getElementById('newPassword').value;
     const confirm = document.getElementById('confirmPassword').value;
 
+    // Client-side validation — highlight failing requirements
+    const validationError = validateNewPassword(newPw);
+    if (validationError) {
+        // Trigger the strength meter to highlight failures
+        updatePasswordStrength();
+        // Scroll the password field into view
+        document.getElementById('newPassword').focus();
+        showToast(validationError, 'error');
+        return;
+    }
+
     if (newPw !== confirm) {
+        document.getElementById('confirmPassword').focus();
         showToast('Passwords do not match', 'error');
         return;
     }
@@ -280,19 +338,23 @@ async function handleChangePassword(e) {
 
         const result = await res.json();
         if (!res.ok) {
+            // Focus the current password field on auth error
+            if (result.detail && result.detail.toLowerCase().includes('current password')) {
+                document.getElementById('currentPassword').focus();
+            }
             showToast(result.detail || 'Failed to change password', 'error');
             return;
         }
 
-        showToast('Password changed! You will be logged out of other sessions.', 'success');
+        showToast('Password changed successfully!', 'success');
         resetPasswordForm();
 
         // Token version was bumped — current token is now invalid.
-        // Auto-logout after short delay so user sees the success message.
+        // Show a warning toast, then logout.
         setTimeout(() => {
-            showToast('Logging you out — please log in with your new password.', 'info');
-            setTimeout(() => logout(), 2000);
-        }, 2500);
+            showToast('Logging you out. Please log in with your new password.', 'info');
+            setTimeout(() => logout(), 2500);
+        }, 2000);
     } catch (err) {
         console.error('handleChangePassword:', err);
         showToast('Network error', 'error');
