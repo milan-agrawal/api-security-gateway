@@ -263,17 +263,15 @@
             const userEmail = localStorage.getItem('userEmail');
             const userRole = localStorage.getItem('userRole');
 
-            console.log('User Panel - Checking auth:', { token, userEmail, userRole });
+            // auth check (logs removed)
 
             if (!token) {
-                console.log('No token found, redirecting to login');
                 window.location.replace('http://localhost:3000/login.html');
                 return;
             }
 
             // Check if user has correct role
             if (userRole !== 'user') {
-                console.log('Invalid role:', userRole, 'expected: user');
                 alert('Access denied. This panel is for users only.');
                 window.location.replace('http://localhost:3000/login.html');
                 return;
@@ -284,7 +282,7 @@
                 document.getElementById('userEmail').textContent = userEmail;
             }
             
-            console.log('User authenticated successfully');
+            // authenticated
         }
 
         // Run auth check on page load

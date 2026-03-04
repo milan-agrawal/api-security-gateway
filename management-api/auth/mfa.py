@@ -24,6 +24,7 @@ from utils import (
     verify_backup_code,
     get_totp_uri
 )
+from utils import encrypt_secret, decrypt_secret
 
 router = APIRouter(prefix="/auth/mfa", tags=["MFA"])
 
@@ -251,10 +252,12 @@ def setup_mfa(
     # Generate new secret if not exists or setup not complete
     if not user.mfa_secret or not user.mfa_setup_complete:
         secret = generate_mfa_secret()
-        user.mfa_secret = secret
+        # store encrypted at rest if configured
+        user.mfa_secret = encrypt_secret(secret)
         db.commit()
     else:
-        secret = user.mfa_secret
+        # decrypt for use (if stored encrypted)
+        secret = decrypt_secret(user.mfa_secret)
     
     # Generate QR code
     qr_code = generate_qr_code_base64(secret, user.email)
@@ -301,8 +304,9 @@ def verify_mfa_setup(
     # Rate-limit setup verification
     _check_mfa_rate_limit(user.id)
     
-    # Verify the TOTP code
-    if not verify_totp(user.mfa_secret, request.otp_code):
+    # Verify the TOTP code (decrypt secret first if needed)
+    secret_plain = decrypt_secret(user.mfa_secret)
+    if not verify_totp(secret_plain, request.otp_code):
         _record_mfa_attempt(user.id)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -372,8 +376,9 @@ def verify_mfa(
             user.mfa_backup_codes = updated_codes
             db.commit()
     else:
-        # Verify TOTP code
-        is_valid = verify_totp(user.mfa_secret, request.otp_code)
+        # Verify TOTP code (decrypt secret first if needed)
+        secret_plain = decrypt_secret(user.mfa_secret)
+        is_valid = verify_totp(secret_plain, request.otp_code)
     
     if not is_valid:
         _record_mfa_attempt(user.id)

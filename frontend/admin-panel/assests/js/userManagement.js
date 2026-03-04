@@ -131,8 +131,7 @@ async function createUser(event) {
             role: 'user',
             enable_2fa: enable2FA
         };
-        console.log('Create User Request:', requestBody);
-        console.log('Request Headers:', getAuthHeaders());
+        // debug logs removed for security
 
         const response = await fetch(`${API_URL}/admin/users/create`, {
             method: 'POST',
@@ -141,7 +140,7 @@ async function createUser(event) {
         });
 
         const data = await response.json();
-        console.log('Create User Response:', { status: response.status, ok: response.ok, data });
+        // response logging removed to avoid leaking sensitive info
 
         if (response.ok) {
             showMessage('userMessage', data.message, 'success');
@@ -185,8 +184,7 @@ async function createAdmin(event) {
             full_name: fullName,
             role: 'admin'
         };
-        console.log('Create Admin Request:', requestBody);
-        console.log('Request Headers:', getAuthHeaders());
+        // debug logs removed for security
 
         const response = await fetch(`${API_URL}/admin/users/create`, {
             method: 'POST',
@@ -195,7 +193,7 @@ async function createAdmin(event) {
         });
 
         const data = await response.json();
-        console.log('Create Admin Response:', { status: response.status, ok: response.ok, data });
+        // response logging removed to avoid leaking sensitive info
 
         if (response.ok) {
             showMessage('adminMessage', data.message, 'success');
@@ -277,14 +275,13 @@ async function loadAdmins() {
     tbody.innerHTML = '<tr><td colspan="6" class="loading">Loading admins</td></tr>';
 
     try {
-        console.log('Loading admins from:', `${API_URL}/admin/users/list?role=admin`);
+        // removed debug log
         const response = await fetch(`${API_URL}/admin/users/list?role=admin`, {
             headers: getAuthHeaders()
         });
 
-        console.log('Admins response status:', response.status);
         const data = await response.json();
-        console.log('Admins data:', data);
+        // removed debug logs
 
         if (response.ok && data.users.length > 0) {
             document.getElementById('adminCount').textContent = `${data.total} Admin${data.total !== 1 ? 's' : ''}`;

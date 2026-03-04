@@ -13,6 +13,13 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Optional encryption for secrets at rest (Fernet)
+try:
+    from cryptography.fernet import Fernet, InvalidToken
+except Exception:
+    Fernet = None
+    InvalidToken = Exception
+
 
 def generate_secure_password(length: int = 12) -> str:
     """
@@ -50,6 +57,45 @@ def generate_secure_password(length: int = 12) -> str:
     secrets.SystemRandom().shuffle(password)
     
     return ''.join(password)
+
+
+def _get_fernet() -> Optional[object]:
+    """
+    Return a Fernet instance if `ENCRYPTION_KEY` is configured and
+    the cryptography library is available. Otherwise return None.
+    """
+    key = os.getenv('ENCRYPTION_KEY')
+    if not key or Fernet is None:
+        return None
+    try:
+        return Fernet(key)
+    except Exception:
+        return None
+
+
+def encrypt_secret(plain: str) -> str:
+    """Encrypt `plain` with Fernet if configured, otherwise return plain."""
+    f = _get_fernet()
+    if not f:
+        return plain
+    token = f.encrypt(plain.encode())
+    return token.decode()
+
+
+def decrypt_secret(token: str) -> str:
+    """Decrypt a Fernet token if possible, otherwise return the original string.
+
+    If decryption fails, assumes the value was stored plaintext and returns it.
+    """
+    f = _get_fernet()
+    if not f:
+        return token
+    try:
+        return f.decrypt(token.encode()).decode()
+    except InvalidToken:
+        return token
+    except Exception:
+        return token
 
 
 def send_credentials_email(
