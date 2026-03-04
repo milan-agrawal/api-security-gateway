@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from db import Base
@@ -14,6 +14,12 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), nullable=False)
+    
+    # MFA/2FA fields
+    mfa_enabled = Column(Boolean, default=False, nullable=False)  # Is MFA/2FA enabled
+    mfa_secret = Column(String, nullable=True)  # TOTP secret key (encrypted)
+    mfa_setup_complete = Column(Boolean, default=False, nullable=False)  # Has user completed setup
+    mfa_backup_codes = Column(Text, nullable=True)  # JSON array of hashed backup codes
     
     # Relationship to API keys
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")

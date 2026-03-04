@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Up Two-Factor Authentication - API Security Gateway</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* ================================================================
+           RESET & BASE
+           ================================================================ */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0B0F19;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #E2E8F0;
+            overflow-x: hidden;
+            padding: 40px 20px;
+            position: relative;
+        }
+
+        /* Ambient background glow */
+        body::before {
+            content: '';
+            position: fixed;
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+            top: -300px;
+            right: -300px;
+            pointer-events: none;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(6, 182, 212, 0.06) 0%, transparent 70%);
+            bottom: -250px;
+            left: -250px;
+            pointer-events: none;
+        }
+
+        /* ================================================================
+           PARTICLES
+           ================================================================ */
+        .particles {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .particle {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.5) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: float 22s infinite ease-in-out;
+        }
+        .particle:nth-child(1) { left: 8%; top: 18%; animation-delay: 0s; }
+        .particle:nth-child(2) { left: 22%; top: 75%; animation-delay: -4s; animation-duration: 18s; }
+        .particle:nth-child(3) { left: 40%; top: 45%; animation-delay: -9s; animation-duration: 26s; }
+        .particle:nth-child(4) { left: 60%; top: 25%; animation-delay: -14s; animation-duration: 20s; }
+        .particle:nth-child(5) { left: 78%; top: 65%; animation-delay: -2s; animation-duration: 24s; }
+        .particle:nth-child(6) { left: 88%; top: 38%; animation-delay: -7s; animation-duration: 21s; }
+        .particle.cyan { background: radial-gradient(circle, rgba(6, 182, 212, 0.45) 0%, transparent 70%); width: 7px; height: 7px; }
+        .particle.small { width: 3px; height: 3px; opacity: 0.5; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); opacity: 0.35; }
+            25%      { transform: translateY(-25px) translateX(12px); opacity: 0.65; }
+            50%      { transform: translateY(-10px) translateX(-8px); opacity: 0.45; }
+            75%      { transform: translateY(-35px) translateX(18px); opacity: 0.55; }
+        }
+
+        /* ================================================================
+           MAIN CARD
+           ================================================================ */
+        .mfa-wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .mfa-card {
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(59, 130, 246, 0.15);
+            border-radius: 24px;
+            padding: 44px 40px 40px;
+            backdrop-filter: blur(24px);
+            box-shadow:
+                0 0 0 1px rgba(59, 130, 246, 0.06),
+                0 20px 60px rgba(0, 0, 0, 0.55),
+                0 0 80px rgba(59, 130, 246, 0.04);
+            animation: cardIn 0.5s ease-out;
+        }
+
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(24px) scale(0.97); }
+            to   { opacity: 1; transform: none; }
+        }
+
+        /* ================================================================
+           HEADER
+           ================================================================ */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .header-icon {
+            width: 68px;
+            height: 68px;
+            margin: 0 auto 18px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(6, 182, 212, 0.15));
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-icon svg {
+            width: 32px;
+            height: 32px;
+            stroke: #3B82F6;
+            fill: none;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #F1F5F9;
+            margin-bottom: 6px;
+            letter-spacing: -0.3px;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: #94A3B8;
+            line-height: 1.5;
+        }
+
+        /* ================================================================
+           ALERT
+           ================================================================ */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(-8px);
+            transition: all 0.3s ease;
+            display: none;
+        }
+        .alert.show   { opacity: 1; transform: none; display: block; }
+        .alert.error   { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.25); color: #F87171; }
+        .alert.success { background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); color: #34D399; }
+
+        /* ================================================================
+           STEPPER
+           ================================================================ */
+        .steps {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+
+        .step-card {
+            flex: 1;
+            padding: 16px 14px;
+            background: rgba(30, 41, 59, 0.55);
+            border: 1px solid rgba(59, 130, 246, 0.08);
+            border-radius: 14px;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+        .step-card.active {
+            border-color: rgba(59, 130, 246, 0.3);
+            background: rgba(59, 130, 246, 0.06);
+        }
+
+        .step-badge {
+            width: 30px;
+            height: 30px;
+            margin: 0 auto 10px;
+            background: linear-gradient(135deg, #3B82F6, #06B6D4);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            color: white;
+        }
+
+        .step-card h3 {
+            font-size: 12px;
+            font-weight: 600;
+            color: #CBD5E1;
+            margin-bottom: 3px;
+        }
+
+        .step-card p {
+            font-size: 11px;
+            color: #64748B;
+            line-height: 1.4;
+        }
+
+        /* ================================================================
+           QR SECTION
+           ================================================================ */
+        .qr-panel {
+            background: rgba(30, 41, 59, 0.45);
+            border: 1px solid rgba(59, 130, 246, 0.1);
+            border-radius: 18px;
+            padding: 28px 24px;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .qr-panel-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #94A3B8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 18px;
+        }
+
+        .qr-frame {
+            width: 220px;
+            height: 220px;
+            margin: 0 auto 20px;
+            background: #FFFFFF;
+            border-radius: 16px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .qr-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 6px;
+        }
+
+        .qr-frame.loading {
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px dashed rgba(59, 130, 246, 0.25);
+        }
+
+        .qr-frame.loading::after {
+            content: '';
+            width: 36px;
+            height: 36px;
+            border: 3px solid rgba(59, 130, 246, 0.2);
+            border-top-color: #3B82F6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .manual-entry {
+            margin-top: 4px;
+        }
+
+        .manual-entry-label {
+            font-size: 12px;
+            color: #64748B;
+            margin-bottom: 8px;
+        }
+
+        .secret-key {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            font-weight: 500;
+            color: #60A5FA;
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.15);
+            padding: 10px 18px;
+            border-radius: 10px;
+            letter-spacing: 2.5px;
+            word-break: break-all;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            position: relative;
+        }
+
+        .secret-key:hover {
+            background: rgba(59, 130, 246, 0.14);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .secret-key.copied {
+            background: rgba(16, 185, 129, 0.12);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: #34D399;
+        }
+
+        .copy-hint {
+            display: block;
+            margin-top: 6px;
+            font-size: 11px;
+            color: #475569;
+        }
+
+        /* ================================================================
+           VERIFY SECTION (Step 3)
+           ================================================================ */
+        .verify-panel {
+            margin-bottom: 8px;
+        }
+
+        .verify-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #E2E8F0;
+            margin-bottom: 10px;
+        }
+
+        .otp-input-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .otp-digit {
+            width: 52px;
+            height: 62px;
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 26px;
+            font-weight: 600;
+            color: #F1F5F9;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1.5px solid rgba(59, 130, 246, 0.2);
+            border-radius: 12px;
+            outline: none;
+            caret-color: #3B82F6;
+            transition: all 0.2s ease;
+        }
+        .otp-digit::placeholder { color: #334155; }
+        .otp-digit:focus {
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+            background: rgba(15, 23, 42, 0.9);
+        }
+        .otp-digit.filled {
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+
+        /* Hidden real input for accessibility */
+        #verifyCode { position: absolute; opacity: 0; pointer-events: none; }
+
+        .btn-verify {
+            width: 100%;
+            padding: 15px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #3B82F6, #06B6D4);
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-verify:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(59, 130, 246, 0.35);
+        }
+        .btn-verify:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        .btn-verify:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        .btn-verify .spinner {
+            display: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .btn-verify.loading .spinner { display: inline-block; }
+
+        /* ================================================================
+           BACKUP CODES
+           ================================================================ */
+        .backup-panel {
+            margin-top: 28px;
+            padding: 24px;
+            background: rgba(16, 185, 129, 0.04);
+            border: 1px solid rgba(16, 185, 129, 0.15);
+            border-radius: 18px;
+            display: none;
+            animation: slideIn 0.4s ease-out;
+        }
+        .backup-panel.show { display: block; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: none; }
+        }
+
+        .backup-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .backup-header svg {
+            width: 20px;
+            height: 20px;
+            stroke: #10B981;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .backup-header h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #34D399;
+        }
+
+        .backup-panel > p {
+            font-size: 12px;
+            color: #94A3B8;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+
+        .backup-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+
+        .backup-code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 10px 8px;
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.12);
+            border-radius: 8px;
+            text-align: center;
+            color: #E2E8F0;
+            letter-spacing: 1px;
+        }
+
+        .backup-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-backup {
+            flex: 1;
+            padding: 11px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            background: transparent;
+            color: #34D399;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn-backup:hover { background: rgba(16, 185, 129, 0.08); }
+        .btn-backup svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+        /* ================================================================
+           CONTINUE BUTTON
+           ================================================================ */
+        .btn-continue {
+            width: 100%;
+            padding: 15px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #10B981, #059669);
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            margin-top: 18px;
+            display: none;
+            transition: all 0.3s ease;
+            animation: slideIn 0.4s ease-out;
+        }
+        .btn-continue.show { display: block; }
+        .btn-continue:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(16, 185, 129, 0.3);
+        }
+
+        /* ================================================================
+           SUCCESS OVERLAY ON CARD
+           ================================================================ */
+        .success-badge {
+            display: none;
+            text-align: center;
+            padding: 20px 0 4px;
+        }
+        .success-badge.show { display: block; animation: slideIn 0.3s ease-out; }
+        .success-badge svg {
+            width: 56px;
+            height: 56px;
+            stroke: #34D399;
+            fill: none;
+            stroke-width: 1.5;
+        }
+        .success-badge h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #34D399;
+            margin-top: 12px;
+        }
+        .success-badge p {
+            font-size: 13px;
+            color: #94A3B8;
+            margin-top: 4px;
+        }
+
+        /* ================================================================
+           RESPONSIVE
+           ================================================================ */
+        @media (max-width: 540px) {
+            .mfa-card { padding: 28px 20px 24px; border-radius: 18px; }
+            .steps { flex-direction: column; gap: 8px; }
+            .qr-frame { width: 180px; height: 180px; }
+            .otp-digit { width: 44px; height: 54px; font-size: 22px; }
+            .backup-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating Particles -->
+    <div class="particles">
+        <div class="particle"></div>
+        <div class="particle cyan"></div>
+        <div class="particle small"></div>
+        <div class="particle"></div>
+        <div class="particle cyan small"></div>
+        <div class="particle small"></div>
+    </div>
+
+    <div class="mfa-wrapper">
+        <div class="mfa-card">
+            <!-- Header -->
+            <div class="header">
+                <div class="header-icon">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        <circle cx="12" cy="16" r="1"/>
+                    </svg>
+                </div>
+                <h1>Two-Factor Authentication</h1>
+                <p>Add an extra layer of security to your account</p>
+            </div>
+
+            <!-- Alert -->
+            <div id="alert" class="alert"></div>
+
+            <!-- Steps Indicator -->
+            <div class="steps">
+                <div class="step-card active" id="stepCard1">
+                    <div class="step-badge">1</div>
+                    <h3>Get an App</h3>
+                    <p>Google Authenticator, Authy, etc.</p>
+                </div>
+                <div class="step-card" id="stepCard2">
+                    <div class="step-badge">2</div>
+                    <h3>Scan QR Code</h3>
+                    <p>Link your authenticator app</p>
+                </div>
+                <div class="step-card" id="stepCard3">
+                    <div class="step-badge">3</div>
+                    <h3>Verify Code</h3>
+                    <p>Enter 6-digit code</p>
+                </div>
+            </div>
+
+            <!-- QR Code Section -->
+            <div class="qr-panel" id="qrPanel">
+                <div class="qr-panel-label">Scan with Authenticator</div>
+                <div class="qr-frame loading" id="qrCode"></div>
+                <div class="manual-entry">
+                    <p class="manual-entry-label">Can't scan? Enter this key manually:</p>
+                    <div class="secret-key" id="secretCode" onclick="copySecret()">Loading...</div>
+                    <span class="copy-hint">Click to copy</span>
+                </div>
+            </div>
+
+            <!-- Verify Section -->
+            <div class="verify-panel" id="verifyPanel">
+                <label class="verify-label" for="otpDigit1">Enter the 6-digit code from your app</label>
+                <div class="otp-input-row" id="otpInputRow">
+                    <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="0" autocomplete="off">
+                    <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="1" autocomplete="off">
+                    <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="2" autocomplete="off">
+                    <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="3" autocomplete="off">
+                    <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="4" autocomplete="off">
+                    <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="5" autocomplete="off">
+                </div>
+                <!-- Hidden input to hold the combined value (for JS compatibility) -->
+                <input type="hidden" id="verifyCode">
+                <button type="button" class="btn-verify" id="completeSetup" disabled>
+                    <span class="spinner"></span>
+                    Complete Setup
+                </button>
+            </div>
+
+            <!-- Success Badge (shown after setup) -->
+            <div class="success-badge" id="successBadge">
+                <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 12l2.5 2.5L16 9"/>
+                </svg>
+                <h2>Setup Complete!</h2>
+                <p>Save your backup codes below before continuing</p>
+            </div>
+
+            <!-- Backup Codes -->
+            <div class="backup-panel" id="backupCodesSection">
+                <div class="backup-header">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    <h3>Backup Codes</h3>
+                </div>
+                <p>Store these codes somewhere safe. Each code can only be used once if you lose access to your authenticator.</p>
+                <div class="backup-grid" id="backupCodesGrid"></div>
+                <div class="backup-actions">
+                    <button class="btn-backup" onclick="downloadBackupCodes()">
+                        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download
+                    </button>
+                    <button class="btn-backup" onclick="copyBackupCodes()">
+                        <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        Copy All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Continue Button -->
+            <button type="button" class="btn-continue" id="continueBtn">
+                Continue to Dashboard &rarr;
+            </button>
+        </div>
+    </div>
+
+    <script src="assets/js/mfa-setup.js"></script>
+</body>
+</html>

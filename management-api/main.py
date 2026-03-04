@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
+from typing import Optional
 import jwt
 import os
 
@@ -11,6 +12,7 @@ from db import engine, Base
 from models import User
 from deps import get_db
 from admin import router as admin_router
+from auth.mfa import router as mfa_router, create_mfa_temp_token
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -19,6 +21,7 @@ app = FastAPI(title="Management API", version="1.0.0")
 
 # Include routers
 app.include_router(admin_router)
+app.include_router(mfa_router)
 
 # CORS middleware - Restrict to specific origins
 ALLOWED_ORIGINS = [
@@ -55,10 +58,14 @@ class LoginRequest(BaseModel):
     password: str
 
 class LoginResponse(BaseModel):
-    token: str
+    token: Optional[str] = None
     email: str
     role: str
     full_name: str
+    # MFA fields
+    mfa_required: bool = False
+    mfa_setup_required: bool = False
+    temp_token: Optional[str] = None
 
 # Helper functions
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -85,7 +92,8 @@ def root():
 @app.post("/auth/login", response_model=LoginResponse)
 def login(credentials: LoginRequest, db: Session = Depends(get_db)):
     """
-    Authenticate user and return JWT token
+    Authenticate user and return JWT token.
+    If MFA is enabled, returns temp_token instead for MFA verification.
     """
     # Find user by email
     user = db.query(User).filter(User.email == credentials.email).first()
@@ -110,7 +118,22 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
             detail="Account is disabled"
         )
     
-    # Create JWT token
+    # Check if MFA is enabled
+    if user.mfa_enabled:
+        # Generate temporary token for MFA verification
+        temp_token = create_mfa_temp_token(user.email, user.id)
+        
+        return LoginResponse(
+            token=None,
+            email=user.email,
+            role=user.role,
+            full_name=user.full_name,
+            mfa_required=True,
+            mfa_setup_required=not user.mfa_setup_complete,
+            temp_token=temp_token
+        )
+    
+    # No MFA - create full JWT token
     token_data = {
         "sub": user.email,
         "role": user.role,
@@ -122,7 +145,10 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
         token=token,
         email=user.email,
         role=user.role,
-        full_name=user.full_name
+        full_name=user.full_name,
+        mfa_required=False,
+        mfa_setup_required=False,
+        temp_token=None
     )
 
 @app.get("/health")

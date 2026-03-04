@@ -99,6 +99,7 @@ class CreateUserRequest(BaseModel):
     email: EmailStr
     full_name: str
     role: str  # "user" or "admin"
+    enable_2fa: bool = False  # Optional 2FA for users, auto-enabled for admins
     
     # Input validation
     @validator('full_name')
@@ -124,6 +125,7 @@ class CreateUserResponse(BaseModel):
     user_id: int
     email: str
     role: str
+    mfa_enabled: bool  # Whether MFA/2FA is enabled for this account
 
 class UserListItem(BaseModel):
     id: int
@@ -210,6 +212,11 @@ def create_user(
     plain_password = generate_secure_password(12)
     password_hash = pwd_context.hash(plain_password)
     
+    # Determine if MFA should be enabled
+    # - Admins: MFA is MANDATORY (always enabled)
+    # - Users: MFA is optional (based on enable_2fa checkbox)
+    mfa_enabled = request.role == "admin" or request.enable_2fa
+    
     # Create user with is_active=False
     new_user = User(
         email=request.email,
@@ -217,6 +224,8 @@ def create_user(
         full_name=request.full_name,
         role=request.role,
         is_active=False,  # Will be activated after 2 minutes
+        mfa_enabled=mfa_enabled,  # Set MFA status
+        mfa_setup_complete=False,  # User must complete setup on first login
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc)
     )
@@ -231,7 +240,8 @@ def create_user(
         recipient_email=request.email,
         full_name=request.full_name,
         password=plain_password,
-        role=request.role
+        role=request.role,
+        mfa_enabled=mfa_enabled
     )
     
     # Schedule account activation for 2 minutes later
@@ -243,12 +253,21 @@ def create_user(
     # Track successful creation for rate limiting
     user_creation_attempts[admin.email].append(now)
     
+    # Build response message
+    mfa_info = ""
+    if mfa_enabled:
+        if request.role == "admin":
+            mfa_info = " MFA is mandatory - setup required on first login."
+        else:
+            mfa_info = " 2FA is enabled - setup required on first login."
+    
     return CreateUserResponse(
         success=True,
-        message=f"{request.role.capitalize()} account created. Credentials sent to {request.email}. Account will be activated in 2 minutes.",
+        message=f"{request.role.capitalize()} account created. Credentials sent to {request.email}. Account will be activated in 2 minutes.{mfa_info}",
         user_id=new_user.id,
         email=new_user.email,
-        role=new_user.role
+        role=new_user.role,
+        mfa_enabled=mfa_enabled
     )
 
 

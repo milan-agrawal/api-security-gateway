@@ -100,6 +100,42 @@
                 </button>
             </form>
 
+            <!-- MFA/2FA OTP Form (Hidden by default) -->
+            <form id="otpForm" style="display: none;">
+                <div class="otp-header">
+                    <div class="otp-icon">🔐</div>
+                    <h2>Two-Factor Authentication</h2>
+                    <p>Enter the 6-digit code from your authenticator app</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="otpCode">Authentication Code</label>
+                    <div class="otp-input-wrapper">
+                        <input 
+                            type="text" 
+                            id="otpCode" 
+                            name="otpCode" 
+                            placeholder="000000"
+                            maxlength="6"
+                            pattern="[0-9]{6}"
+                            inputmode="numeric"
+                            autocomplete="one-time-code"
+                            required
+                        >
+                    </div>
+                    <span class="otp-hint">Open Google Authenticator or your preferred app</span>
+                </div>
+
+                <button type="submit" class="btn-login">
+                    Verify Code
+                </button>
+
+                <div class="otp-options">
+                    <button type="button" class="btn-link" id="useBackupCode">Use backup code instead</button>
+                    <button type="button" class="btn-link" id="backToLogin">← Back to login</button>
+                </div>
+            </form>
+
             <div class="divider">
                 <span>Don't have an account?</span>
             </div>
@@ -134,6 +170,6 @@
         </div>
     </div>
 
-    <script src="assets/js/login.js?v=5"></script>
+    <script src="assets/js/login.js?v=6"></script>
 </body>
 </html>

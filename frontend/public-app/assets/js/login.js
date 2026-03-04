@@ -28,9 +28,18 @@ if (urlParams.get('logout') === 'true') {
     window.history.replaceState({}, document.title, '/login.html');
 }
 
+// Prevent a stale stored token from bypassing MFA when visiting the login page.
+// If the caller explicitly wants to keep an existing token, they can pass
+// `?keepToken=true` in the URL.
+if (!urlParams.get('keepToken')) {
+    localStorage.removeItem('token');
+}
+
 const loginForm = document.getElementById('loginForm');
+const otpForm = document.getElementById('otpForm');
 const emailInput = document.getElementById('email');
 const passwordInput = document.getElementById('password');
+const otpInput = document.getElementById('otpCode');
 const alertBox = document.getElementById('alert');
 const submitButton = loginForm.querySelector('button[type="submit"]');
 const togglePasswordBtn = document.getElementById('togglePassword');
@@ -39,6 +48,10 @@ const eyeOffIcon = document.getElementById('eyeOffIcon');
 const skeletonLoader = document.getElementById('skeletonLoader');
 const loginCard = document.querySelector('.login-card');
 const capsLockWarning = document.getElementById('capsLockWarning');
+
+// MFA state
+let mfaTempToken = null;
+let mfaEmail = null;
 
 // Password visibility toggle
 togglePasswordBtn.addEventListener('click', () => {
@@ -147,9 +160,33 @@ loginForm.addEventListener('submit', async (e) => {
 
         const data = await response.json();
         
-        console.log('Login response:', response.ok, data);
-
         if (response.ok) {
+            // Check if MFA is required
+            if (data.mfa_required) {
+                // Store temp token and email for MFA verification
+                mfaTempToken = data.temp_token;
+                mfaEmail = email;
+                
+                // Hide loading
+                loginCard.classList.remove('loading');
+                skeletonLoader.classList.remove('active');
+                submitButton.disabled = false;
+                
+                // Check if MFA setup is needed
+                if (data.mfa_setup_required) {
+                    // Redirect to MFA setup page
+                    showAlert('MFA setup required. Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = `mfa-setup.html?token=${encodeURIComponent(mfaTempToken)}&email=${encodeURIComponent(mfaEmail)}`;
+                    }, 1000);
+                } else {
+                    // Show OTP form
+                    showOTPForm();
+                }
+                return;
+            }
+            
+            // No MFA required - proceed with login
             // Clear any old login data first
             localStorage.clear();
             
@@ -161,32 +198,13 @@ loginForm.addEventListener('submit', async (e) => {
             localStorage.setItem('userEmail', data.email);
             localStorage.setItem('userRole', data.role);
             localStorage.setItem('fullName', data.full_name);
-            
-            console.log('Stored in localStorage:', {
-                token: data.token,
-                email: data.email,
-                role: data.role,
-                full_name: data.full_name
-            });
 
             // Show success message
             showAlert('Login successful! Redirecting...', 'success');
 
             // Redirect based on user role with auth data in URL
             setTimeout(() => {
-                console.log('Redirecting to:', data.role === 'admin' ? 'admin panel' : 'user panel');
-                const params = new URLSearchParams({
-                    token: data.token,
-                    email: data.email,
-                    role: data.role,
-                    fullName: data.full_name
-                });
-                
-                if (data.role === 'admin') {
-                    window.location.href = `http://localhost:3002/index.html?${params.toString()}`;
-                } else {
-                    window.location.href = `http://localhost:3001/index.html?${params.toString()}`;
-                }
+                redirectToPanel(data);
             }, 1000);
         } else {
             // Show error message from server
@@ -206,7 +224,124 @@ loginForm.addEventListener('submit', async (e) => {
     }
 });
 
-// Auto-fill for development (remove in production)
-if (window.location.hostname === 'localhost') {
-    console.log('Development mode - Form validation active');
+// Show OTP form
+function showOTPForm() {
+    loginForm.style.display = 'none';
+    otpForm.style.display = 'block';
+    // Hide divider and signup
+    document.querySelector('.divider').style.display = 'none';
+    document.querySelector('.signup-link').style.display = 'none';
+    // Focus on OTP input
+    setTimeout(() => otpInput.focus(), 100);
 }
+
+// Hide OTP form
+function hideOTPForm() {
+    otpForm.style.display = 'none';
+    loginForm.style.display = 'block';
+    document.querySelector('.divider').style.display = 'block';
+    document.querySelector('.signup-link').style.display = 'block';
+    mfaTempToken = null;
+    mfaEmail = null;
+    otpInput.value = '';
+}
+
+// Redirect to appropriate panel
+function redirectToPanel(data) {
+    // For cross-origin dashboards (different ports) we must pass the token
+    // so the target origin can store it in its own localStorage. Use query
+    // params and let the panel clean the URL after storing the values.
+    const qs = new URLSearchParams({
+        token: data.token || '',
+        email: data.email || '',
+        role: data.role || '',
+        fullName: data.full_name || ''
+    }).toString();
+
+    if (data.role === 'admin') {
+        window.location.href = `http://localhost:3002/index.html?${qs}`;
+    } else {
+        window.location.href = `http://localhost:3001/index.html?${qs}`;
+    }
+}
+
+// OTP Form submission
+otpForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const otpCode = otpInput.value.trim();
+    
+    if (!otpCode || otpCode.length !== 6 || !/^\d{6}$/.test(otpCode)) {
+        showAlert('Please enter a valid 6-digit code');
+        triggerShake();
+        return;
+    }
+    
+    const otpSubmitBtn = otpForm.querySelector('button[type="submit"]');
+    otpSubmitBtn.disabled = true;
+    otpSubmitBtn.textContent = 'Verifying...';
+    
+    try {
+        const response = await fetch('http://localhost:8001/auth/mfa/verify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                temp_token: mfaTempToken,
+                otp_code: otpCode
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Clear any old login data first
+            localStorage.clear();
+            sessionStorage.removeItem('loggedOut');
+            
+            // Store authentication data
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('userEmail', data.email);
+            localStorage.setItem('userRole', data.role);
+            localStorage.setItem('fullName', data.full_name);
+            
+            showAlert('Verification successful! Redirecting...', 'success');
+            
+            setTimeout(() => {
+                redirectToPanel(data);
+            }, 1000);
+        } else {
+            showAlert(data.detail || 'Invalid code. Please try again.');
+            triggerShake();
+            otpSubmitBtn.disabled = false;
+            otpSubmitBtn.textContent = 'Verify Code';
+            otpInput.value = '';
+            otpInput.focus();
+        }
+    } catch (error) {
+        console.error('MFA verify error:', error);
+        showAlert('Unable to verify code. Please try again.');
+        triggerShake();
+        otpSubmitBtn.disabled = false;
+        otpSubmitBtn.textContent = 'Verify Code';
+    }
+});
+
+// Back to login button
+document.getElementById('backToLogin')?.addEventListener('click', () => {
+    hideOTPForm();
+});
+
+// Use backup code button (placeholder for now)
+document.getElementById('useBackupCode')?.addEventListener('click', () => {
+    showAlert('Backup code feature coming soon', 'info');
+});
+
+// Auto-format OTP input (numbers only, auto-submit when 6 digits)
+otpInput?.addEventListener('input', (e) => {
+    // Remove non-numeric characters
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+});
+
+

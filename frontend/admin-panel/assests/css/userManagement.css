@@ -696,3 +696,165 @@
         padding: 2px var(--space-2);
     }
 }
+
+/* ============================================
+   2FA TOGGLE SWITCH
+   ============================================ */
+
+.tfa-toggle-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: var(--space-4) 0;
+    padding: 14px 16px;
+    background: rgba(59, 130, 246, 0.04);
+    border: 1px solid rgba(59, 130, 246, 0.12);
+    border-radius: var(--radius-md);
+    transition: border-color 0.25s ease, background 0.25s ease;
+}
+
+.tfa-toggle-card:hover {
+    border-color: rgba(59, 130, 246, 0.25);
+    background: rgba(59, 130, 246, 0.07);
+}
+
+.tfa-toggle-card:has(input:checked) {
+    border-color: rgba(59, 130, 246, 0.35);
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.tfa-toggle-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.tfa-toggle-icon {
+    font-size: 22px;
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 10px;
+}
+
+.tfa-toggle-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.tfa-toggle-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.tfa-toggle-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.35;
+}
+
+/* Toggle switch */
+.tfa-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.tfa-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.tfa-slider {
+    position: absolute;
+    inset: 0;
+    background: rgba(100, 116, 139, 0.35);
+    border-radius: 24px;
+    transition: background 0.25s ease;
+}
+
+.tfa-slider::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: #CBD5E1;
+    border-radius: 50%;
+    transition: transform 0.25s ease, background 0.25s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.tfa-switch input:checked + .tfa-slider {
+    background: linear-gradient(135deg, #3B82F6, #06B6D4);
+}
+
+.tfa-switch input:checked + .tfa-slider::before {
+    transform: translateX(20px);
+    background: #FFFFFF;
+}
+
+.tfa-switch:hover .tfa-slider {
+    background: rgba(100, 116, 139, 0.5);
+}
+
+.tfa-switch:hover input:checked + .tfa-slider {
+    background: linear-gradient(135deg, #2563EB, #0891B2);
+}
+
+/* ============================================
+   MFA MANDATORY NOTICE (Admin)
+   ============================================ */
+
+.mfa-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(6, 182, 212, 0.08) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: var(--radius-md);
+    margin: var(--space-4) 0;
+}
+
+.mfa-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.mfa-text {
+    flex: 1;
+}
+
+.mfa-text strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--success);
+    margin-bottom: var(--space-1);
+    letter-spacing: 0.3px;
+}
+
+.mfa-text p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.4;
+}

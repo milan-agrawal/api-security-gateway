@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assests/css/userManagement.css?v=8">
+    <link rel="stylesheet" href="assests/css/userManagement.css?v=10">
 </head>
 <body>
     <div class="container">
@@ -52,6 +52,19 @@
                             required
                         >
                     </div>
+                    <div class="tfa-toggle-card">
+                        <div class="tfa-toggle-left">
+                            <div class="tfa-toggle-icon">🔐</div>
+                            <div class="tfa-toggle-info">
+                                <span class="tfa-toggle-title">Two-Factor Authentication</span>
+                                <span class="tfa-toggle-desc">User will set up authenticator app on first login</span>
+                            </div>
+                        </div>
+                        <label class="tfa-switch">
+                            <input type="checkbox" id="userEnable2FA">
+                            <span class="tfa-slider"></span>
+                        </label>
+                    </div>
                     <button type="submit" class="btn-submit">Create User Account</button>
                     <div id="userMessage" class="message"></div>
                 </form>
@@ -79,6 +92,13 @@
                             placeholder="Jane Smith" 
                             required
                         >
+                    </div>
+                    <div class="mfa-notice">
+                        <span class="mfa-icon">🔐</span>
+                        <div class="mfa-text">
+                            <strong>Multi-Factor Authentication: MANDATORY</strong>
+                            <p>Admin will set up authenticator app on first login</p>
+                        </div>
                     </div>
                     <button type="submit" class="btn-submit">Create Admin Account</button>
                     <div id="adminMessage" class="message"></div>
@@ -144,6 +164,6 @@
         </div>
     </div>
 
-    <script src="assests/js/userManagement.js?v=4"></script>
+    <script src="assests/js/userManagement.js?v=5"></script>
 </body>
 </html>

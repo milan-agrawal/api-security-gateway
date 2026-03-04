@@ -56,7 +56,8 @@ def send_credentials_email(
     recipient_email: str,
     full_name: str,
     password: str,
-    role: str
+    role: str,
+    mfa_enabled: bool = False
 ) -> bool:
     """
     Send credentials to new user via Gmail SMTP
@@ -66,6 +67,7 @@ def send_credentials_email(
         full_name: User's full name
         password: Generated password
         role: User role (user/admin)
+        mfa_enabled: Whether MFA/2FA is enabled for this account
     
     Returns:
         bool: True if email sent successfully, False otherwise
@@ -451,6 +453,28 @@ def send_credentials_email(
                 </div>
             </div>
             
+            <!-- MFA/2FA Notice (if enabled) -->
+            {"" if not mfa_enabled else '''
+            <div class="info-box" style="border-left: 4px solid #667eea;">
+                <div class="title">
+                    <span class="icon">🔐</span>
+                    <span>''' + ("Multi-Factor Authentication (MFA)" if role == "admin" else "Two-Factor Authentication (2FA)") + '''</span>
+                </div>
+                <div class="text">
+                    <strong>''' + ("MFA is mandatory for admin accounts." if role == "admin" else "2FA has been enabled for your account.") + '''</strong><br><br>
+                    On your first login, you will be prompted to set up an authenticator app (Google Authenticator, Microsoft Authenticator, or Authy).
+                    <br><br>
+                    <strong>Setup process:</strong>
+                    <ol style="margin: 10px 0; padding-left: 20px;">
+                        <li>Download Google Authenticator or Microsoft Authenticator on your phone</li>
+                        <li>Scan the QR code shown after your first login</li>
+                        <li>Enter the 6-digit code from the app to complete setup</li>
+                    </ol>
+                    After setup, you will need to enter a code from your authenticator app each time you log in.
+                </div>
+            </div>
+            '''}
+            
             <!-- Activation Info -->
             <div class="info-box">
                 <div class="title">
@@ -647,3 +671,172 @@ Please do not reply to this email.
         print(f"WARNING: Failed to deliver credentials. Please send manually.")
         # ⚠️ SECURITY: Never log passwords
         return False
+
+
+# =============================================================================
+# MFA/2FA UTILITIES
+# =============================================================================
+
+import pyotp
+import qrcode
+import io
+import base64
+import json
+import hashlib
+
+
+def generate_mfa_secret() -> str:
+    """
+    Generate a new TOTP secret for MFA setup.
+    
+    Returns:
+        str: Base32-encoded secret key
+    """
+    return pyotp.random_base32()
+
+
+def get_totp_uri(secret: str, email: str, issuer: str = "API Security Gateway") -> str:
+    """
+    Generate the OTP auth URI for QR code.
+    
+    Args:
+        secret: Base32-encoded secret
+        email: User's email (used as account name)
+        issuer: App name shown in authenticator
+    
+    Returns:
+        str: otpauth:// URI
+    """
+    totp = pyotp.TOTP(secret)
+    return totp.provisioning_uri(name=email, issuer_name=issuer)
+
+
+def generate_qr_code_base64(secret: str, email: str) -> str:
+    """
+    Generate QR code as base64 image for authenticator app setup.
+    
+    Args:
+        secret: Base32-encoded TOTP secret
+        email: User's email
+    
+    Returns:
+        str: Base64-encoded PNG image
+    """
+    uri = get_totp_uri(secret, email)
+    
+    # Generate QR code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(uri)
+    qr.make(fit=True)
+    
+    # Create image
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Convert to base64 with data URI prefix so it can be used directly in <img src="...">
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    
+    b64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    return f"data:image/png;base64,{b64}"
+
+
+def verify_totp(secret: str, code: str, valid_window: int = 1) -> bool:
+    """
+    Verify a TOTP code.
+    
+    Args:
+        secret: Base32-encoded secret
+        code: 6-digit code from authenticator
+        valid_window: Number of 30-sec windows to allow (1 = ±30 sec)
+    
+    Returns:
+        bool: True if code is valid
+    """
+    if not secret or not code:
+        return False
+    
+    # Clean the code (remove spaces, ensure 6 digits)
+    code = code.replace(" ", "").strip()
+    if not code.isdigit() or len(code) != 6:
+        return False
+    
+    totp = pyotp.TOTP(secret)
+    return totp.verify(code, valid_window=valid_window)
+
+
+def generate_backup_codes(count: int = 8) -> tuple[list[str], list[str]]:
+    """
+    Generate backup codes for MFA recovery.
+    
+    Args:
+        count: Number of backup codes to generate
+    
+    Returns:
+        tuple: (plain_codes for user, hashed_codes for storage)
+    """
+    plain_codes = []
+    hashed_codes = []
+    
+    for _ in range(count):
+        # Generate 8-character alphanumeric code
+        code = secrets.token_hex(4).upper()  # e.g., "A1B2C3D4"
+        plain_codes.append(code)
+        
+        # Hash for secure storage
+        hashed = hashlib.sha256(code.encode()).hexdigest()
+        hashed_codes.append(hashed)
+    
+    return plain_codes, hashed_codes
+
+
+def verify_backup_code(code: str, hashed_codes_json: str) -> tuple[bool, str]:
+    """
+    Verify a backup code and remove it from the list if valid.
+    
+    Args:
+        code: Plain backup code entered by user
+        hashed_codes_json: JSON string of hashed backup codes
+    
+    Returns:
+        tuple: (is_valid, updated_hashed_codes_json)
+    """
+    if not code or not hashed_codes_json:
+        return False, hashed_codes_json
+    
+    code = code.replace(" ", "").replace("-", "").upper().strip()
+    hashed_input = hashlib.sha256(code.encode()).hexdigest()
+    
+    try:
+        hashed_codes = json.loads(hashed_codes_json)
+    except json.JSONDecodeError:
+        return False, hashed_codes_json
+    
+    if hashed_input in hashed_codes:
+        # Remove used code
+        hashed_codes.remove(hashed_input)
+        return True, json.dumps(hashed_codes)
+    
+    return False, hashed_codes_json
+
+
+def format_backup_codes_for_display(codes: list[str]) -> str:
+    """
+    Format backup codes for user display (grouped pairs).
+    
+    Args:
+        codes: List of backup codes
+    
+    Returns:
+        str: Formatted string with codes in pairs
+    """
+    formatted = []
+    for i in range(0, len(codes), 2):
+        pair = codes[i:i+2]
+        formatted.append("  •  ".join(pair))
+    return "\n".join(formatted)

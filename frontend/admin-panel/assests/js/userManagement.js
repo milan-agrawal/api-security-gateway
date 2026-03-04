@@ -118,6 +118,7 @@ async function createUser(event) {
     event.preventDefault();
     const email = document.getElementById('userEmail').value;
     const fullName = document.getElementById('userFullName').value;
+    const enable2FA = document.getElementById('userEnable2FA')?.checked || false;
     const submitBtn = event.target.querySelector('.btn-submit');
 
     submitBtn.disabled = true;
@@ -127,7 +128,8 @@ async function createUser(event) {
         const requestBody = {
             email: email,
             full_name: fullName,
-            role: 'user'
+            role: 'user',
+            enable_2fa: enable2FA
         };
         console.log('Create User Request:', requestBody);
         console.log('Request Headers:', getAuthHeaders());
