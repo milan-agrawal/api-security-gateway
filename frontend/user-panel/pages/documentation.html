@@ -1,1 +1,585 @@
-﻿Need To be Done
+﻿<link rel="stylesheet" href="assets/css/documentation.css?v=1">
+
+<div class="docs-page">
+
+    <!-- ============================================================
+         HERO HEADER
+         ============================================================ -->
+    <div class="docs-hero">
+        <div class="docs-hero-icon">
+            <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        </div>
+        <div class="docs-hero-text">
+            <h1>Documentation</h1>
+            <p>Everything you need to get started with the API Security Gateway — from authentication to sending your first protected request.</p>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         LAYOUT: TOC + CONTENT
+         ============================================================ -->
+    <div class="docs-layout">
+
+        <!-- Sticky Table of Contents -->
+        <nav class="docs-toc">
+            <p class="docs-toc-title">On this page</p>
+            <ul class="docs-toc-list">
+                <li><a href="#doc-getting-started" class="active">Getting Started</a></li>
+                <li><a href="#doc-authentication">Authentication</a></li>
+                <li><a href="#doc-api-keys">API Keys</a></li>
+                <li><a href="#doc-first-request">First Request</a></li>
+                <li><a href="#doc-security">Security &amp; Protection</a></li>
+                <li><a href="#doc-rate-limiting">Rate Limiting</a></li>
+                <li><a href="#doc-error-handling">Error Handling</a></li>
+            </ul>
+        </nav>
+
+        <!-- Content Sections -->
+        <div class="docs-content">
+
+            <!-- ─── 1. GETTING STARTED ─── -->
+            <div class="docs-section" id="doc-getting-started">
+                <div class="docs-section-header">
+                    <div class="docs-section-icon blue">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </div>
+                    <div class="docs-section-title">
+                        <h3>Getting Started</h3>
+                        <p>What the gateway does &amp; how to begin</p>
+                    </div>
+                    <svg class="docs-section-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+                <div class="docs-section-body">
+                    <h4>What Is the API Security Gateway?</h4>
+                    <p>The API Security Gateway is an intelligent security layer that protects your APIs from threats. Every incoming request is automatically inspected, scored for risk, and either allowed or blocked — all before it reaches your application.</p>
+
+                    <h4>Key Capabilities</h4>
+                    <ul>
+                        <li><strong>Threat Detection</strong> — Automatically identifies and blocks SQL injection, XSS, path traversal, and other common attacks.</li>
+                        <li><strong>Rate Limiting</strong> — Prevents abuse by enforcing per-key request limits.</li>
+                        <li><strong>ML-Powered Analysis</strong> — Uses machine learning to detect anomalous behavior that static rules might miss.</li>
+                        <li><strong>Real-Time Monitoring</strong> — Every request is logged and analyzed for security insights.</li>
+                        <li><strong>Multi-Factor Authentication</strong> — Secure your account with TOTP-based two-factor authentication.</li>
+                    </ul>
+
+                    <h4>Quick Start Checklist</h4>
+                    <ol>
+                        <li>Log in to your account and enable <strong>2FA</strong> from your Profile page.</li>
+                        <li>Navigate to <strong>API Keys</strong> and generate your first key.</li>
+                        <li>Use the gateway base URL provided in your dashboard to send requests.</li>
+                        <li>Include your API key in the <code>X-API-KEY</code> header with every request.</li>
+                    </ol>
+
+                    <div class="docs-callout info">
+                        <svg class="docs-callout-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>All API traffic must go through the gateway. Direct access to protected resources is not permitted.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── 2. AUTHENTICATION ─── -->
+            <div class="docs-section" id="doc-authentication">
+                <div class="docs-section-header">
+                    <div class="docs-section-icon green">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    </div>
+                    <div class="docs-section-title">
+                        <h3>Authentication</h3>
+                        <p>Sign in, access tokens &amp; multi-factor authentication</p>
+                    </div>
+                    <svg class="docs-section-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+                <div class="docs-section-body">
+                    <h4>Signing In</h4>
+                    <p>Authenticate with your email and password to receive an access token. This token is required for all authenticated operations.</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Request</span>
+                            <button class="docs-copy-btn" onclick="copyDocCode(this)">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="docs-code-body">
+<pre>POST /auth/login
+Content-Type: application/json
+
+{
+  "email": "you@example.com",
+  "password": "your-password"
+}</pre>
+                        </div>
+                    </div>
+
+                    <p>On success, you'll receive an access token along with basic account info:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Response</span>
+                            <button class="docs-copy-btn" onclick="copyDocCode(this)">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="docs-code-body">
+<pre>{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "role": "user",
+  "full_name": "John Doe",
+  "email": "you@example.com"
+}</pre>
+                        </div>
+                    </div>
+
+                    <h4>Using Your Access Token</h4>
+                    <p>Include the token in the <code>Authorization</code> header for every authenticated request:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Header</span>
+                            <button class="docs-copy-btn" onclick="copyDocCode(this)">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="docs-code-body">
+<pre>Authorization: Bearer &lt;your-access-token&gt;</pre>
+                        </div>
+                    </div>
+
+                    <h4>Two-Factor Authentication (2FA)</h4>
+                    <p>If 2FA is enabled on your account, the login endpoint returns a temporary token and an <code>mfa_required</code> flag. You'll need to verify with your authenticator app before receiving the full access token.</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Response (2FA Required)</span>
+                            <button class="docs-copy-btn" onclick="copyDocCode(this)">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="docs-code-body">
+<pre>{
+  "mfa_required": true,
+  "temp_token": "eyJhbGciOiJIUzI1NiIs..."
+}</pre>
+                        </div>
+                    </div>
+
+                    <p>Complete the verification by submitting the 6-digit code from your authenticator:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Request</span>
+                            <button class="docs-copy-btn" onclick="copyDocCode(this)">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="docs-code-body">
+<pre>POST /auth/mfa/verify
+Authorization: Bearer &lt;temp_token&gt;
+Content-Type: application/json
+
+{
+  "code": "123456"
+}</pre>
+                        </div>
+                    </div>
+
+                    <div class="docs-callout tip">
+                        <svg class="docs-callout-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>We strongly recommend enabling 2FA from your <strong>Profile</strong> page. It adds a critical layer of protection to your account.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── 3. API KEYS ─── -->
+            <div class="docs-section" id="doc-api-keys">
+                <div class="docs-section-header">
+                    <div class="docs-section-icon orange">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                    </div>
+                    <div class="docs-section-title">
+                        <h3>API Keys</h3>
+                        <p>Managing keys, usage guidelines &amp; security best practices</p>
+                    </div>
+                    <svg class="docs-section-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+                <div class="docs-section-body">
+                    <h4>What Is an API Key?</h4>
+                    <p>An API key is a unique credential that identifies and authenticates your application when sending requests through the gateway. Every request <strong>must</strong> include a valid API key.</p>
+
+                    <h4>Including Your API Key</h4>
+                    <p>Pass your key in the <code>X-API-KEY</code> header:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Header</span>
+                            <button class="docs-copy-btn" onclick="copyDocCode(this)">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="docs-code-body">
+<pre>X-API-KEY: your-api-key-here</pre>
+                        </div>
+                    </div>
+
+                    <h4>Managing Keys</h4>
+                    <p>You can create, view, and revoke API keys from the <strong>API Keys</strong> page in your dashboard. Each key can be individually activated or deactivated.</p>
+
+                    <h4>Security Best Practices</h4>
+                    <ul>
+                        <li><strong>Keep keys secret</strong> — never commit them to source code, share them publicly, or embed them in client-side applications.</li>
+                        <li><strong>Use environment variables</strong> — store keys in <code>.env</code> files or a secrets manager.</li>
+                        <li><strong>Rotate regularly</strong> — periodically generate new keys and retire old ones.</li>
+                        <li><strong>Separate environments</strong> — use different keys for development, staging, and production.</li>
+                        <li><strong>Revoke immediately</strong> if a key is compromised — deactivate it from your dashboard without delay.</li>
+                    </ul>
+
+                    <div class="docs-callout warning">
+                        <svg class="docs-callout-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span>Requests without a valid API key are immediately rejected with a <strong>403 Forbidden</strong> response.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── 4. FIRST REQUEST ─── -->
+            <div class="docs-section" id="doc-first-request">
+                <div class="docs-section-header">
+                    <div class="docs-section-icon purple">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div class="docs-section-title">
+                        <h3>Making Your First Request</h3>
+                        <p>Step-by-step walkthrough with code examples</p>
+                    </div>
+                    <svg class="docs-section-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+                <div class="docs-section-body">
+                    <h4>Step 1 — Create an API Key</h4>
+                    <p>Go to the <strong>API Keys</strong> page in your dashboard and create a new key. Copy and store it securely — you'll need it for every request.</p>
+
+                    <h4>Step 2 — Send a Request</h4>
+                    <p>Use your gateway base URL along with your API key to send a request. Here are examples in different languages:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">cURL</span>
+                            <button class="docs-copy-btn" onclick="copyDocCode(this)">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="docs-code-body">
+<pre>curl -X GET https://gateway.yourapi.com/api/data \
+  -H "X-API-KEY: your-api-key-here"</pre>
+                        </div>
+                    </div>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">JavaScript</span>
+                            <button class="docs-copy-btn" onclick="copyDocCode(this)">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="docs-code-body">
+<pre>const response = await fetch('https://gateway.yourapi.com/api/data', {
+    method: 'GET',
+    headers: {
+        'X-API-KEY': 'your-api-key-here'
+    }
+});
+
+const data = await response.json();
+console.log(data);</pre>
+                        </div>
+                    </div>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Python</span>
+                            <button class="docs-copy-btn" onclick="copyDocCode(this)">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="docs-code-body">
+<pre>import requests
+
+response = requests.get(
+    'https://gateway.yourapi.com/api/data',
+    headers={'X-API-KEY': 'your-api-key-here'}
+)
+
+print(response.json())</pre>
+                        </div>
+                    </div>
+
+                    <h4>Step 3 — Verify the Response</h4>
+                    <p>A successful request returns your data along with a unique request identifier:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Response (200 OK)</span>
+                            <button class="docs-copy-btn" onclick="copyDocCode(this)">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="docs-code-body">
+<pre>{
+  "message": "Protected data retrieved successfully",
+  "request_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}</pre>
+                        </div>
+                    </div>
+
+                    <div class="docs-callout tip">
+                        <svg class="docs-callout-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Each response includes a unique <strong>request ID</strong>. Save this if you need to reference a specific request when contacting support.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── 5. SECURITY & PROTECTION ─── -->
+            <div class="docs-section" id="doc-security">
+                <div class="docs-section-header">
+                    <div class="docs-section-icon cyan">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <div class="docs-section-title">
+                        <h3>Security &amp; Protection</h3>
+                        <p>How the gateway keeps your APIs safe</p>
+                    </div>
+                    <svg class="docs-section-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+                <div class="docs-section-body">
+                    <p>The gateway provides multiple layers of protection for every request. Security is active by default — no configuration required.</p>
+
+                    <h4>What's Protected</h4>
+                    <div class="docs-table-wrap">
+                        <table class="docs-table">
+                            <thead>
+                                <tr>
+                                    <th>Threat Type</th>
+                                    <th>Protection</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>SQL Injection</strong></td>
+                                    <td>Malicious SQL patterns in query strings, headers, and request bodies are detected and blocked.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Cross-Site Scripting (XSS)</strong></td>
+                                    <td>Script injection attempts in parameters and payloads are identified and rejected.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Path Traversal</strong></td>
+                                    <td>Attempts to access unauthorized file paths (e.g., <code>../../etc/passwd</code>) are blocked.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Brute Force</strong></td>
+                                    <td>Excessive failed attempts from the same source are rate-limited and flagged.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Anomalous Behavior</strong></td>
+                                    <td>Unusual traffic patterns are flagged by the ML-based anomaly detection system.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>API Abuse</strong></td>
+                                    <td>Automated scraping, credential stuffing, and excessive requests are detected and throttled.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4>What Happens When a Request Is Blocked</h4>
+                    <p>If a request is determined to be malicious, it's immediately rejected with a <code>403 Forbidden</code> response. The event is logged and visible in your <strong>Security Logs</strong>.</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Blocked Response</span>
+                            <button class="docs-copy-btn" onclick="copyDocCode(this)">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="docs-code-body">
+<pre>{
+  "detail": "Request blocked by security policy"
+}</pre>
+                        </div>
+                    </div>
+
+                    <div class="docs-callout info">
+                        <svg class="docs-callout-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>If you believe a legitimate request was incorrectly blocked, you can submit an <strong>Appeal</strong> from the Appeal page in your dashboard.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── 6. RATE LIMITING ─── -->
+            <div class="docs-section" id="doc-rate-limiting">
+                <div class="docs-section-header">
+                    <div class="docs-section-icon pink">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div class="docs-section-title">
+                        <h3>Rate Limiting</h3>
+                        <p>Request limits, throttling &amp; how to handle 429 responses</p>
+                    </div>
+                    <svg class="docs-section-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+                <div class="docs-section-body">
+                    <h4>How It Works</h4>
+                    <p>To maintain service stability and prevent abuse, the gateway enforces request limits on a per-key basis. Each API key has a maximum number of allowed requests within a rolling time window.</p>
+
+                    <div class="docs-callout info">
+                        <svg class="docs-callout-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Your current rate limits are visible on the <strong>Usage Plans</strong> page. Limits may vary based on your plan tier.</span>
+                    </div>
+
+                    <h4>When You Exceed the Limit</h4>
+                    <p>If you exceed your allowed request count, the gateway returns a <code>429 Too Many Requests</code> response:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Response (429)</span>
+                            <button class="docs-copy-btn" onclick="copyDocCode(this)">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="docs-code-body">
+<pre>{
+  "detail": "Rate limit exceeded. Try again later."
+}</pre>
+                        </div>
+                    </div>
+
+                    <h4>Handling Rate Limits Gracefully</h4>
+                    <ul>
+                        <li><strong>Implement exponential backoff</strong> — on a 429 response, wait progressively longer before retrying (1s, 2s, 4s, 8s...).</li>
+                        <li><strong>Cache where possible</strong> — avoid unnecessary API calls by caching data that doesn't change frequently.</li>
+                        <li><strong>Batch operations</strong> — combine multiple operations into fewer requests when your use case allows it.</li>
+                        <li><strong>Monitor usage</strong> — keep track of your request count to stay within limits proactively.</li>
+                    </ul>
+
+                    <div class="docs-callout warning">
+                        <svg class="docs-callout-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span>Repeatedly exceeding rate limits may cause the anomaly detection system to temporarily suspend your API key.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── 7. ERROR HANDLING ─── -->
+            <div class="docs-section" id="doc-error-handling">
+                <div class="docs-section-header">
+                    <div class="docs-section-icon red">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div class="docs-section-title">
+                        <h3>Error Handling</h3>
+                        <p>Status codes, error format &amp; troubleshooting guide</p>
+                    </div>
+                    <svg class="docs-section-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+                <div class="docs-section-body">
+                    <h4>Error Response Format</h4>
+                    <p>All errors follow a consistent JSON structure with a human-readable message:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Error Response</span>
+                            <button class="docs-copy-btn" onclick="copyDocCode(this)">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                Copy
+                            </button>
+                        </div>
+                        <div class="docs-code-body">
+<pre>{
+  "detail": "Description of what went wrong"
+}</pre>
+                        </div>
+                    </div>
+
+                    <h4>Status Code Reference</h4>
+
+                    <div class="docs-table-wrap">
+                        <table class="docs-table">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Meaning</th>
+                                    <th>What To Do</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="docs-status-badge s2xx">200</span></td>
+                                    <td><strong>OK</strong></td>
+                                    <td>Request succeeded — process the response normally.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="docs-status-badge s4xx">400</span></td>
+                                    <td><strong>Bad Request</strong></td>
+                                    <td>Check your request body for missing or invalid fields.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="docs-status-badge s4xx">401</span></td>
+                                    <td><strong>Unauthorized</strong></td>
+                                    <td>Your access token is missing, expired, or revoked. Sign in again.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="docs-status-badge s4xx">403</span></td>
+                                    <td><strong>Forbidden</strong></td>
+                                    <td>Your API key is invalid, deactivated, or the request was blocked by a security rule.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="docs-status-badge s4xx">404</span></td>
+                                    <td><strong>Not Found</strong></td>
+                                    <td>The requested endpoint or resource does not exist. Verify the URL.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="docs-status-badge s4xx">429</span></td>
+                                    <td><strong>Too Many Requests</strong></td>
+                                    <td>You've exceeded your rate limit. Wait and retry with exponential backoff.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="docs-status-badge s5xx">500</span></td>
+                                    <td><strong>Server Error</strong></td>
+                                    <td>An unexpected error occurred. If it persists, contact support.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="docs-status-badge s5xx">503</span></td>
+                                    <td><strong>Service Unavailable</strong></td>
+                                    <td>The service is temporarily unavailable. Check the System Status page.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4>Troubleshooting</h4>
+                    <ul>
+                        <li><strong>Getting 401 after changing your password?</strong> — Your previous token was invalidated. Sign in again to get a fresh token.</li>
+                        <li><strong>403 even though your key is valid?</strong> — The request may have been flagged by the security engine. Review your Security Logs for details.</li>
+                        <li><strong>Frequent 429 responses?</strong> — Review your request patterns and implement caching or backoff strategies.</li>
+                        <li><strong>503 errors?</strong> — The service may be undergoing maintenance. Check the <strong>System Status</strong> page for updates.</li>
+                    </ul>
+
+                    <div class="docs-callout tip">
+                        <svg class="docs-callout-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Always read the <code>detail</code> field in error responses — it tells you exactly what went wrong and often how to fix it.</span>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /docs-content -->
+    </div><!-- /docs-layout -->
+</div><!-- /docs-page -->
