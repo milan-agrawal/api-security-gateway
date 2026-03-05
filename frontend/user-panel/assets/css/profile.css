@@ -777,3 +777,115 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================================
+   COLLAPSE / EXPAND SECTIONS
+   ============================================================ */
+
+.section-header {
+    cursor: pointer;
+    user-select: none;
+}
+
+[data-collapsible] .section-header {
+    position: relative;
+}
+
+.section-chevron {
+    color: var(--text-tertiary);
+    transition: transform 0.3s ease;
+    flex-shrink: 0;
+}
+
+[data-collapsible].collapsed .section-chevron {
+    transform: rotate(-90deg);
+}
+
+[data-collapsible] .section-body {
+    overflow: hidden;
+    transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.35s ease;
+    max-height: 2000px;
+    opacity: 1;
+}
+
+[data-collapsible].collapsed .section-body {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+[data-collapsible].collapsed .section-header {
+    border-bottom-color: transparent;
+}
+
+/* ============================================================
+   SUCCESS CHECKMARK OVERLAY
+   ============================================================ */
+
+.success-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(3px);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.success-overlay.active {
+    display: flex;
+}
+
+.success-checkmark {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    animation: successPop 0.4s ease;
+}
+
+@keyframes successPop {
+    0% { transform: scale(0.5); opacity: 0; }
+    60% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.checkmark-svg {
+    width: 80px;
+    height: 80px;
+}
+
+.checkmark-circle {
+    stroke: var(--success);
+    stroke-width: 2;
+    stroke-dasharray: 166;
+    stroke-dashoffset: 166;
+    animation: checkmarkCircleDraw 0.6s ease-in-out forwards;
+}
+
+@keyframes checkmarkCircleDraw {
+    to { stroke-dashoffset: 0; }
+}
+
+.checkmark-check {
+    stroke: var(--success);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 48;
+    stroke-dashoffset: 48;
+    animation: checkmarkDraw 0.4s 0.4s ease-in-out forwards;
+}
+
+@keyframes checkmarkDraw {
+    to { stroke-dashoffset: 0; }
+}
+
+.success-label {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--success);
+    letter-spacing: 0.5px;
+}

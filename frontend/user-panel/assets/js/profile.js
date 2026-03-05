@@ -8,6 +8,82 @@ const PROFILE_API = 'http://localhost:8001';
 let _profileData = null;
 let _backupCodesCache = [];
 
+// ============================================================
+// UNSAVED CHANGES TRACKING
+// ============================================================
+let _profileDirty = false;
+let _pendingNavHash = null;
+let _skipUnsavedCheck = false;
+
+function markProfileDirty() {
+    _profileDirty = true;
+}
+
+function markProfileClean() {
+    _profileDirty = false;
+}
+
+function hasUnsavedChanges() {
+    if (_skipUnsavedCheck) return false;
+    if (!_profileData) return false;
+    const nameInput = document.getElementById('editFullName');
+    const emailInput = document.getElementById('editEmail');
+    if (nameInput && nameInput.value.trim() !== (_profileData.full_name || '')) return true;
+    if (emailInput && emailInput.value.trim() !== (_profileData.email || '')) return true;
+    // Check password form — if any field has input
+    const cur = document.getElementById('currentPassword');
+    const newP = document.getElementById('newPassword');
+    const conf = document.getElementById('confirmPassword');
+    if (cur && cur.value) return true;
+    if (newP && newP.value) return true;
+    if (conf && conf.value) return true;
+    return false;
+}
+
+function showUnsavedModal(targetHash) {
+    _pendingNavHash = targetHash;
+    const modal = document.getElementById('unsavedChangesModal');
+    if (modal) modal.classList.add('active');
+}
+
+function dismissUnsavedModal(discard) {
+    const modal = document.getElementById('unsavedChangesModal');
+    if (modal) modal.classList.remove('active');
+    if (discard && _pendingNavHash !== null) {
+        _skipUnsavedCheck = true;
+        window.location.hash = _pendingNavHash;
+        // Reset flag after navigation completes
+        setTimeout(() => { _skipUnsavedCheck = false; }, 100);
+    }
+    _pendingNavHash = null;
+}
+
+// Hook into hashchange to intercept navigation when dirty
+(function() {
+    let _realHashHandler = null;
+    
+    window.addEventListener('hashchange', function _unsavedGuard(e) {
+        // Only guard when on profile page and dirty
+        if (!hasUnsavedChanges()) return;
+        
+        const newHash = window.location.hash.slice(1);
+        if (newHash === 'profile') return; // staying on profile
+
+        // Prevent navigation — restore old hash silently
+        e.stopImmediatePropagation();
+        history.replaceState(null, '', '#profile');
+        showUnsavedModal(newHash);
+    }, true); // capture phase — runs before router
+})();
+
+// Also guard browser close / tab close
+window.addEventListener('beforeunload', function(e) {
+    if (hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
 /**
  * Helper — get auth header
  */
@@ -169,6 +245,8 @@ async function handleUpdateProfile(e) {
         }
 
         showToast('Profile updated!', 'success');
+        showSuccessAnimation('Profile Updated!');
+        markProfileClean();
 
         // Update localStorage so sidebar reflects new info
         if (body.email) localStorage.setItem('userEmail', result.email);
@@ -367,6 +445,8 @@ async function handleChangePassword(e) {
         }
 
         showToast('Password changed successfully!', 'success');
+        showSuccessAnimation('Password Changed!');
+        markProfileClean();
         resetPasswordForm();
 
         // Token version was bumped — current token is now invalid.
@@ -649,6 +729,36 @@ document.addEventListener('click', (e) => {
         closeDeleteAccountModal();
     }
 });
+
+// ============================================================
+// SUCCESS CHECKMARK ANIMATION
+// ============================================================
+
+function showSuccessAnimation(label = 'Saved!') {
+    const overlay = document.getElementById('successOverlay');
+    const labelEl = document.getElementById('successLabel');
+    if (!overlay) return;
+    if (labelEl) labelEl.textContent = label;
+    
+    // Reset animation by removing and re-adding
+    overlay.classList.remove('active');
+    void overlay.offsetWidth; // force reflow
+    overlay.classList.add('active');
+
+    setTimeout(() => {
+        overlay.classList.remove('active');
+    }, 1600);
+}
+
+// ============================================================
+// COLLAPSE / EXPAND SECTIONS
+// ============================================================
+
+function toggleSection(headerEl) {
+    const section = headerEl.closest('[data-collapsible]');
+    if (!section) return;
+    section.classList.toggle('collapsed');
+}
 
 // ============================================================
 // Expose init function for router
