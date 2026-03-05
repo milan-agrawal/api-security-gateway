@@ -27,6 +27,53 @@
     </div>
 
     <!-- ============================================================
+         SECURITY SCORE WIDGET
+         ============================================================ -->
+    <div class="security-score-widget profile-section" id="securityScoreWidget" data-collapsible>
+        <div class="section-header" onclick="toggleSection(this)">
+            <div class="score-ring-container">
+                <svg class="score-ring" viewBox="0 0 120 120">
+                    <circle class="score-ring-bg" cx="60" cy="60" r="52" />
+                    <circle class="score-ring-fill" id="scoreRingFill" cx="60" cy="60" r="52" />
+                </svg>
+                <div class="score-ring-value">
+                    <span class="score-number" id="scoreNumber">0</span>
+                    <span class="score-label">/ 100</span>
+                </div>
+            </div>
+            <div class="score-details">
+                <h3 class="score-title">Security Score</h3>
+                <p class="score-subtitle" id="scoreSubtitle">Calculating...</p>
+            </div>
+            <svg class="section-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </div>
+        <div class="section-body">
+            <ul class="score-checklist" id="scoreChecklist">
+                <li id="checkMfa">
+                    <span class="check-icon">○</span>
+                    <span class="check-text">Two-Factor Authentication</span>
+                    <span class="check-pts">+25</span>
+                </li>
+                <li id="checkPassword">
+                    <span class="check-icon">○</span>
+                    <span class="check-text">Password Updated (< 90 days)</span>
+                    <span class="check-pts">+25</span>
+                </li>
+                <li id="checkLogin">
+                    <span class="check-icon">○</span>
+                    <span class="check-text">Recent Login (< 30 days)</span>
+                    <span class="check-pts">+25</span>
+                </li>
+                <li id="checkActive">
+                    <span class="check-icon">○</span>
+                    <span class="check-text">Account Active</span>
+                    <span class="check-pts">+25</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ============================================================
          ACCOUNT DETAILS (read-only overview)
          ============================================================ -->
     <div class="profile-section" data-collapsible>
@@ -58,6 +105,10 @@
                 <div class="info-item">
                     <span class="info-label">Account Status</span>
                     <span class="info-value" id="infoStatus">—</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Password Changed</span>
+                    <span class="info-value" id="infoPasswordChanged">—</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Last Updated</span>

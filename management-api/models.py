@@ -20,6 +20,7 @@ class User(Base):
     mfa_secret = Column(String, nullable=True)  # TOTP secret key (encrypted)
     mfa_setup_complete = Column(Boolean, default=False, nullable=False)  # Has user completed setup
     mfa_backup_codes = Column(Text, nullable=True)  # JSON array of hashed backup codes
+    password_changed_at = Column(DateTime, nullable=True)  # Last password change timestamp
     token_version = Column(Integer, default=0, nullable=False)  # Increment to invalidate JWTs
     last_login_at = Column(DateTime, nullable=True)  # Last successful login timestamp
     

@@ -177,7 +177,11 @@ function renderProfile(p) {
     setTextById('infoStatus', p.is_active ? '● Active' : '● Inactive');
     const statusEl = document.getElementById('infoStatus');
     if (statusEl) statusEl.style.color = p.is_active ? 'var(--success)' : 'var(--error)';
+    setTextById('infoPasswordChanged', p.password_changed_at ? formatDateNice(p.password_changed_at) : 'Never');
     setTextById('infoUpdatedAt', formatDateNice(p.updated_at));
+
+    // Render Security Score
+    renderSecurityScore(p);
 
     // Pre-fill edit form
     const nameInput = document.getElementById('editFullName');
@@ -758,6 +762,110 @@ function toggleSection(headerEl) {
     const section = headerEl.closest('[data-collapsible]');
     if (!section) return;
     section.classList.toggle('collapsed');
+}
+
+// ============================================================
+// SECURITY SCORE WIDGET
+// ============================================================
+
+function renderSecurityScore(p) {
+    const now = Date.now();
+    const NINETY_DAYS = 90 * 24 * 60 * 60 * 1000;
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+
+    // Evaluate each criterion
+    const criteria = {
+        checkMfa: {
+            passed: !!(p.mfa_enabled && p.mfa_setup_complete),
+            points: 25
+        },
+        checkPassword: {
+            passed: p.password_changed_at
+                ? (now - new Date(p.password_changed_at).getTime()) < NINETY_DAYS
+                : false,
+            points: 25
+        },
+        checkLogin: {
+            passed: p.last_login_at
+                ? (now - new Date(p.last_login_at).getTime()) < THIRTY_DAYS
+                : false,
+            points: 25
+        },
+        checkActive: {
+            passed: !!p.is_active,
+            points: 25
+        }
+    };
+
+    let score = 0;
+    for (const [id, c] of Object.entries(criteria)) {
+        if (c.passed) score += c.points;
+        const li = document.getElementById(id);
+        if (!li) continue;
+        const icon = li.querySelector('.check-icon');
+        if (c.passed) {
+            li.className = 'passed';
+            if (icon) icon.textContent = '✓';
+        } else {
+            li.className = 'failed';
+            if (icon) icon.textContent = '✗';
+        }
+    }
+
+    // Determine color tier
+    let tier = 'score-low';
+    if (score >= 100) tier = 'score-great';
+    else if (score >= 75) tier = 'score-good';
+    else if (score >= 50) tier = 'score-medium';
+
+    // Animate the ring
+    const ring = document.getElementById('scoreRingFill');
+    const numEl = document.getElementById('scoreNumber');
+    const subtitleEl = document.getElementById('scoreSubtitle');
+    const circumference = 2 * Math.PI * 52; // ≈ 326.73
+
+    if (ring) {
+        ring.className.baseVal = 'score-ring-fill ' + tier;
+        const offset = circumference - (score / 100) * circumference;
+        // Small delay to ensure CSS transition fires
+        requestAnimationFrame(() => {
+            ring.style.strokeDashoffset = offset;
+        });
+    }
+
+    // Animate the number count-up
+    if (numEl) {
+        numEl.className = 'score-number ' + tier;
+        animateCountUp(numEl, 0, score, 800);
+    }
+
+    // Subtitle
+    if (subtitleEl) {
+        const labels = {
+            'score-great': 'Excellent! Your account is fully secured.',
+            'score-good': 'Good — just a few improvements left.',
+            'score-medium': 'Fair — consider enabling more protections.',
+            'score-low': 'At risk — action needed to secure your account.'
+        };
+        subtitleEl.textContent = labels[tier];
+        subtitleEl.style.color = tier === 'score-great' ? 'var(--success)'
+            : tier === 'score-good' ? 'var(--accent-primary)'
+            : tier === 'score-medium' ? '#d29922'
+            : 'var(--error)';
+    }
+}
+
+function animateCountUp(el, from, to, duration) {
+    const start = performance.now();
+    function step(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        // ease-out quad
+        const eased = 1 - (1 - progress) * (1 - progress);
+        el.textContent = Math.round(from + (to - from) * eased);
+        if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
 }
 
 // ============================================================

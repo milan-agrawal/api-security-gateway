@@ -103,6 +103,7 @@ class ProfileResponse(BaseModel):
     created_at: str
     updated_at: str
     last_login_at: Optional[str] = None
+    password_changed_at: Optional[str] = None
     mfa_enabled: bool
     mfa_setup_complete: bool
     api_key_count: int
@@ -151,6 +152,7 @@ def get_profile(user: User = Depends(get_current_user), db: Session = Depends(ge
         created_at=user.created_at.isoformat() if user.created_at else "",
         updated_at=user.updated_at.isoformat() if user.updated_at else "",
         last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
+        password_changed_at=user.password_changed_at.isoformat() if user.password_changed_at else None,
         mfa_enabled=user.mfa_enabled,
         mfa_setup_complete=user.mfa_setup_complete,
         api_key_count=total_keys,
@@ -241,6 +243,7 @@ def change_password(
 
     # Hash and save
     user.password_hash = pwd_context.hash(new_pw)
+    user.password_changed_at = datetime.now(timezone.utc)
     # Bump token_version to invalidate all other sessions
     user.token_version = (user.token_version or 0) + 1
     user.updated_at = datetime.now(timezone.utc)
