@@ -6,8 +6,14 @@
          PROFILE HEADER CARDremov
          ============================================================ -->
     <div class="profile-header-card" id="profileHeaderCard">
-        <div class="profile-avatar-large" id="profileAvatar">
-            <span class="skeleton" style="display:block;width:80px;height:80px;border-radius:50%"></span>
+        <div class="profile-avatar-wrapper" onclick="document.getElementById('avatarFileInput').click()" title="Click to change avatar">
+            <div class="profile-avatar-large" id="profileAvatar">
+                <span class="skeleton" style="display:block;width:80px;height:80px;border-radius:50%"></span>
+            </div>
+            <div class="avatar-overlay">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+            </div>
+            <input type="file" id="avatarFileInput" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="handleAvatarSelected(event)">
         </div>
         <div class="profile-header-info">
             <h2 id="profileName"><span class="skeleton skeleton-heading"></span></h2>
@@ -413,6 +419,31 @@
             <button class="p-btn p-btn-danger" id="btnConfirmDelete" onclick="handleDeleteAccount(event)">
                 <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                 Delete My Account
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     AVATAR PREVIEW MODAL
+     ============================================================ -->
+<div class="profile-modal-overlay" id="avatarPreviewModal">
+    <div class="profile-modal" style="max-width:420px">
+        <div class="profile-modal-header">
+            <h3>Update Profile Photo</h3>
+            <button class="modal-close-btn" onclick="closeAvatarModal()">&times;</button>
+        </div>
+        <div class="profile-modal-body" style="text-align:center">
+            <div class="avatar-preview-container">
+                <img id="avatarPreviewImg" src="" alt="Preview" class="avatar-preview-img">
+            </div>
+            <p class="avatar-preview-hint">This is how your profile photo will look.</p>
+        </div>
+        <div class="profile-modal-footer">
+            <button class="p-btn p-btn-secondary" onclick="closeAvatarModal()">Cancel</button>
+            <button class="p-btn p-btn-primary" id="btnSaveAvatar" onclick="handleAvatarUpload()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                Save Photo
             </button>
         </div>
     </div>

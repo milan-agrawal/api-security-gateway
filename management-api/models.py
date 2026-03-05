@@ -23,6 +23,7 @@ class User(Base):
     password_changed_at = Column(DateTime, nullable=True)  # Last password change timestamp
     token_version = Column(Integer, default=0, nullable=False)  # Increment to invalidate JWTs
     last_login_at = Column(DateTime, nullable=True)  # Last successful login timestamp
+    avatar = Column(Text, nullable=True)  # Base64 Data URL for profile picture
     
     # Relationship to API keys
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")

@@ -129,6 +129,7 @@ class ProfileResponse(BaseModel):
     mfa_setup_complete: bool
     api_key_count: int
     active_api_key_count: int
+    avatar: Optional[str] = None
 
 class ProfileUpdateRequest(BaseModel):
     full_name: Optional[str] = None
@@ -178,6 +179,7 @@ def get_profile(user: User = Depends(get_current_user), db: Session = Depends(ge
         mfa_setup_complete=user.mfa_setup_complete,
         api_key_count=total_keys,
         active_api_key_count=active_keys,
+        avatar=user.avatar,
     )
 
 
@@ -391,6 +393,107 @@ def user_mfa_verify_setup(
         "backup_codes": plain_codes,
         "message": "MFA setup complete! Save your backup codes securely."
     }
+
+
+# ============================================================================
+# Avatar Upload
+# ============================================================================
+
+import base64
+
+AVATAR_MAX_BYTES = 2 * 1024 * 1024  # 2 MB after Base64 decode
+AVATAR_ALLOWED_MIMES = {"image/png", "image/jpeg", "image/gif", "image/webp"}
+
+
+class AvatarUploadRequest(BaseModel):
+    avatar: str  # Data URL: data:image/<type>;base64,<data>
+
+
+@router.post("/avatar")
+def upload_avatar(
+    data: AvatarUploadRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Upload or replace the user's profile avatar (Base64 Data URL)."""
+    raw = data.avatar.strip()
+
+    # Validate Data URL format
+    if not raw.startswith("data:image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid format. Must be a data:image/... Data URL.",
+        )
+
+    try:
+        header, b64_data = raw.split(";base64,", 1)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid Data URL — missing ;base64, separator.",
+        )
+
+    # Validate MIME type
+    mime = header.replace("data:", "")  # e.g. "image/png"
+    if mime not in AVATAR_ALLOWED_MIMES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported image type '{mime}'. Allowed: PNG, JPEG, GIF, WebP.",
+        )
+
+    # Validate size (decode to check real byte count)
+    try:
+        decoded = base64.b64decode(b64_data)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid Base64 data.",
+        )
+
+    if len(decoded) > AVATAR_MAX_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Image too large. Maximum size is {AVATAR_MAX_BYTES // (1024*1024)} MB.",
+        )
+
+    # Validate it looks like real image data (magic bytes)
+    MAGIC = {
+        "image/png": b"\x89PNG",
+        "image/jpeg": b"\xff\xd8\xff",
+        "image/gif": b"GIF8",
+        "image/webp": b"RIFF",
+    }
+    expected_magic = MAGIC.get(mime)
+    if expected_magic and decoded[:len(expected_magic)] != expected_magic:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File content does not match the claimed image type.",
+        )
+
+    user.avatar = raw
+    user.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {"message": "Avatar updated successfully"}
+
+
+@router.delete("/avatar")
+def remove_avatar(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Remove the user's profile avatar."""
+    if not user.avatar:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No avatar to remove.",
+        )
+
+    user.avatar = None
+    user.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {"message": "Avatar removed"}
 
 
 # ============================================================================

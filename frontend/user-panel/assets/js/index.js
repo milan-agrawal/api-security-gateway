@@ -133,6 +133,32 @@ function updateUserDisplay(email, fullName) {
     if (avatarEl) {
         const initials = getInitials(fullName || email || 'U');
         avatarEl.textContent = initials;
+        avatarEl.classList.remove('has-image');
+    }
+
+    // Fetch avatar from API (fire-and-forget)
+    loadSidebarAvatar();
+}
+
+/**
+ * Fetch user profile to get avatar for sidebar
+ */
+async function loadSidebarAvatar() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+        const res = await fetch('http://localhost:8001/user/profile', {
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const avatarEl = document.getElementById('userAvatar');
+        if (avatarEl && data.avatar) {
+            avatarEl.innerHTML = `<img src="${data.avatar}" alt="Avatar">`;
+            avatarEl.classList.add('has-image');
+        }
+    } catch (e) {
+        // Silent fail — sidebar just shows initials
     }
 }
 
