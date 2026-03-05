@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
@@ -7,14 +7,16 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 import jwt
 import os
+import uuid
 
 from db import engine, Base
-from models import User
+from models import User, UserSession
 from deps import get_db
 from admin import router as admin_router
 from auth.mfa import router as mfa_router, create_mfa_temp_token
 from auth.password_reset import router as password_reset_router
 from user import router as user_router
+from utils import parse_user_agent
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -76,10 +78,12 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify password against hash"""
     return pwd_context.verify(plain_password, hashed_password)
 
-def create_access_token(data: dict, token_version: int = 0) -> str:
+def create_access_token(data: dict, token_version: int = 0, session_id: str = None) -> str:
     """Create JWT access token and include token_version for session invalidation."""
     to_encode = data.copy()
     to_encode.update({"token_version": token_version})
+    if session_id:
+        to_encode["session_id"] = session_id
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -95,7 +99,7 @@ def root():
     }
 
 @app.post("/auth/login", response_model=LoginResponse)
-def login(credentials: LoginRequest, db: Session = Depends(get_db)):
+def login(credentials: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """
     Authenticate user and return JWT token.
     If MFA is enabled, returns temp_token instead for MFA verification.
@@ -138,13 +142,37 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
             temp_token=temp_token
         )
     
+    # Create session record
+    ua_string = request.headers.get("user-agent", "")
+    client_ip = request.client.host if request.client else "unknown"
+    session_id = str(uuid.uuid4())
+
+    # Cleanup: purge revoked sessions older than 30 days
+    cutoff = datetime.utcnow() - timedelta(days=30)
+    db.query(UserSession).filter(
+        UserSession.user_id == user.id,
+        UserSession.is_revoked == True,
+        UserSession.created_at < cutoff
+    ).delete(synchronize_session=False)
+
+    session = UserSession(
+        user_id=user.id,
+        session_token=session_id,
+        ip_address=client_ip,
+        user_agent=ua_string,
+        device_label=parse_user_agent(ua_string),
+        created_at=datetime.utcnow(),
+        last_active_at=datetime.utcnow(),
+    )
+    db.add(session)
+
     # No MFA - create full JWT token
     token_data = {
         "sub": user.email,
         "role": user.role,
         "user_id": user.id
     }
-    token = create_access_token(token_data, token_version=user.token_version)
+    token = create_access_token(token_data, token_version=user.token_version, session_id=session_id)
     
     # Update last login timestamp
     user.last_login_at = datetime.now(timezone.utc)

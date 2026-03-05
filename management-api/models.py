@@ -28,6 +28,8 @@ class User(Base):
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
     # Relationship to password reset tokens
     password_reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
+    # Relationship to sessions
+    sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
 
 
 class APIKey(Base):
@@ -75,3 +77,20 @@ class SecurityEvent(Base):
     decision = Column(String, nullable=False)
     reason = Column(String, nullable=False)
     status_code = Column(Integer, nullable=False)
+
+
+class UserSession(Base):
+    """Tracks individual login sessions for device management."""
+    __tablename__ = "user_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    session_token = Column(String, unique=True, nullable=False, index=True)  # UUID stored in JWT
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    device_label = Column(String, nullable=True)  # Parsed: "Chrome on Windows"
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    last_active_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    is_revoked = Column(Boolean, default=False, nullable=False)
+
+    user = relationship("User", back_populates="sessions")

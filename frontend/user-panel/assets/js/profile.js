@@ -113,6 +113,7 @@ function handleAuthError(res) {
 async function initProfilePage() {
     await loadProfile();
     await loadMfaStatus();
+    loadSessions();   // fire-and-forget — independent from profile/mfa
 }
 
 // ============================================================
@@ -664,6 +665,144 @@ function copyBackupCodes() {
 
 function hideBackupCodes() {
     document.getElementById('mfaBackupArea').classList.remove('active');
+}
+
+// ============================================================
+// ACTIVE SESSIONS
+// ============================================================
+
+async function loadSessions() {
+    const list = document.getElementById('sessionsList');
+    const actions = document.getElementById('sessionsActions');
+    if (!list) return;
+
+    try {
+        const res = await fetch(`${PROFILE_API}/user/sessions`, {
+            headers: profileAuthHeaders()
+        });
+        if (handleAuthError(res)) return;
+        if (!res.ok) throw new Error('Failed to load sessions');
+
+        const sessions = await res.json();
+        renderSessions(sessions);
+
+        // Show "Revoke All" only if there are other sessions
+        if (actions) {
+            const hasOthers = sessions.some(s => !s.is_current);
+            actions.style.display = hasOthers ? '' : 'none';
+        }
+    } catch (err) {
+        console.error('loadSessions:', err);
+        if (list) list.innerHTML = '<p class="sessions-empty">Failed to load sessions.</p>';
+    }
+}
+
+function renderSessions(sessions) {
+    const list = document.getElementById('sessionsList');
+    if (!list) return;
+
+    if (!sessions.length) {
+        list.innerHTML = '<p class="sessions-empty">No active sessions found.</p>';
+        return;
+    }
+
+    list.innerHTML = sessions.map(s => {
+        const icon = getDeviceIcon(s.device_label);
+        const isCurrent = s.is_current;
+        return `
+            <div class="session-item ${isCurrent ? 'current-session' : ''}">
+                <div class="session-device-icon">${icon}</div>
+                <div class="session-info">
+                    <div class="session-info-top">
+                        <span class="session-device-name">${escapeHtml(s.device_label)}</span>
+                        ${isCurrent ? '<span class="session-current-badge">This Device</span>' : ''}
+                    </div>
+                    <div class="session-meta">
+                        <span>${escapeHtml(s.ip_address)}</span>
+                        <span class="session-meta-sep">·</span>
+                        <span>Active ${timeAgo(s.last_active_at)}</span>
+                        <span class="session-meta-sep">·</span>
+                        <span>Signed in ${formatDateNice(s.created_at)}</span>
+                    </div>
+                </div>
+                ${!isCurrent ? `
+                <div class="session-actions">
+                    <button class="p-btn p-btn-danger p-btn-sm" onclick="handleRevokeSession(${s.id})">Revoke</button>
+                </div>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+function getDeviceIcon(label) {
+    const l = (label || '').toLowerCase();
+    if (l.includes('iphone') || l.includes('android') || l.includes('mobile'))
+        return '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>';
+    if (l.includes('ipad') || l.includes('tablet'))
+        return '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>';
+    // Default: desktop/laptop
+    return '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>';
+}
+
+function timeAgo(isoStr) {
+    if (!isoStr) return '—';
+    const diff = Date.now() - new Date(isoStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 30) return `${days}d ago`;
+    return formatDateNice(isoStr);
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+}
+
+async function handleRevokeSession(sessionId) {
+    if (!confirm('Revoke this session? The device will be signed out.')) return;
+    try {
+        const res = await fetch(`${PROFILE_API}/user/sessions/${sessionId}`, {
+            method: 'DELETE',
+            headers: profileAuthHeaders()
+        });
+        if (handleAuthError(res)) return;
+        const data = await res.json();
+        if (!res.ok) {
+            showToast(data.detail || 'Failed to revoke session', 'error');
+            return;
+        }
+        showToast('Session revoked', 'success');
+        await loadSessions();
+    } catch (err) {
+        console.error('handleRevokeSession:', err);
+        showToast('Network error', 'error');
+    }
+}
+
+async function handleRevokeAllSessions() {
+    if (!confirm('Revoke all other sessions? All other devices will be signed out.')) return;
+    try {
+        const res = await fetch(`${PROFILE_API}/user/sessions`, {
+            method: 'DELETE',
+            headers: profileAuthHeaders()
+        });
+        if (handleAuthError(res)) return;
+        const data = await res.json();
+        if (!res.ok) {
+            showToast(data.detail || 'Failed to revoke sessions', 'error');
+            return;
+        }
+        showToast(data.message || 'All other sessions revoked', 'success');
+        await loadSessions();
+    } catch (err) {
+        console.error('handleRevokeAllSessions:', err);
+        showToast('Network error', 'error');
+    }
 }
 
 // ============================================================

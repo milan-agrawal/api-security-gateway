@@ -994,3 +994,49 @@ def send_password_changed_notification(recipient_email: str, ip_address: str = "
     except Exception as e:
         print(f"ERROR: Failed to send password change notification to {recipient_email}: {str(e)}")
         return False
+
+
+# ============================================================================
+# User-Agent Parser — lightweight, no external dependency
+# ============================================================================
+
+import re as _re
+
+def parse_user_agent(ua: str) -> str:
+    """Parse a User-Agent string into a short 'Browser on OS' label."""
+    if not ua:
+        return "Unknown Device"
+
+    # Detect browser
+    browser = "Unknown Browser"
+    if _re.search(r"Edg(e|A)?/", ua):
+        browser = "Edge"
+    elif _re.search(r"OPR/|Opera", ua):
+        browser = "Opera"
+    elif _re.search(r"Chrome/", ua) and not _re.search(r"Edg", ua):
+        browser = "Chrome"
+    elif _re.search(r"Firefox/", ua):
+        browser = "Firefox"
+    elif _re.search(r"Safari/", ua) and not _re.search(r"Chrome", ua):
+        browser = "Safari"
+    elif _re.search(r"MSIE|Trident", ua):
+        browser = "Internet Explorer"
+
+    # Detect OS
+    os_name = "Unknown OS"
+    if _re.search(r"Windows NT 10", ua):
+        os_name = "Windows"
+    elif _re.search(r"Windows", ua):
+        os_name = "Windows"
+    elif _re.search(r"Macintosh|Mac OS X", ua):
+        os_name = "macOS"
+    elif _re.search(r"Android", ua):
+        os_name = "Android"
+    elif _re.search(r"iPhone|iPad", ua):
+        os_name = "iOS"
+    elif _re.search(r"Linux", ua):
+        os_name = "Linux"
+    elif _re.search(r"CrOS", ua):
+        os_name = "ChromeOS"
+
+    return f"{browser} on {os_name}"

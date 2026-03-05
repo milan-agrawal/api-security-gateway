@@ -16,7 +16,7 @@ import re
 import json
 
 from deps import get_db
-from models import User, APIKey
+from models import User, APIKey, UserSession
 from utils import (
     generate_mfa_secret,
     generate_qr_code_base64,
@@ -77,6 +77,27 @@ def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has been revoked"
             )
+        # Validate session if session_id is in token
+        session_id = payload.get("session_id")
+        if session_id:
+            session = db.query(UserSession).filter(
+                UserSession.session_token == session_id,
+                UserSession.user_id == user.id
+            ).first()
+            if not session or session.is_revoked:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Session has been revoked"
+                )
+            # Update last_active_at (throttled: only if > 1 minute since last update)
+            now = datetime.utcnow()
+            if not session.last_active_at or (now - session.last_active_at).total_seconds() > 60:
+                session.last_active_at = now
+                db.commit()
+            # Stash session_id on the user object for downstream use
+            user._current_session_id = session_id
+        else:
+            user._current_session_id = None
         return user
     except jwt.ExpiredSignatureError:
         raise HTTPException(
@@ -247,6 +268,17 @@ def change_password(
     # Bump token_version to invalidate all other sessions
     user.token_version = (user.token_version or 0) + 1
     user.updated_at = datetime.now(timezone.utc)
+
+    # Revoke all session rows except the current one
+    current_sid = getattr(user, '_current_session_id', None)
+    all_sessions = db.query(UserSession).filter(
+        UserSession.user_id == user.id,
+        UserSession.is_revoked == False
+    ).all()
+    for s in all_sessions:
+        if s.session_token != current_sid:
+            s.is_revoked = True
+
     db.commit()
 
     return ChangePasswordResponse(message="Password changed successfully. You will be logged out of other sessions.")
@@ -359,3 +391,89 @@ def user_mfa_verify_setup(
         "backup_codes": plain_codes,
         "message": "MFA setup complete! Save your backup codes securely."
     }
+
+
+# ============================================================================
+# Active Sessions Management
+# ============================================================================
+
+from typing import List
+
+class SessionResponse(BaseModel):
+    id: int
+    device_label: str
+    ip_address: str
+    created_at: str
+    last_active_at: str
+    is_current: bool
+
+
+@router.get("/sessions", response_model=List[SessionResponse])
+def list_sessions(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """List all active (non-revoked) sessions for the current user."""
+    sessions = db.query(UserSession).filter(
+        UserSession.user_id == user.id,
+        UserSession.is_revoked == False
+    ).order_by(UserSession.last_active_at.desc()).all()
+
+    current_sid = getattr(user, '_current_session_id', None)
+
+    return [
+        SessionResponse(
+            id=s.id,
+            device_label=s.device_label or "Unknown Device",
+            ip_address=s.ip_address or "—",
+            created_at=(s.created_at.isoformat() + "Z") if s.created_at else "",
+            last_active_at=(s.last_active_at.isoformat() + "Z") if s.last_active_at else "",
+            is_current=(s.session_token == current_sid) if current_sid else False,
+        )
+        for s in sessions
+    ]
+
+
+@router.delete("/sessions/{session_id}")
+def revoke_session(session_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Revoke a single session by its database ID."""
+    session = db.query(UserSession).filter(
+        UserSession.id == session_id,
+        UserSession.user_id == user.id
+    ).first()
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found"
+        )
+
+    current_sid = getattr(user, '_current_session_id', None)
+    if session.session_token == current_sid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot revoke your current session. Use logout instead."
+        )
+
+    session.is_revoked = True
+    db.commit()
+
+    return {"message": "Session revoked successfully"}
+
+
+@router.delete("/sessions")
+def revoke_all_other_sessions(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Revoke all sessions except the current one."""
+    current_sid = getattr(user, '_current_session_id', None)
+
+    sessions = db.query(UserSession).filter(
+        UserSession.user_id == user.id,
+        UserSession.is_revoked == False
+    ).all()
+
+    revoked_count = 0
+    for s in sessions:
+        if s.session_token != current_sid:
+            s.is_revoked = True
+            revoked_count += 1
+
+    db.commit()
+
+    return {"message": f"{revoked_count} session(s) revoked", "revoked_count": revoked_count}

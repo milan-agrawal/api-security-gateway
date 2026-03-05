@@ -905,6 +905,128 @@
     display: flex;
 }
 
+/* ============================================================
+   ACTIVE SESSIONS
+   ============================================================ */
+
+.sessions-description {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0 0 16px 0;
+}
+
+.sessions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.session-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    transition: border-color 0.2s;
+}
+
+.session-item.current-session {
+    border-color: var(--success);
+    background: rgba(63, 185, 80, 0.04);
+}
+
+.session-device-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(88, 166, 255, 0.1);
+    color: var(--accent-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.session-item.current-session .session-device-icon {
+    background: rgba(63, 185, 80, 0.12);
+    color: var(--success);
+}
+
+.session-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.session-info-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.session-device-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.session-current-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(63, 185, 80, 0.15);
+    color: var(--success);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.session-meta {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.session-meta-sep {
+    opacity: 0.4;
+}
+
+.session-actions {
+    flex-shrink: 0;
+}
+
+.session-actions .p-btn-danger {
+    font-size: 12px;
+    padding: 5px 12px;
+}
+
+.sessions-actions {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-primary);
+}
+
+.session-skeleton {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: var(--bg-primary);
+}
+
+.sessions-empty {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--text-tertiary);
+    font-size: 13px;
+}
+
 /* --- Responsive --- */
 @media (max-width: 768px) {
     .security-score-widget > .section-header {
@@ -949,6 +1071,20 @@
 
     .backup-codes-grid {
         grid-template-columns: 1fr;
+    }
+
+    .session-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .session-actions {
+        width: 100%;
+    }
+
+    .session-actions .p-btn-danger {
+        width: 100%;
     }
 }
 

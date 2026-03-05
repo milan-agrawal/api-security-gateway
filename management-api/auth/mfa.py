@@ -2,7 +2,7 @@
 MFA (Multi-Factor Authentication) endpoints
 Handles TOTP-based 2FA for users and MFA for admins
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
@@ -11,18 +11,20 @@ import jwt
 import os
 import json
 import sys
+import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from deps import get_db
-from models import User
+from models import User, UserSession
 from utils import (
     generate_mfa_secret,
     generate_qr_code_base64,
     verify_totp,
     generate_backup_codes,
     verify_backup_code,
-    get_totp_uri
+    get_totp_uri,
+    parse_user_agent,
 )
 from utils import encrypt_secret, decrypt_secret
 
@@ -217,7 +219,7 @@ def _clear_mfa_attempts(user_id: int):
     _mfa_verify_attempts.pop(user_id, None)
 
 
-def create_full_access_token(email: str, role: str, full_name: str, user_id: int = None, token_version: int = 0) -> str:
+def create_full_access_token(email: str, role: str, full_name: str, user_id: int = None, token_version: int = 0, session_id: str = None) -> str:
     """Create the actual access token after successful MFA and include token_version."""
     expire = datetime.utcnow() + timedelta(hours=24)
     payload = {
@@ -229,6 +231,8 @@ def create_full_access_token(email: str, role: str, full_name: str, user_id: int
     }
     if user_id is not None:
         payload["user_id"] = user_id
+    if session_id:
+        payload["session_id"] = session_id
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -279,6 +283,7 @@ def setup_mfa(
 @router.post("/verify-setup", response_model=MFAVerifySetupResponse)
 def verify_mfa_setup(
     request: MFAVerifySetupRequest,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -336,8 +341,24 @@ def verify_mfa_setup(
     
     db.commit()
     
+    # Create session record
+    ua_string = http_request.headers.get("user-agent", "")
+    client_ip = http_request.client.host if http_request.client else "unknown"
+    session_id = str(uuid.uuid4())
+    session = UserSession(
+        user_id=user.id,
+        session_token=session_id,
+        ip_address=client_ip,
+        user_agent=ua_string,
+        device_label=parse_user_agent(ua_string),
+        created_at=datetime.utcnow(),
+        last_active_at=datetime.utcnow(),
+    )
+    db.add(session)
+    db.commit()
+
     # Generate full access token
-    token = create_full_access_token(user.email, user.role, user.full_name, user.id, token_version=getattr(user, "token_version", 0))
+    token = create_full_access_token(user.email, user.role, user.full_name, user.id, token_version=getattr(user, "token_version", 0), session_id=session_id)
     
     return MFAVerifySetupResponse(
         token=token,
@@ -352,6 +373,7 @@ def verify_mfa_setup(
 @router.post("/verify", response_model=MFAVerifyResponse)
 def verify_mfa(
     request: MFAVerifyRequest,
+    http_request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -404,8 +426,24 @@ def verify_mfa(
     user.last_login_at = datetime.now(timezone.utc)
     db.commit()
     
+    # Create session record
+    ua_string = http_request.headers.get("user-agent", "")
+    client_ip = http_request.client.host if http_request.client else "unknown"
+    session_id = str(uuid.uuid4())
+    session = UserSession(
+        user_id=user.id,
+        session_token=session_id,
+        ip_address=client_ip,
+        user_agent=ua_string,
+        device_label=parse_user_agent(ua_string),
+        created_at=datetime.utcnow(),
+        last_active_at=datetime.utcnow(),
+    )
+    db.add(session)
+    db.commit()
+
     # Generate full access token (include token_version)
-    token = create_full_access_token(user.email, user.role, user.full_name, user.id, token_version=getattr(user, "token_version", 0))
+    token = create_full_access_token(user.email, user.role, user.full_name, user.id, token_version=getattr(user, "token_version", 0), session_id=session_id)
     
     return MFAVerifyResponse(
         token=token,
