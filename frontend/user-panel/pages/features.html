@@ -48,6 +48,52 @@
     </div>
 
     <!-- ============================================================
+         HOW IT WORKS — Visual Flow
+         ============================================================ -->
+    <div class="feat-flow">
+        <p class="feat-flow-title">How It Works</p>
+        <div class="feat-flow-steps">
+            <div class="feat-flow-step">
+                <div class="feat-flow-step-num">1</div>
+                <div class="feat-flow-step-info">
+                    <strong>Request Arrives</strong>
+                    <span>Your API call enters the gateway</span>
+                </div>
+            </div>
+            <div class="feat-flow-connector">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </div>
+            <div class="feat-flow-step">
+                <div class="feat-flow-step-num">2</div>
+                <div class="feat-flow-step-info">
+                    <strong>Security Analysis</strong>
+                    <span>Multi-layered inspection runs automatically</span>
+                </div>
+            </div>
+            <div class="feat-flow-connector">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </div>
+            <div class="feat-flow-step">
+                <div class="feat-flow-step-num">3</div>
+                <div class="feat-flow-step-info">
+                    <strong>Verdict Issued</strong>
+                    <span>Allow, block, or flag in under 50ms</span>
+                </div>
+            </div>
+            <div class="feat-flow-connector">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </div>
+            <div class="feat-flow-step">
+                <div class="feat-flow-step-num">4</div>
+                <div class="feat-flow-step-info">
+                    <strong>Clean Response</strong>
+                    <span>Safe traffic reaches your API seamlessly</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
          HORIZONTAL NAV BAR (sticky)
          ============================================================ -->
     <nav class="feat-nav">
@@ -78,7 +124,18 @@
     </nav>
 
     <!-- ============================================================
-         FEATURE BLOCKS (full-width, always visible, left accent bar)
+         EXPAND / COLLAPSE TOOLBAR
+         ============================================================ -->
+    <div class="feat-toolbar">
+        <button class="feat-toolbar-btn" id="feat-toggle-all" title="Collapse all sections">
+            <svg class="feat-toolbar-icon collapse-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+            <svg class="feat-toolbar-icon expand-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 3h6m0 0v6m0-6l-7 7M9 21H3m0 0v-6m0 6l7-7"/></svg>
+            <span class="feat-toolbar-label">Collapse All</span>
+        </button>
+    </div>
+
+    <!-- ============================================================
+         FEATURE BLOCKS (full-width, collapsible, left accent bar)
          ============================================================ -->
     <div class="feat-sections">
 
@@ -459,6 +516,112 @@
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/></svg>
                 Encrypted
             </span>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         FAQ ACCORDION
+         ============================================================ -->
+    <div class="feat-faq">
+        <div class="feat-faq-header">
+            <div class="feat-faq-icon-wrap">
+                <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <h3 class="feat-faq-title">Frequently Asked Questions</h3>
+            <p class="feat-faq-subtitle">Quick answers to common questions about the gateway</p>
+        </div>
+        <div class="feat-faq-list">
+            <div class="feat-faq-item">
+                <button class="feat-faq-q">
+                    <span class="feat-faq-num">01</span>
+                    <span class="feat-faq-q-text">Do I need to configure anything to enable protection?</span>
+                    <svg class="feat-faq-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="feat-faq-a">
+                    <div class="feat-faq-a-inner">
+                        <p>No. All security features are active by default the moment you route traffic through the gateway. There are no toggles, configurations, or setup steps required.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="feat-faq-item">
+                <button class="feat-faq-q">
+                    <span class="feat-faq-num">02</span>
+                    <span class="feat-faq-q-text">What happens when I hit my rate limit?</span>
+                    <svg class="feat-faq-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="feat-faq-a">
+                    <div class="feat-faq-a-inner">
+                        <p>When your API key exceeds the allowed request count, the gateway returns a <strong>429 Too Many Requests</strong> response. The limit resets automatically within the rolling time window — no action needed from you.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="feat-faq-item">
+                <button class="feat-faq-q">
+                    <span class="feat-faq-num">03</span>
+                    <span class="feat-faq-q-text">Can I appeal a blocked request?</span>
+                    <svg class="feat-faq-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="feat-faq-a">
+                    <div class="feat-faq-a-inner">
+                        <p>Yes. If you believe a legitimate request was incorrectly blocked, you can submit an appeal from the <strong>Appeal Portal</strong> in your dashboard. Every blocked request includes a request ID you can reference.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="feat-faq-item">
+                <button class="feat-faq-q">
+                    <span class="feat-faq-num">04</span>
+                    <span class="feat-faq-q-text">Does the security analysis add latency to my requests?</span>
+                    <svg class="feat-faq-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="feat-faq-a">
+                    <div class="feat-faq-a-inner">
+                        <p>Negligible. Security decisions are made in under 50 milliseconds. The gateway is engineered to add minimal overhead — your users won't notice any difference.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="feat-faq-item">
+                <button class="feat-faq-q">
+                    <span class="feat-faq-num">05</span>
+                    <span class="feat-faq-q-text">How do I enable Two-Factor Authentication?</span>
+                    <svg class="feat-faq-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="feat-faq-a">
+                    <div class="feat-faq-a-inner">
+                        <p>Go to your <strong>Profile</strong> page and find the Two-Factor Authentication section. Click "Enable 2FA" and scan the QR code with any authenticator app (Google Authenticator, Authy, etc.).</p>
+                    </div>
+                </div>
+            </div>
+            <div class="feat-faq-item">
+                <button class="feat-faq-q">
+                    <span class="feat-faq-num">06</span>
+                    <span class="feat-faq-q-text">Where can I see my security logs and events?</span>
+                    <svg class="feat-faq-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="feat-faq-a">
+                    <div class="feat-faq-a-inner">
+                        <p>All request logs, security events, and blocked request records are available from the <strong>Security Logs</strong> page in your dashboard. Each entry includes full metadata and a unique request ID.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         CTA BANNER
+         ============================================================ -->
+    <div class="feat-cta">
+        <div class="feat-cta-content">
+            <svg class="feat-cta-icon" width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            <div>
+                <p class="feat-cta-heading">Ready to secure your APIs?</p>
+                <p class="feat-cta-sub">Generate your API key, explore the documentation, and start building with confidence.</p>
+            </div>
+        </div>
+        <div class="feat-cta-actions">
+            <a href="#api-keys" class="feat-cta-btn primary">Get API Key</a>
+            <a href="#documentation" class="feat-cta-btn secondary">Read Docs</a>
         </div>
     </div>
 

@@ -12,6 +12,9 @@ function initFeaturesPage() {
     }
     initFeatNavScrollSpy();
     initFeatBlockToggle();
+    initFeatToggleAll();
+    initFeatFaq();
+    initFeatCtaLinks();
 }
 
 // ============================================================
@@ -111,7 +114,92 @@ function initFeatBlockToggle() {
     document.querySelectorAll('.feat-block-header').forEach(header => {
         header.addEventListener('click', () => {
             const block = header.closest('.feat-block');
-            if (block) block.classList.toggle('collapsed');
+            if (block) {
+                block.classList.toggle('collapsed');
+                syncToggleAllBtn();
+            }
+        });
+    });
+}
+
+// ============================================================
+// EXPAND ALL / COLLAPSE ALL
+// ============================================================
+
+function initFeatToggleAll() {
+    const btn = document.getElementById('feat-toggle-all');
+    if (!btn) return;
+
+    btn.addEventListener('click', () => {
+        const blocks = document.querySelectorAll('.feat-block');
+        const allCollapsed = Array.from(blocks).every(b => b.classList.contains('collapsed'));
+
+        blocks.forEach(b => {
+            if (allCollapsed) {
+                b.classList.remove('collapsed');
+            } else {
+                b.classList.add('collapsed');
+            }
+        });
+
+        syncToggleAllBtn();
+    });
+}
+
+function syncToggleAllBtn() {
+    const btn = document.getElementById('feat-toggle-all');
+    if (!btn) return;
+
+    const blocks = document.querySelectorAll('.feat-block');
+    const allCollapsed = Array.from(blocks).every(b => b.classList.contains('collapsed'));
+
+    const collapseIcon = btn.querySelector('.collapse-icon');
+    const expandIcon = btn.querySelector('.expand-icon');
+    const label = btn.querySelector('.feat-toolbar-label');
+
+    if (allCollapsed) {
+        if (collapseIcon) collapseIcon.style.display = 'none';
+        if (expandIcon) expandIcon.style.display = '';
+        if (label) label.textContent = 'Expand All';
+    } else {
+        if (collapseIcon) collapseIcon.style.display = '';
+        if (expandIcon) expandIcon.style.display = 'none';
+        if (label) label.textContent = 'Collapse All';
+    }
+}
+
+// ============================================================
+// FAQ ACCORDION
+// ============================================================
+
+function initFeatFaq() {
+    document.querySelectorAll('.feat-faq-q').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const item = btn.closest('.feat-faq-item');
+            if (!item) return;
+
+            // Close other open items
+            document.querySelectorAll('.feat-faq-item.open').forEach(other => {
+                if (other !== item) other.classList.remove('open');
+            });
+
+            item.classList.toggle('open');
+        });
+    });
+}
+
+// ============================================================
+// CTA LINK NAVIGATION (hash-based SPA routing)
+// ============================================================
+
+function initFeatCtaLinks() {
+    document.querySelectorAll('.feat-cta-btn').forEach(link => {
+        link.addEventListener('click', (e) => {
+            const href = link.getAttribute('href');
+            if (href && href.startsWith('#')) {
+                e.preventDefault();
+                window.location.hash = href;
+            }
         });
     });
 }
