@@ -3,7 +3,7 @@ Admin endpoints for user management
 """
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Header, UploadFile, File
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text as sa_text
 from pydantic import BaseModel, EmailStr, validator
 from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
@@ -15,6 +15,8 @@ import io
 import jwt
 import os
 import sys
+import httpx
+import redis
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from deps import get_db
@@ -833,4 +835,72 @@ async def import_users_csv(
         "skipped": len(results["skipped"]),
         "errors": len(results["errors"]),
         "details": results
+    }
+
+
+# ============================================================
+# SYSTEM STATUS - Health check for all services
+# ============================================================
+
+SERVICE_ENDPOINTS = {
+    "gateway": "http://127.0.0.1:8000/health",
+    "backend": "http://127.0.0.1:9000/health",
+    "management": "http://127.0.0.1:8001/health",
+}
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+
+
+@router.get("/system-status")
+async def system_status(admin: User = Depends(get_current_admin)):
+    """Check health of all backend services, database, and Redis."""
+    services = {}
+
+    # Check HTTP services concurrently
+    async with httpx.AsyncClient(timeout=3.0) as client:
+        async def check_service(name: str, url: str):
+            try:
+                resp = await client.get(url)
+                services[name] = "online" if resp.status_code == 200 else "offline"
+            except Exception:
+                services[name] = "offline"
+
+        await asyncio.gather(
+            *[check_service(name, url) for name, url in SERVICE_ENDPOINTS.items()]
+        )
+
+    # Check Database
+    try:
+        db = SessionLocal()
+        db.execute(sa_text("SELECT 1"))
+        db.close()
+        services["database"] = "online"
+    except Exception:
+        services["database"] = "offline"
+
+    # Check Redis
+    try:
+        r = redis.Redis.from_url(REDIS_URL, decode_responses=True, socket_timeout=2)
+        r.ping()
+        r.close()
+        services["redis"] = "online"
+    except Exception:
+        services["redis"] = "offline"
+
+    # Determine overall status
+    online_count = sum(1 for s in services.values() if s == "online")
+    total = len(services)
+
+    if online_count == total:
+        overall = "operational"
+    elif online_count == 0:
+        overall = "offline"
+    else:
+        overall = "degraded"
+
+    return {
+        "overall": overall,
+        "services": services,
+        "online": online_count,
+        "total": total
     }

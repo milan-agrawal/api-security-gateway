@@ -16,6 +16,10 @@ app = FastAPI(title="Protected Backend API", lifespan=lifespan)
 
 GATEWAY_SECRET = "gateway-internal-secret"
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "service": "backend"}
+
 @app.get("/api/data")
 def get_data(request: Request, x_gateway_token: str = Header(None), db=Depends(get_db)):
     # Step 4.4.3: Start latency measurement

@@ -58,6 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadUserInfo();
     initializeSidebar();
     initializeRouter();
+    initSystemStatus();
 });
 
 // Load user information
@@ -275,4 +276,53 @@ function updatePageHeader(title, subtitle) {
     
     if (titleEl) titleEl.textContent = title;
     if (subtitleEl) subtitleEl.textContent = subtitle;
+}
+// ============================================
+// SYSTEM STATUS - Live health polling
+// ============================================
+
+let _systemStatusTimer = null;
+
+function initSystemStatus() {
+    checkSystemStatus();
+    _systemStatusTimer = setInterval(checkSystemStatus, 30000);
+}
+
+async function checkSystemStatus() {
+    const indicator = document.querySelector('.status-indicator');
+    const text = document.querySelector('.status-text');
+    if (!indicator || !text) return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+        const resp = await fetch(`${API_URL}/admin/system-status`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!resp.ok) throw new Error('Request failed');
+
+        const data = await resp.json();
+
+        indicator.classList.remove('online', 'degraded', 'offline');
+
+        if (data.overall === 'operational') {
+            indicator.classList.add('online');
+            text.textContent = 'All Systems Operational';
+        } else if (data.overall === 'degraded') {
+            indicator.classList.add('degraded');
+            const downServices = Object.entries(data.services)
+                .filter(([, s]) => s === 'offline')
+                .map(([name]) => name);
+            text.textContent = `Degraded: ${downServices.join(', ')}`;
+        } else {
+            indicator.classList.add('offline');
+            text.textContent = 'Systems Offline';
+        }
+    } catch {
+        indicator.classList.remove('online', 'degraded', 'offline');
+        indicator.classList.add('offline');
+        text.textContent = 'Status Unavailable';
+    }
 }

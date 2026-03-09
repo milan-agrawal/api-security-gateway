@@ -43,6 +43,10 @@ rate_limiter = RateLimiter(
     window_seconds=60
 )
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "service": "gateway"}
+
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def proxy(request: Request, path: str, db=Depends(get_db)):
     # Step 4.4.1: Generate unique request ID

@@ -349,6 +349,18 @@ body {
     animation: pulse 2s ease-in-out infinite;
 }
 
+.status-indicator.degraded {
+    background: var(--warning);
+    box-shadow: 0 0 8px var(--warning);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-indicator.offline {
+    background: var(--error);
+    box-shadow: 0 0 8px var(--error);
+    animation: none;
+}
+
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
