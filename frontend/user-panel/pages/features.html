@@ -21,7 +21,7 @@
             <div class="feat-highlight-icon blue">
                 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
             </div>
-            <p class="feat-highlight-value">6 Layers</p>
+            <p class="feat-highlight-value">7 Layers</p>
             <p class="feat-highlight-label">Security Analysis Depth</p>
         </div>
         <div class="feat-highlight-card">
@@ -152,7 +152,7 @@
                 <svg class="feat-block-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </div>
             <div class="feat-block-body">
-                <p>Every request passing through the gateway is automatically inspected for malicious intent. Your APIs are shielded from a wide range of threats — with no configuration required on your part.</p>
+                <p>Every request passing through the gateway is automatically inspected for malicious intent. Your backend API is never directly exposed — all traffic flows through the gateway, which acts as a protective barrier shielding your services from the outside world.</p>
 
                 <div class="feat-cap-list">
                     <div class="feat-cap-item">
@@ -160,6 +160,13 @@
                         <div class="feat-cap-text">
                             <strong>Real-Time Scanning</strong>
                             <span>Every request is inspected before reaching your API — headers, parameters, and payloads included.</span>
+                        </div>
+                    </div>
+                    <div class="feat-cap-item">
+                        <div class="feat-cap-check blue"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+                        <div class="feat-cap-text">
+                            <strong>Backend Isolation</strong>
+                            <span>Your API is never directly accessible — the gateway is the only entry point, keeping your services hidden from direct exposure.</span>
                         </div>
                     </div>
                     <div class="feat-cap-item">
@@ -174,6 +181,13 @@
                         <div class="feat-cap-text">
                             <strong>Multi-Vector Defense</strong>
                             <span>Protection spans across request headers, query strings, body content, and URL paths.</span>
+                        </div>
+                    </div>
+                    <div class="feat-cap-item">
+                        <div class="feat-cap-check blue"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+                        <div class="feat-cap-text">
+                            <strong>Origin Validation</strong>
+                            <span>Only authorized client origins can communicate with the gateway — unauthorized sources are rejected outright.</span>
                         </div>
                     </div>
                     <div class="feat-cap-item">
@@ -389,35 +403,49 @@
                 <svg class="feat-block-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </div>
             <div class="feat-block-body">
-                <p>Your account is protected by multiple security layers designed to prevent unauthorized access. From encrypted credentials to multi-factor authentication, every aspect of account security is built-in.</p>
+                <p>Your account is protected by multiple security layers designed to prevent unauthorized access. From encrypted credentials to multi-factor authentication and real-time security alerts, every aspect of account security is built-in.</p>
 
                 <div class="feat-cap-list">
                     <div class="feat-cap-item">
                         <div class="feat-cap-check green"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
                         <div class="feat-cap-text">
                             <strong>Multi-Factor Authentication</strong>
-                            <span>Add a second layer of verification with authenticator-app-based two-factor authentication.</span>
+                            <span>Authenticator-app-based 2FA with one-time backup recovery codes in case you lose your device.</span>
                         </div>
                     </div>
                     <div class="feat-cap-item">
                         <div class="feat-cap-check green"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
                         <div class="feat-cap-text">
                             <strong>Secure Sessions</strong>
-                            <span>Sessions are encrypted and time-limited; expired sessions are automatically invalidated.</span>
+                            <span>Sessions are encrypted and time-limited with device and browser recognition for every active session.</span>
                         </div>
                     </div>
                     <div class="feat-cap-item">
                         <div class="feat-cap-check green"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
                         <div class="feat-cap-text">
                             <strong>Credential Protection</strong>
-                            <span>Passwords are hashed and never stored in readable form. Recovery flows are secure by design.</span>
+                            <span>Passwords are hashed and never stored in readable form. Password strength is enforced at creation.</span>
+                        </div>
+                    </div>
+                    <div class="feat-cap-item">
+                        <div class="feat-cap-check green"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+                        <div class="feat-cap-text">
+                            <strong>Secure Password Recovery</strong>
+                            <span>Forgot-password flows use time-limited tokens, are rate-limited, and protected against account enumeration.</span>
                         </div>
                     </div>
                     <div class="feat-cap-item">
                         <div class="feat-cap-check green"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
                         <div class="feat-cap-text">
                             <strong>Session Management</strong>
-                            <span>View all active sessions and revoke any of them instantly from your Profile page.</span>
+                            <span>View all active sessions across devices and browsers, and revoke any of them instantly.</span>
+                        </div>
+                    </div>
+                    <div class="feat-cap-item">
+                        <div class="feat-cap-check green"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+                        <div class="feat-cap-text">
+                            <strong>Email Security Alerts</strong>
+                            <span>Instant email notifications for password changes, new credentials, and security-sensitive account actions.</span>
                         </div>
                     </div>
                 </div>
@@ -442,7 +470,7 @@
                 <svg class="feat-block-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </div>
             <div class="feat-block-body">
-                <p>The gateway provides comprehensive logging and analytics so you always know what's happening with your API traffic. Every request, every decision, and every security event is captured and accessible.</p>
+                <p>The gateway provides comprehensive logging, analytics, and real-time health monitoring so you always know what's happening with your API traffic and infrastructure. Every request, every decision, and every security event is captured and accessible.</p>
 
                 <div class="feat-cap-list">
                     <div class="feat-cap-item">
@@ -464,6 +492,20 @@
                         <div class="feat-cap-text">
                             <strong>Request Tracing</strong>
                             <span>Each request gets a unique ID for complete lifecycle tracking and support reference.</span>
+                        </div>
+                    </div>
+                    <div class="feat-cap-item">
+                        <div class="feat-cap-check pink"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+                        <div class="feat-cap-text">
+                            <strong>System Health Monitoring</strong>
+                            <span>Real-time status of all gateway components — know instantly if anything needs attention.</span>
+                        </div>
+                    </div>
+                    <div class="feat-cap-item">
+                        <div class="feat-cap-check pink"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div>
+                        <div class="feat-cap-text">
+                            <strong>Usage Analytics</strong>
+                            <span>Track your API consumption, request patterns, and quota usage across all your API keys.</span>
                         </div>
                     </div>
                     <div class="feat-cap-item">
@@ -602,6 +644,30 @@
                 <div class="feat-faq-a">
                     <div class="feat-faq-a-inner">
                         <p>All request logs, security events, and blocked request records are available from the <strong>Security Logs</strong> page in your dashboard. Each entry includes full metadata and a unique request ID.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="feat-faq-item">
+                <button class="feat-faq-q">
+                    <span class="feat-faq-num">07</span>
+                    <span class="feat-faq-q-text">What if I lose access to my authenticator app?</span>
+                    <svg class="feat-faq-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="feat-faq-a">
+                    <div class="feat-faq-a-inner">
+                        <p>When you enable Two-Factor Authentication, you receive a set of <strong>one-time backup recovery codes</strong>. Each code can be used once to regain access if your authenticator device is unavailable. Keep them stored securely.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="feat-faq-item">
+                <button class="feat-faq-q">
+                    <span class="feat-faq-num">08</span>
+                    <span class="feat-faq-q-text">Will I be notified about security changes to my account?</span>
+                    <svg class="feat-faq-chevron" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="feat-faq-a">
+                    <div class="feat-faq-a-inner">
+                        <p>Yes. You receive <strong>email notifications</strong> for all security-sensitive actions — including password changes, password resets, and new account credentials. This ensures you're always aware of activity on your account.</p>
                     </div>
                 </div>
             </div>
