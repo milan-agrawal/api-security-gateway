@@ -1,4 +1,7 @@
-﻿<link rel="stylesheet" href="assets/css/security-wiki.css?v=1">
+﻿<link rel="stylesheet" href="assets/css/security-wiki.css?v=2">
+
+<!-- Reading Progress Bar -->
+<div class="wiki-progress-bar" id="wiki-progress-bar"></div>
 
 <div class="wiki-page">
 
@@ -18,6 +21,31 @@
             </svg>
             <input type="text" id="wiki-search" placeholder="Search threats, concepts, terms…" autocomplete="off" spellcheck="false">
             <span class="wiki-search-count" id="wiki-search-count"></span>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         QUICK STATS BAR
+         ============================================================ -->
+    <div class="wiki-stats-bar">
+        <div class="wiki-stat">
+            <span class="wiki-stat-num">7</span>
+            <span class="wiki-stat-label">Threats</span>
+        </div>
+        <div class="wiki-stat-divider"></div>
+        <div class="wiki-stat">
+            <span class="wiki-stat-num">8</span>
+            <span class="wiki-stat-label">Concepts</span>
+        </div>
+        <div class="wiki-stat-divider"></div>
+        <div class="wiki-stat">
+            <span class="wiki-stat-num">4</span>
+            <span class="wiki-stat-label">Guides</span>
+        </div>
+        <div class="wiki-stat-divider"></div>
+        <div class="wiki-stat">
+            <span class="wiki-stat-num">2</span>
+            <span class="wiki-stat-label">Reference Tables</span>
         </div>
     </div>
 
@@ -51,6 +79,33 @@
     </div>
 
     <!-- ============================================================
+         SECTION JUMP NAV
+         ============================================================ -->
+    <nav class="wiki-jump-nav" id="wiki-jump-nav">
+        <span class="wiki-jump-label">Jump to</span>
+        <a class="wiki-jump-link active" href="javascript:void(0)" data-target="wiki-pipeline">
+            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            Pipeline
+        </a>
+        <a class="wiki-jump-link" href="javascript:void(0)" data-target="wiki-threats">
+            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            Threats
+        </a>
+        <a class="wiki-jump-link" href="javascript:void(0)" data-target="wiki-concepts">
+            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            Concepts
+        </a>
+        <a class="wiki-jump-link" href="javascript:void(0)" data-target="wiki-practices">
+            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            Practices
+        </a>
+        <a class="wiki-jump-link" href="javascript:void(0)" data-target="wiki-logs">
+            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            Logs
+        </a>
+    </nav>
+
+    <!-- ============================================================
          NO RESULTS (hidden by default)
          ============================================================ -->
     <div class="wiki-no-results" id="wiki-no-results" style="display:none">
@@ -60,9 +115,94 @@
     </div>
 
     <!-- ============================================================
+         SECTION 0 — HOW THE GATEWAY WORKS (Pipeline Diagram)
+         ============================================================ -->
+    <div class="wiki-section wiki-animate" data-section="threats" id="wiki-pipeline">
+        <div class="wiki-section-hd">
+            <div class="wiki-section-icon threat" style="background: rgba(163, 113, 247, 0.12); color: #A371F7;">
+                <svg width="19" height="19" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+            <div>
+                <h2>How the Gateway Works</h2>
+                <p>Every API request passes through this pipeline before reaching your backend</p>
+            </div>
+        </div>
+
+        <div class="wiki-pipeline">
+            <div class="wiki-pipe-step">
+                <div class="wiki-pipe-icon incoming">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                </div>
+                <span class="wiki-pipe-label">Incoming Request</span>
+                <span class="wiki-pipe-desc">Client sends API call</span>
+            </div>
+            <div class="wiki-pipe-arrow">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+            </div>
+            <div class="wiki-pipe-step">
+                <div class="wiki-pipe-icon ratelimit">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <span class="wiki-pipe-label">Rate Limiter</span>
+                <span class="wiki-pipe-desc">Quota & window check</span>
+            </div>
+            <div class="wiki-pipe-arrow">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+            </div>
+            <div class="wiki-pipe-step">
+                <div class="wiki-pipe-icon ml">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                </div>
+                <span class="wiki-pipe-label">ML Analysis</span>
+                <span class="wiki-pipe-desc">Anomaly detection model</span>
+            </div>
+            <div class="wiki-pipe-arrow">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+            </div>
+            <div class="wiki-pipe-step">
+                <div class="wiki-pipe-icon rules">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                </div>
+                <span class="wiki-pipe-label">Rules Engine</span>
+                <span class="wiki-pipe-desc">Correlation & rules</span>
+            </div>
+            <div class="wiki-pipe-arrow">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+            </div>
+            <div class="wiki-pipe-step">
+                <div class="wiki-pipe-icon decision">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                </div>
+                <span class="wiki-pipe-label">Decision</span>
+                <span class="wiki-pipe-desc">Allow / Block / Throttle</span>
+            </div>
+        </div>
+
+        <div class="wiki-pipe-outcomes">
+            <div class="wiki-pipe-outcome allowed">
+                <span class="wiki-response-badge allowed">ALLOWED</span>
+                <span>Forwarded to backend</span>
+            </div>
+            <div class="wiki-pipe-outcome throttled">
+                <span class="wiki-response-badge throttled">THROTTLED</span>
+                <span>429 — Retry later</span>
+            </div>
+            <div class="wiki-pipe-outcome blocked">
+                <span class="wiki-response-badge blocked">BLOCKED</span>
+                <span>403 — Rejected</span>
+            </div>
+            <div class="wiki-pipe-outcome flagged">
+                <span class="wiki-response-badge flagged">FLAGGED</span>
+                <span>Allowed but monitored</span>
+            </div>
+        </div>
+    </div>
+    <!-- /pipeline -->
+
+    <!-- ============================================================
          SECTION 1 — THREAT LIBRARY
          ============================================================ -->
-    <div class="wiki-section" data-section="threats" id="wiki-threats">
+    <div class="wiki-section wiki-animate" data-section="threats" id="wiki-threats">
         <div class="wiki-section-hd">
             <div class="wiki-section-icon threat">
                 <svg width="19" height="19" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
@@ -196,7 +336,7 @@
     <!-- ============================================================
          SECTION 2 — CONCEPTS GLOSSARY
          ============================================================ -->
-    <div class="wiki-section" data-section="concepts" id="wiki-concepts">
+    <div class="wiki-section wiki-animate" data-section="concepts" id="wiki-concepts">
         <div class="wiki-section-hd">
             <div class="wiki-section-icon concept">
                 <svg width="19" height="19" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
@@ -206,6 +346,14 @@
                 <p>Plain-English definitions of technical terms you'll encounter in logs and documentation</p>
             </div>
             <span class="wiki-section-count">8 terms</span>
+        </div>
+
+        <!-- Expand / Collapse All -->
+        <div class="wiki-gloss-toggle-row">
+            <button class="wiki-gloss-toggle-btn" id="wiki-gloss-toggle">
+                <svg class="wiki-gloss-toggle-icon" width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+                <span>Expand All</span>
+            </button>
         </div>
 
         <div class="wiki-glossary">
@@ -345,7 +493,7 @@
     <!-- ============================================================
          SECTION 3 — BEST PRACTICES
          ============================================================ -->
-    <div class="wiki-section" data-section="practices" id="wiki-practices">
+    <div class="wiki-section wiki-animate" data-section="practices" id="wiki-practices">
         <div class="wiki-section-hd">
             <div class="wiki-section-icon practice">
                 <svg width="19" height="19" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
@@ -446,7 +594,7 @@
     <!-- ============================================================
          SECTION 4 — LOG REFERENCE
          ============================================================ -->
-    <div class="wiki-section" data-section="logs" id="wiki-logs">
+    <div class="wiki-section wiki-animate" data-section="logs" id="wiki-logs">
         <div class="wiki-section-hd">
             <div class="wiki-section-icon logs">
                 <svg width="19" height="19" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
@@ -579,5 +727,10 @@
 
     </div>
     <!-- /logs -->
+
+    <!-- Scroll to Top Button -->
+    <button class="wiki-scroll-top" id="wiki-scroll-top" aria-label="Scroll to top">
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+    </button>
 
 </div>

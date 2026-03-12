@@ -3,6 +3,12 @@
    - Live search across cards, glossary items, practice cards
    - Category filter pills (mutually exclusive with search)
    - Glossary accordion (one open at a time)
+   - Expand All / Collapse All toggle
+   - Keyboard shortcut: / to focus search
+   - Section jump nav with active tracking
+   - Scroll-to-top button
+   - Reading progress bar
+   - Section entrance animations (IntersectionObserver)
    ============================================================ */
 
 (function () {
@@ -12,13 +18,16 @@
         initWikiSearch();
         initWikiFilters();
         initWikiGlossary();
+        initGlossaryToggle();
+        initKeyboardShortcut();
+        initJumpNav();
+        initScrollToTop();
+        initProgressBar();
+        initSectionAnimations();
     }
 
     /* ============================================================
        SEARCH
-       Searches [data-search] attribute on cards / gloss items /
-       practice cards. The log section has a hidden anchor element
-       with keywords so the whole section surfaces on relevant terms.
     ============================================================ */
     function initWikiSearch() {
         const input    = document.getElementById('wiki-search');
@@ -51,15 +60,14 @@
             document.querySelectorAll('[data-search]').forEach(el => {
                 const text = el.getAttribute('data-search').toLowerCase();
                 const matches = text.includes(q);
-                // Hidden anchor divs stay hidden; only real UI elements toggle
                 if (el.style.display === 'none' && el.getAttribute('aria-hidden') === 'true') {
-                    return; // keep the hidden keyword anchor hidden always
+                    return;
                 }
                 el.style.display = matches ? '' : 'none';
                 if (matches) totalVisible++;
             });
 
-            // Hide sections where no visible items remain (ignore hidden keyword anchors)
+            // Hide sections where no visible items remain
             document.querySelectorAll('.wiki-section').forEach(section => {
                 const items = Array.from(section.querySelectorAll('[data-search]'))
                     .filter(el => el.getAttribute('aria-hidden') !== 'true');
@@ -67,13 +75,11 @@
                 section.style.display = hasVisible ? '' : 'none';
             });
 
-            // Update count badge
             if (countEl) {
                 countEl.textContent = totalVisible + ' result' + (totalVisible !== 1 ? 's' : '');
                 countEl.classList.add('visible');
             }
 
-            // No results message
             if (noRes) {
                 noRes.style.display = totalVisible === 0 ? '' : 'none';
                 if (termEl) termEl.textContent = this.value;
@@ -105,7 +111,6 @@
 
         buttons.forEach(btn => {
             btn.addEventListener('click', function () {
-                // Reset search input when filter is picked
                 const searchInput = document.getElementById('wiki-search');
                 if (searchInput) searchInput.value = '';
                 resetAll();
@@ -124,8 +129,7 @@
     }
 
     /* ============================================================
-       GLOSSARY ACCORDION
-       One item open at a time.
+       GLOSSARY ACCORDION — One open at a time
     ============================================================ */
     function initWikiGlossary() {
         document.querySelectorAll('.wiki-gloss-trigger').forEach(trigger => {
@@ -133,14 +137,181 @@
                 const item   = this.closest('.wiki-gloss-item');
                 const isOpen = item.classList.contains('open');
 
-                // Close all open items
                 document.querySelectorAll('.wiki-gloss-item.open')
                     .forEach(i => i.classList.remove('open'));
 
-                // Open this one if it was closed
                 if (!isOpen) item.classList.add('open');
+
+                // Sync toggle button label
+                syncToggleLabel();
             });
         });
+    }
+
+    /* ============================================================
+       EXPAND ALL / COLLAPSE ALL (#4)
+    ============================================================ */
+    function initGlossaryToggle() {
+        const btn = document.getElementById('wiki-gloss-toggle');
+        if (!btn) return;
+
+        btn.addEventListener('click', function () {
+            const items = document.querySelectorAll('.wiki-gloss-item');
+            const allOpen = Array.from(items).every(i => i.classList.contains('open'));
+
+            if (allOpen) {
+                items.forEach(i => i.classList.remove('open'));
+            } else {
+                items.forEach(i => i.classList.add('open'));
+            }
+
+            syncToggleLabel();
+        });
+    }
+
+    function syncToggleLabel() {
+        const btn = document.getElementById('wiki-gloss-toggle');
+        if (!btn) return;
+        const items = document.querySelectorAll('.wiki-gloss-item');
+        const allOpen = Array.from(items).every(i => i.classList.contains('open'));
+        const labelSpan = btn.querySelector('span');
+        if (labelSpan) {
+            labelSpan.textContent = allOpen ? 'Collapse All' : 'Expand All';
+        }
+        btn.classList.toggle('expanded', allOpen);
+    }
+
+    /* ============================================================
+       KEYBOARD SHORTCUT: / to focus search (#3)
+    ============================================================ */
+    function initKeyboardShortcut() {
+        document.addEventListener('keydown', function (e) {
+            // Don't trigger if user is already typing in an input/textarea
+            const tag = document.activeElement.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+            if (e.key === '/') {
+                e.preventDefault();
+                var searchInput = document.getElementById('wiki-search');
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            }
+        });
+    }
+
+    /* ============================================================
+       SECTION JUMP NAV with active tracking (#1)
+    ============================================================ */
+    function initJumpNav() {
+        var jumpLinks = document.querySelectorAll('.wiki-jump-link');
+        if (!jumpLinks.length) return;
+
+        // Smooth scroll on click
+        jumpLinks.forEach(function (link) {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var targetId = this.getAttribute('data-target');
+                var target = document.getElementById(targetId);
+                if (target) {
+                    var top = target.getBoundingClientRect().top + window.scrollY - 80;
+                    window.scrollTo({ top: top, behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Active tracking on scroll
+        var sectionIds = Array.from(jumpLinks).map(function (l) {
+            return l.getAttribute('data-target');
+        });
+
+        window.addEventListener('scroll', function () {
+            var scrollTop = window.scrollY + 140;
+            var activeId = sectionIds[0];
+
+            for (var i = 0; i < sectionIds.length; i++) {
+                var section = document.getElementById(sectionIds[i]);
+                if (section) {
+                    var sectionTop = section.getBoundingClientRect().top + window.scrollY;
+                    if (sectionTop <= scrollTop) {
+                        activeId = sectionIds[i];
+                    }
+                }
+            }
+
+            jumpLinks.forEach(function (link) {
+                link.classList.toggle('active', link.getAttribute('data-target') === activeId);
+            });
+        });
+    }
+
+    /* ============================================================
+       SCROLL TO TOP BUTTON (#5)
+    ============================================================ */
+    function initScrollToTop() {
+        var btn = document.getElementById('wiki-scroll-top');
+        if (!btn) return;
+
+        window.addEventListener('scroll', function () {
+            btn.classList.toggle('visible', window.scrollY > 400);
+        });
+
+        btn.addEventListener('click', function () {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+
+    /* ============================================================
+       READING PROGRESS BAR (#7)
+    ============================================================ */
+    function initProgressBar() {
+        var bar = document.getElementById('wiki-progress-bar');
+        if (!bar) return;
+
+        window.addEventListener('scroll', function () {
+            var scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+            if (scrollHeight <= 0) {
+                bar.style.width = '0%';
+                return;
+            }
+            var progress = (window.scrollY / scrollHeight) * 100;
+            bar.style.width = Math.min(progress, 100) + '%';
+        });
+    }
+
+    /* ============================================================
+       SECTION ENTRANCE ANIMATIONS (#6)
+    ============================================================ */
+    function initSectionAnimations() {
+        var animateEls = document.querySelectorAll('.wiki-animate');
+        if (!animateEls.length) return;
+
+        // Use IntersectionObserver if available
+        if ('IntersectionObserver' in window) {
+            var observer = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('wiki-visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                threshold: 0.08,
+                rootMargin: '0px 0px -40px 0px'
+            });
+
+            animateEls.forEach(function (el) {
+                observer.observe(el);
+            });
+        } else {
+            // Fallback: show everything immediately
+            animateEls.forEach(function (el) {
+                el.classList.add('wiki-visible');
+            });
+        }
     }
 
     /* ── Expose to router ── */
