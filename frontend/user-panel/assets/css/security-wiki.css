@@ -1,0 +1,807 @@
+/* ============================================================
+   SECURITY WIKI PAGE — Styles
+   Design: Knowledge Base / Encyclopedia
+   Layout: Search-first hero · Filter pills · Card grid ·
+           Glossary accordion · Practice cards · Log table
+   Intentionally distinct from features.css (showcase/blocks)
+   and documentation.css (sidebar TOC layout)
+   ============================================================ */
+
+/* ── Page wrapper ── */
+.wiki-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    padding-bottom: 48px;
+}
+
+/* ============================================================
+   HERO — Search-centered
+   ============================================================ */
+.wiki-hero {
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: 14px;
+    padding: 52px 32px 44px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Radial red glow — distinct from features blue gradient bar */
+.wiki-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 55% 45% at 50% 0%,
+        rgba(248, 81, 73, 0.08) 0%,
+        transparent 70%);
+    pointer-events: none;
+}
+
+/* Subtle dot grid */
+.wiki-hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 24px 24px;
+    pointer-events: none;
+}
+
+.wiki-hero-badge {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #F85149;
+    background: rgba(248, 81, 73, 0.1);
+    border: 1px solid rgba(248, 81, 73, 0.25);
+    border-radius: 999px;
+    padding: 4px 14px;
+    margin-bottom: 20px;
+}
+
+.wiki-hero h1 {
+    position: relative;
+    z-index: 1;
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 10px;
+    line-height: 1.3;
+}
+
+.wiki-hero > p {
+    position: relative;
+    z-index: 1;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    margin: 0 auto 30px;
+    line-height: 1.55;
+    max-width: 520px;
+}
+
+/* ── Search input ── */
+.wiki-search-wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.wiki-search-wrap .wiki-search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+    width: 17px;
+    height: 17px;
+}
+
+#wiki-search {
+    width: 100%;
+    padding: 12px 80px 12px 44px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-family: var(--font-family);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-sizing: border-box;
+}
+
+#wiki-search::placeholder {
+    color: var(--text-muted);
+}
+
+#wiki-search:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+}
+
+.wiki-search-count {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    padding: 3px 9px;
+    border-radius: 5px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+}
+
+.wiki-search-count.visible {
+    opacity: 1;
+}
+
+/* ============================================================
+   FILTER PILLS
+   ============================================================ */
+.wiki-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.wiki-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border-default);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 0.83rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    font-family: var(--font-family);
+    line-height: 1;
+}
+
+.wiki-filter-btn:hover {
+    border-color: var(--accent-primary);
+    color: var(--text-primary);
+}
+
+.wiki-filter-btn.active {
+    background: rgba(88, 166, 255, 0.1);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+.wiki-filter-count {
+    font-size: 0.68rem;
+    font-weight: 600;
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    padding: 1px 7px;
+    border-radius: 999px;
+}
+
+.wiki-filter-btn.active .wiki-filter-count {
+    background: rgba(88, 166, 255, 0.18);
+    color: var(--accent-primary);
+}
+
+/* ============================================================
+   NO RESULTS
+   ============================================================ */
+.wiki-no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 64px 24px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    text-align: center;
+}
+
+.wiki-no-results svg {
+    color: var(--text-muted);
+    opacity: 0.5;
+}
+
+.wiki-no-results p {
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    margin: 0;
+}
+
+.wiki-no-results span {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+/* ============================================================
+   SECTION STRUCTURE (shared)
+   ============================================================ */
+.wiki-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* Section header strip */
+.wiki-section-hd {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+}
+
+.wiki-section-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.wiki-section-icon.threat   { background: rgba(248, 81, 73,  0.12); color: #F85149; }
+.wiki-section-icon.concept  { background: rgba(88, 166, 255, 0.12); color: #58A6FF; }
+.wiki-section-icon.practice { background: rgba(63, 185, 80,  0.12); color: #3FB950; }
+.wiki-section-icon.logs     { background: rgba(210, 153, 34, 0.12); color: #D29922; }
+
+.wiki-section-hd h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 2px;
+}
+
+.wiki-section-hd p {
+    font-size: 0.81rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.wiki-section-count {
+    margin-left: auto;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    padding: 3px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* ============================================================
+   THREAT CARDS GRID
+   ============================================================ */
+.wiki-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(295px, 1fr));
+    gap: 12px;
+}
+
+.wiki-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+    transition: border-color 0.2s, transform 0.15s;
+}
+
+.wiki-card:hover {
+    border-color: rgba(248, 81, 73, 0.3);
+    transform: translateY(-1px);
+}
+
+.wiki-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.wiki-card-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(248, 81, 73, 0.1);
+    color: #F85149;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Severity badges */
+.wiki-severity {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+}
+
+.wiki-severity.critical {
+    background: rgba(248, 81, 73, 0.12);
+    color: #F85149;
+    border: 1px solid rgba(248, 81, 73, 0.22);
+}
+
+.wiki-severity.high {
+    background: rgba(210, 153, 34, 0.12);
+    color: #D29922;
+    border: 1px solid rgba(210, 153, 34, 0.22);
+}
+
+.wiki-severity.medium {
+    background: rgba(227, 179, 65, 0.1);
+    color: #e3b341;
+    border: 1px solid rgba(227, 179, 65, 0.2);
+}
+
+.wiki-card h4 {
+    font-size: 0.93rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.3;
+}
+
+.wiki-card-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.58;
+    margin: 0;
+    flex: 1;
+}
+
+/* Response row */
+.wiki-card-response {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    padding: 8px 10px;
+    background: var(--bg-primary);
+    border-radius: 7px;
+}
+
+.wiki-card-response-label {
+    font-size: 0.73rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+/* Reusable verdict/response badge (used in cards, log table, legend) */
+.wiki-response-badge {
+    font-size: 0.67rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+}
+
+.wiki-response-badge.blocked  { background: rgba(248, 81, 73, 0.12);  color: #F85149; }
+.wiki-response-badge.throttled { background: rgba(210, 153, 34, 0.12); color: #D29922; }
+.wiki-response-badge.flagged  { background: rgba(163, 113, 247, 0.12); color: #A371F7; }
+.wiki-response-badge.allowed  { background: rgba(63, 185, 80, 0.12);  color: #3FB950; }
+
+/* ============================================================
+   GLOSSARY ACCORDION
+   ============================================================ */
+.wiki-glossary {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.wiki-gloss-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+}
+
+.wiki-gloss-item.open {
+    border-color: rgba(88, 166, 255, 0.35);
+}
+
+.wiki-gloss-trigger {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    font-family: var(--font-family);
+    transition: background 0.1s;
+}
+
+.wiki-gloss-trigger:hover {
+    background: var(--bg-hover);
+}
+
+/* Small dot indicator — replaces numbered badge from FAQ */
+.wiki-gloss-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--border-default);
+    flex-shrink: 0;
+    transition: background 0.15s, box-shadow 0.15s;
+}
+
+.wiki-gloss-item.open .wiki-gloss-dot {
+    background: var(--accent-primary);
+    box-shadow: 0 0 6px rgba(88, 166, 255, 0.5);
+}
+
+.wiki-gloss-term {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex-shrink: 0;
+    min-width: 180px;
+}
+
+.wiki-gloss-summary {
+    font-size: 0.79rem;
+    color: var(--text-muted);
+    padding-right: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.wiki-gloss-chevron {
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: transform 0.2s, color 0.15s;
+    margin-left: auto;
+}
+
+.wiki-gloss-item.open .wiki-gloss-chevron {
+    transform: rotate(180deg);
+    color: var(--accent-primary);
+}
+
+/* Collapse body */
+.wiki-gloss-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.28s ease;
+}
+
+.wiki-gloss-item.open .wiki-gloss-body {
+    max-height: 400px;
+}
+
+.wiki-gloss-body-inner {
+    padding: 0 18px 16px 35px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.wiki-gloss-body-inner p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.62;
+    margin: 12px 0 10px;
+}
+
+/* Inline example pill */
+.wiki-gloss-example {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    background: var(--bg-elevated);
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    line-height: 1.4;
+}
+
+.wiki-gloss-example-label {
+    color: var(--accent-primary);
+    font-family: var(--font-family);
+    font-weight: 600;
+    font-size: 0.74rem;
+    font-style: normal;
+}
+
+/* ============================================================
+   BEST PRACTICES — Top-stripe cards (2-column)
+   Distinct from features' left-accent-bar blocks
+   ============================================================ */
+.wiki-practice-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.wiki-practice-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.15s, transform 0.15s;
+}
+
+.wiki-practice-card:hover {
+    transform: translateY(-1px);
+}
+
+/* Colored stripe at the TOP (not left like features.css) */
+.wiki-practice-stripe {
+    height: 3px;
+}
+.wiki-practice-stripe.green  { background: linear-gradient(90deg, #3FB950, #2ea043); }
+.wiki-practice-stripe.blue   { background: linear-gradient(90deg, #58A6FF, #388bfd); }
+.wiki-practice-stripe.orange { background: linear-gradient(90deg, #D29922, #bb8009); }
+.wiki-practice-stripe.purple { background: linear-gradient(90deg, #A371F7, #8957e5); }
+
+.wiki-practice-body {
+    padding: 18px 20px 22px;
+}
+
+.wiki-practice-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.wiki-practice-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.wiki-practice-icon.green  { background: rgba(63, 185, 80,  0.12); color: #3FB950; }
+.wiki-practice-icon.blue   { background: rgba(88, 166, 255, 0.12); color: #58A6FF; }
+.wiki-practice-icon.orange { background: rgba(210, 153, 34, 0.12); color: #D29922; }
+.wiki-practice-icon.purple { background: rgba(163, 113, 247, 0.12); color: #A371F7; }
+
+.wiki-practice-label {
+    font-size: 0.69rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--text-muted);
+}
+
+.wiki-practice-body h4 {
+    font-size: 0.93rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 12px;
+    line-height: 1.3;
+}
+
+.wiki-practice-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.wiki-practice-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.wiki-practice-list li::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    flex-shrink: 0;
+    margin-top: 7px;
+}
+
+/* ============================================================
+   LOG REFERENCE — Table layout
+   ============================================================ */
+.wiki-log-intro {
+    font-size: 0.86rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    padding: 14px 18px;
+}
+
+.wiki-log-section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--text-muted);
+    padding: 0 2px;
+}
+
+.wiki-log-table-wrap {
+    background: var(--bg-card);
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+table.wiki-log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+}
+
+.wiki-log-table thead tr {
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-default);
+}
+
+.wiki-log-table thead th {
+    padding: 11px 16px;
+    text-align: left;
+    font-size: 0.69rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.wiki-log-table tbody tr {
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background 0.1s;
+}
+
+.wiki-log-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.wiki-log-table tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+.wiki-log-table td {
+    padding: 12px 16px;
+    vertical-align: top;
+    color: var(--text-secondary);
+    line-height: 1.55;
+}
+
+/* First column = monospace field name */
+.wiki-log-table td:first-child {
+    font-family: var(--font-mono);
+    font-size: 0.81rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.wiki-log-code {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.77rem;
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    padding: 2px 7px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+/* Verdict legend bar inside table wrapper */
+.wiki-verdict-legend {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    padding: 11px 16px;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border-default);
+    font-size: 0.76rem;
+    color: var(--text-muted);
+}
+
+.wiki-verdict-legend-label {
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-right: 2px;
+}
+
+.wiki-verdict-sep {
+    color: var(--border-default);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 860px) {
+    .wiki-practice-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .wiki-gloss-summary {
+        display: none;
+    }
+
+    .wiki-gloss-term {
+        min-width: unset;
+    }
+}
+
+@media (max-width: 640px) {
+    .wiki-hero {
+        padding: 36px 20px 32px;
+    }
+
+    .wiki-hero h1 {
+        font-size: 1.35rem;
+    }
+
+    .wiki-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .wiki-filters {
+        gap: 6px;
+    }
+
+    .wiki-filter-btn {
+        font-size: 0.79rem;
+        padding: 6px 12px;
+    }
+
+    .wiki-log-table thead th:nth-child(3),
+    .wiki-log-table td:nth-child(3) {
+        display: none;
+    }
+}

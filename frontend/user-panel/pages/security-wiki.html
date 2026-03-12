@@ -1,1 +1,583 @@
-﻿Need To be Done
+﻿<link rel="stylesheet" href="assets/css/security-wiki.css?v=1">
+
+<div class="wiki-page">
+
+    <!-- ============================================================
+         HERO — Search-centered
+         ============================================================ -->
+    <div class="wiki-hero">
+        <div class="wiki-hero-badge">
+            <svg width="11" height="11" fill="currentColor" viewBox="0 0 16 16"><path d="M7.938 2.016A.13.13 0 018 2a.13.13 0 01.062.016.146.146 0 01.054.057l6.857 11.667c.036.06.035.124.002.183a.163.163 0 01-.054.06.116.116 0 01-.066.017H1.146a.115.115 0 01-.066-.017.163.163 0 01-.054-.06.176.176 0 01.002-.183L7.884 2.073a.147.147 0 01.054-.057z"/></svg>
+            Security Wiki
+        </div>
+        <h1>Your guide to API security</h1>
+        <p>Understand threats, learn key concepts, follow best practices, and decode your security logs — all in one place.</p>
+        <div class="wiki-search-wrap">
+            <svg class="wiki-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input type="text" id="wiki-search" placeholder="Search threats, concepts, terms…" autocomplete="off" spellcheck="false">
+            <span class="wiki-search-count" id="wiki-search-count"></span>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         FILTER PILLS
+         ============================================================ -->
+    <div class="wiki-filters" id="wiki-filters">
+        <button class="wiki-filter-btn active" data-filter="all">
+            <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+            All
+        </button>
+        <button class="wiki-filter-btn" data-filter="threats">
+            <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            Threat Library
+            <span class="wiki-filter-count">7</span>
+        </button>
+        <button class="wiki-filter-btn" data-filter="concepts">
+            <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            Concepts
+            <span class="wiki-filter-count">8</span>
+        </button>
+        <button class="wiki-filter-btn" data-filter="practices">
+            <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            Best Practices
+            <span class="wiki-filter-count">4</span>
+        </button>
+        <button class="wiki-filter-btn" data-filter="logs">
+            <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            Log Reference
+        </button>
+    </div>
+
+    <!-- ============================================================
+         NO RESULTS (hidden by default)
+         ============================================================ -->
+    <div class="wiki-no-results" id="wiki-no-results" style="display:none">
+        <svg width="36" height="36" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <p>No results for &ldquo;<span id="wiki-search-term"></span>&rdquo;</p>
+        <span>Try a different keyword, or browse a category with the filters above.</span>
+    </div>
+
+    <!-- ============================================================
+         SECTION 1 — THREAT LIBRARY
+         ============================================================ -->
+    <div class="wiki-section" data-section="threats" id="wiki-threats">
+        <div class="wiki-section-hd">
+            <div class="wiki-section-icon threat">
+                <svg width="19" height="19" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            </div>
+            <div>
+                <h2>Threat Library</h2>
+                <p>Common API attack types, what they look like, and how the gateway responds</p>
+            </div>
+            <span class="wiki-section-count">7 threats</span>
+        </div>
+
+        <div class="wiki-cards">
+
+            <!-- Brute Force -->
+            <div class="wiki-card" data-search="brute force attack password login credentials guessing repeated attempts critical blocked">
+                <div class="wiki-card-top">
+                    <div class="wiki-card-icon">
+                        <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    </div>
+                    <span class="wiki-severity critical">Critical</span>
+                </div>
+                <h4>Brute Force Attack</h4>
+                <p class="wiki-card-desc">An attacker submits massive volumes of requests — often login or verification attempts — systematically trying different values to guess valid credentials, tokens, or access codes.</p>
+                <div class="wiki-card-response">
+                    <span class="wiki-card-response-label">Gateway response:</span>
+                    <span class="wiki-response-badge blocked">Blocked</span>
+                </div>
+            </div>
+
+            <!-- Credential Stuffing -->
+            <div class="wiki-card" data-search="credential stuffing leaked passwords account takeover breached data lists login critical blocked">
+                <div class="wiki-card-top">
+                    <div class="wiki-card-icon">
+                        <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    </div>
+                    <span class="wiki-severity critical">Critical</span>
+                </div>
+                <h4>Credential Stuffing</h4>
+                <p class="wiki-card-desc">Attackers use large lists of breached username-and-password pairs from previous data leaks, replaying them against your API to gain unauthorized access to real accounts.</p>
+                <div class="wiki-card-response">
+                    <span class="wiki-card-response-label">Gateway response:</span>
+                    <span class="wiki-response-badge blocked">Blocked</span>
+                </div>
+            </div>
+
+            <!-- Request Flooding -->
+            <div class="wiki-card" data-search="ddos request flooding denial service overwhelm traffic volume high throttled blocked">
+                <div class="wiki-card-top">
+                    <div class="wiki-card-icon">
+                        <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </div>
+                    <span class="wiki-severity high">High</span>
+                </div>
+                <h4>Request Flooding</h4>
+                <p class="wiki-card-desc">A client or botnet sends abnormally high request volumes in a short window — intending to exhaust backend resources and degrade or take the API offline.</p>
+                <div class="wiki-card-response">
+                    <span class="wiki-card-response-label">Gateway response:</span>
+                    <span class="wiki-response-badge throttled">Throttled</span>
+                    <span class="wiki-response-badge blocked">Blocked</span>
+                </div>
+            </div>
+
+            <!-- Endpoint Scanning -->
+            <div class="wiki-card" data-search="endpoint scanning enumeration probing undocumented paths discovery mapping high throttled">
+                <div class="wiki-card-top">
+                    <div class="wiki-card-icon">
+                        <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                    <span class="wiki-severity high">High</span>
+                </div>
+                <h4>Endpoint Scanning</h4>
+                <p class="wiki-card-desc">Automated tools systematically request many different URL paths to map out undocumented or hidden endpoints that could be targeted in follow-up attacks.</p>
+                <div class="wiki-card-response">
+                    <span class="wiki-card-response-label">Gateway response:</span>
+                    <span class="wiki-response-badge throttled">Throttled</span>
+                </div>
+            </div>
+
+            <!-- Replay Attack -->
+            <div class="wiki-card" data-search="replay attack token reuse captured resend duplicate repeat request medium blocked">
+                <div class="wiki-card-top">
+                    <div class="wiki-card-icon">
+                        <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    </div>
+                    <span class="wiki-severity medium">Medium</span>
+                </div>
+                <h4>Replay Attack</h4>
+                <p class="wiki-card-desc">A previously captured, valid API request is re-sent by an attacker to repeat an action — such as re-triggering a transaction, authentication step, or data modification.</p>
+                <div class="wiki-card-response">
+                    <span class="wiki-card-response-label">Gateway response:</span>
+                    <span class="wiki-response-badge blocked">Blocked</span>
+                </div>
+            </div>
+
+            <!-- API Key Compromise -->
+            <div class="wiki-card" data-search="api key compromise stolen leaked unauthorized use theft exposed critical blocked">
+                <div class="wiki-card-top">
+                    <div class="wiki-card-icon">
+                        <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                    </div>
+                    <span class="wiki-severity critical">Critical</span>
+                </div>
+                <h4>API Key Compromise</h4>
+                <p class="wiki-card-desc">A valid API key is leaked — committed to version control, embedded in client-side code, or intercepted — and then used by unauthorized parties to make requests on your behalf.</p>
+                <div class="wiki-card-response">
+                    <span class="wiki-card-response-label">Gateway response:</span>
+                    <span class="wiki-response-badge blocked">Blocked</span>
+                </div>
+            </div>
+
+            <!-- Automated Scraping -->
+            <div class="wiki-card" data-search="automated scraping bots data harvesting crawlers abuse mass extraction high throttled">
+                <div class="wiki-card-top">
+                    <div class="wiki-card-icon">
+                        <svg width="17" height="17" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                    </div>
+                    <span class="wiki-severity high">High</span>
+                </div>
+                <h4>Automated Scraping</h4>
+                <p class="wiki-card-desc">Bots programmatically extract large volumes of data from your API at a rate far exceeding normal usage — consuming resources and violating fair-use policies.</p>
+                <div class="wiki-card-response">
+                    <span class="wiki-card-response-label">Gateway response:</span>
+                    <span class="wiki-response-badge throttled">Throttled</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <!-- /threats -->
+
+    <!-- ============================================================
+         SECTION 2 — CONCEPTS GLOSSARY
+         ============================================================ -->
+    <div class="wiki-section" data-section="concepts" id="wiki-concepts">
+        <div class="wiki-section-hd">
+            <div class="wiki-section-icon concept">
+                <svg width="19" height="19" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            </div>
+            <div>
+                <h2>Concepts Glossary</h2>
+                <p>Plain-English definitions of technical terms you'll encounter in logs and documentation</p>
+            </div>
+            <span class="wiki-section-count">8 terms</span>
+        </div>
+
+        <div class="wiki-glossary">
+
+            <!-- Rate Limiting -->
+            <div class="wiki-gloss-item" data-search="rate limiting requests quota window allowed per key throttle 429">
+                <button class="wiki-gloss-trigger">
+                    <span class="wiki-gloss-dot"></span>
+                    <span class="wiki-gloss-term">Rate Limiting</span>
+                    <span class="wiki-gloss-summary">Controls how many requests a client can make within a time window</span>
+                    <svg class="wiki-gloss-chevron" width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="wiki-gloss-body">
+                    <div class="wiki-gloss-body-inner">
+                        <p>Rate limiting enforces a ceiling on how many requests a given API key can make within a defined time period. Once exceeded, further requests receive a <strong>429 Too Many Requests</strong> response until the window resets. This prevents abuse, ensures fair access for all consumers, and protects the backend from resource exhaustion.</p>
+                        <span class="wiki-gloss-example"><span class="wiki-gloss-example-label">Example: </span>10 requests allowed per 60-second rolling window per API key</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Anomaly Detection -->
+            <div class="wiki-gloss-item" data-search="anomaly detection unusual behavior pattern deviation analysis ai machine learning">
+                <button class="wiki-gloss-trigger">
+                    <span class="wiki-gloss-dot"></span>
+                    <span class="wiki-gloss-term">Anomaly Detection</span>
+                    <span class="wiki-gloss-summary">Identifies traffic patterns that deviate from expected normal behavior</span>
+                    <svg class="wiki-gloss-chevron" width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="wiki-gloss-body">
+                    <div class="wiki-gloss-body-inner">
+                        <p>Anomaly detection identifies requests or traffic sessions that deviate significantly from the established baseline of normal activity. Unlike rule-based checks that only catch known patterns, anomaly detection can surface novel attack methods by recognizing that something is <em>different</em> — even if it isn't explicitly registered as harmful.</p>
+                        <span class="wiki-gloss-example"><span class="wiki-gloss-example-label">Example: </span>A key making 10 req/min suddenly jumping to 500 req/min</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Behavioral Analysis -->
+            <div class="wiki-gloss-item" data-search="behavioral analysis traffic profile history baseline normal usage patterns client">
+                <button class="wiki-gloss-trigger">
+                    <span class="wiki-gloss-dot"></span>
+                    <span class="wiki-gloss-term">Behavioral Analysis</span>
+                    <span class="wiki-gloss-summary">Building a usage profile to distinguish normal clients from suspicious ones</span>
+                    <svg class="wiki-gloss-chevron" width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="wiki-gloss-body">
+                    <div class="wiki-gloss-body-inner">
+                        <p>Behavioral analysis examines a client's historical request data to build a profile of their typical usage — which endpoints they call, at what rate, how varied their requests are, and how many are blocked. Clients whose current behavior deviates significantly from their own profile are flagged as potentially compromised or abusive.</p>
+                        <span class="wiki-gloss-example"><span class="wiki-gloss-example-label">Signals: </span>endpoint diversity, request rate, error ratio, inter-arrival timing variance</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sliding Window -->
+            <div class="wiki-gloss-item" data-search="sliding window rolling time interval count moving period rate limiting">
+                <button class="wiki-gloss-trigger">
+                    <span class="wiki-gloss-dot"></span>
+                    <span class="wiki-gloss-term">Sliding Window</span>
+                    <span class="wiki-gloss-summary">A continuously moving time interval for counting recent request activity</span>
+                    <svg class="wiki-gloss-chevron" width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="wiki-gloss-body">
+                    <div class="wiki-gloss-body-inner">
+                        <p>Rather than counting requests in a fixed time bucket (e.g., "during this exact minute"), a sliding window tracks requests in a rolling period ending <em>right now</em>. This closes the "boundary burst" loophole where a client could exhaust their limit at the end of one window, then immediately exhaust the next without any pause.</p>
+                        <span class="wiki-gloss-example"><span class="wiki-gloss-example-label">Example: </span>"Requests in the last 60 seconds" — recalculated on every new request</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Throttling vs Blocking -->
+            <div class="wiki-gloss-item" data-search="throttling blocking 429 403 difference slow down reject enforce response">
+                <button class="wiki-gloss-trigger">
+                    <span class="wiki-gloss-dot"></span>
+                    <span class="wiki-gloss-term">Throttling vs. Blocking</span>
+                    <span class="wiki-gloss-summary">Two enforcement responses — temporary slowdown vs. outright rejection</span>
+                    <svg class="wiki-gloss-chevron" width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="wiki-gloss-body">
+                    <div class="wiki-gloss-body-inner">
+                        <p><strong>Throttling</strong> (429) means "slow down" — the client exceeded their rate quota. No malicious intent is assumed; they can retry once the rolling window resets. <strong>Blocking</strong> (403) means "denied" — the gateway determined the request is abusive or malicious based on behavioral signals and will not forward it to the backend.</p>
+                        <span class="wiki-gloss-example"><span class="wiki-gloss-example-label">Throttled → </span>HTTP 429, retry after window resets &nbsp;·&nbsp; <span class="wiki-gloss-example-label">Blocked → </span>HTTP 403</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Confidence Level -->
+            <div class="wiki-gloss-item" data-search="confidence level high medium low certainty accuracy verdict signal strength">
+                <button class="wiki-gloss-trigger">
+                    <span class="wiki-gloss-dot"></span>
+                    <span class="wiki-gloss-term">Confidence Level</span>
+                    <span class="wiki-gloss-summary">How certain the gateway is about a security verdict — High, Medium, or Low</span>
+                    <svg class="wiki-gloss-chevron" width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="wiki-gloss-body">
+                    <div class="wiki-gloss-body-inner">
+                        <p>When the gateway issues a security verdict it assigns a confidence level indicating how certain it is. <strong>High</strong> means multiple independent analysis layers agreed on the outcome. <strong>Medium</strong> means partial agreement. <strong>Low</strong> means only a weak signal triggered the decision — the verdict may be precautionary and worth reviewing via an appeal if it affected legitimate traffic.</p>
+                        <span class="wiki-gloss-example"><span class="wiki-gloss-example-label">High confidence BLOCK: </span>strong corroborating evidence from multiple analysis layers</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Event -->
+            <div class="wiki-gloss-item" data-search="security event log record gateway decision action blocked flagged throttled entry">
+                <button class="wiki-gloss-trigger">
+                    <span class="wiki-gloss-dot"></span>
+                    <span class="wiki-gloss-term">Security Event</span>
+                    <span class="wiki-gloss-summary">A logged record of any notable gateway decision on a request</span>
+                    <svg class="wiki-gloss-chevron" width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="wiki-gloss-body">
+                    <div class="wiki-gloss-body-inner">
+                        <p>A security event is created any time the gateway makes a non-trivial decision on a request — blocking, throttling, or flagging it. Each record includes the request ID, timestamp, IP address, API key, endpoint, the verdict, and the reason. These events are what you see on the Security Logs page in your dashboard.</p>
+                        <span class="wiki-gloss-example"><span class="wiki-gloss-example-label">View on: </span>Security Logs page in your dashboard</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Request Fingerprinting -->
+            <div class="wiki-gloss-item" data-search="request fingerprinting identifying client characteristics ip user agent headers profiling">
+                <button class="wiki-gloss-trigger">
+                    <span class="wiki-gloss-dot"></span>
+                    <span class="wiki-gloss-term">Request Fingerprinting</span>
+                    <span class="wiki-gloss-summary">Identifying and profiling a client beyond their IP address alone</span>
+                    <svg class="wiki-gloss-chevron" width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div class="wiki-gloss-body">
+                    <div class="wiki-gloss-body-inner">
+                        <p>Request fingerprinting builds a multi-dimensional identifier for a client by combining several attributes from their requests. This enables more robust identity tracking than IP alone (which can rotate or be shared), helping correlate requests across a session and detect suspicious changes in behavior or origin.</p>
+                        <span class="wiki-gloss-example"><span class="wiki-gloss-example-label">Attributes: </span>IP address, API key, endpoint usage patterns, request rate, timing</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <!-- /concepts -->
+
+    <!-- ============================================================
+         SECTION 3 — BEST PRACTICES
+         ============================================================ -->
+    <div class="wiki-section" data-section="practices" id="wiki-practices">
+        <div class="wiki-section-hd">
+            <div class="wiki-section-icon practice">
+                <svg width="19" height="19" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            </div>
+            <div>
+                <h2>Best Practices</h2>
+                <p>Actionable steps to keep your APIs and account as secure as possible</p>
+            </div>
+            <span class="wiki-section-count">4 guides</span>
+        </div>
+
+        <div class="wiki-practice-grid">
+
+            <!-- API Key Security -->
+            <div class="wiki-practice-card" data-search="api key security rotate secret never expose frontend backend repository best practices">
+                <div class="wiki-practice-stripe green"></div>
+                <div class="wiki-practice-body">
+                    <div class="wiki-practice-meta">
+                        <div class="wiki-practice-icon green">
+                            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                        </div>
+                        <span class="wiki-practice-label">API Key Security</span>
+                    </div>
+                    <h4>Protect your API keys</h4>
+                    <ul class="wiki-practice-list">
+                        <li>Never include API keys in frontend code, URLs, or public repositories</li>
+                        <li>Use a separate key per service or environment — never share a single key everywhere</li>
+                        <li>Rotate keys periodically and immediately after any suspected exposure</li>
+                        <li>Revoke unused or old keys — fewer active keys means a smaller attack surface</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Account Protection -->
+            <div class="wiki-practice-card" data-search="account protection 2fa two factor authentication password sessions backup codes best practices">
+                <div class="wiki-practice-stripe blue"></div>
+                <div class="wiki-practice-body">
+                    <div class="wiki-practice-meta">
+                        <div class="wiki-practice-icon blue">
+                            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        </div>
+                        <span class="wiki-practice-label">Account Protection</span>
+                    </div>
+                    <h4>Secure your account access</h4>
+                    <ul class="wiki-practice-list">
+                        <li>Enable Two-Factor Authentication — the single most impactful security step</li>
+                        <li>Store your 2FA backup recovery codes somewhere secure and offline</li>
+                        <li>Review your active sessions regularly and revoke any you don't recognise</li>
+                        <li>Use a strong, unique password and change it immediately if you suspect a breach</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Monitoring -->
+            <div class="wiki-practice-card" data-search="monitoring security logs review alerts blocked events suspicious watch best practices">
+                <div class="wiki-practice-stripe orange"></div>
+                <div class="wiki-practice-body">
+                    <div class="wiki-practice-meta">
+                        <div class="wiki-practice-icon orange">
+                            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                        </div>
+                        <span class="wiki-practice-label">Monitoring</span>
+                    </div>
+                    <h4>Stay on top of security events</h4>
+                    <ul class="wiki-practice-list">
+                        <li>Check your Security Logs regularly — even brief scans can surface issues early</li>
+                        <li>Clusters of BLOCKED events from the same IP signal a targeted attack</li>
+                        <li>Sudden spikes in your own key's usage may indicate it has been compromised</li>
+                        <li>Use request IDs to trace specific events and correlate them across log entries</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- When Blocked -->
+            <div class="wiki-practice-card" data-search="blocked request 403 429 appeal rate limit debug unexpected review best practices">
+                <div class="wiki-practice-stripe purple"></div>
+                <div class="wiki-practice-body">
+                    <div class="wiki-practice-meta">
+                        <div class="wiki-practice-icon purple">
+                            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <span class="wiki-practice-label">When Blocked</span>
+                    </div>
+                    <h4>What to do when a request is rejected</h4>
+                    <ul class="wiki-practice-list">
+                        <li>A 429 means rate limited — check your Usage Plans page and wait for the window to reset</li>
+                        <li>A 403 means the gateway flagged the request — find the reason in your Security Logs</li>
+                        <li>If the block was incorrect, use the request ID from your logs to submit an appeal</li>
+                        <li>Persistent 403s on legitimate traffic may mean an unusual burst pattern — spread requests more evenly</li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <!-- /practices -->
+
+    <!-- ============================================================
+         SECTION 4 — LOG REFERENCE
+         ============================================================ -->
+    <div class="wiki-section" data-section="logs" id="wiki-logs">
+        <div class="wiki-section-hd">
+            <div class="wiki-section-icon logs">
+                <svg width="19" height="19" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            </div>
+            <div>
+                <h2>Understanding Your Logs</h2>
+                <p>A quick-reference guide to every verdict and field in the Security Logs page</p>
+            </div>
+        </div>
+
+        <!-- Hidden searchable anchor for the log section -->
+        <div data-search="log reference allowed blocked throttled flagged verdict decision status code field request_id ip endpoint latency reason method timestamp" style="display:none" aria-hidden="true"></div>
+
+        <p class="wiki-log-intro">Every entry in your Security Logs represents a single request the gateway processed. Use this reference to understand what each decision value means and what every field contains — so you can quickly identify issues, trace specific requests, and spot abnormal patterns.</p>
+
+        <!-- Verdict Table -->
+        <span class="wiki-log-section-label">Verdict Reference</span>
+        <div class="wiki-log-table-wrap">
+            <table class="wiki-log-table">
+                <thead>
+                    <tr>
+                        <th>Decision</th>
+                        <th>Status</th>
+                        <th>Meaning</th>
+                        <th>Triggered by</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="wiki-response-badge allowed">ALLOWED</span></td>
+                        <td><span class="wiki-log-code">200</span></td>
+                        <td>Passed all checks — forwarded to the backend API normally.</td>
+                        <td>Clean, legitimate traffic within quota and within normal behavioral bounds.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="wiki-response-badge blocked">BLOCKED</span></td>
+                        <td><span class="wiki-log-code">403</span></td>
+                        <td>Rejected at the gateway — never reached your backend.</td>
+                        <td>Detected abuse pattern, rule violation, or high-confidence anomalous behavior.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="wiki-response-badge throttled">THROTTLED</span></td>
+                        <td><span class="wiki-log-code">429</span></td>
+                        <td>Rate limit exceeded — window resets automatically, no action needed.</td>
+                        <td>Request count for the rolling window exceeded the quota for this API key.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="wiki-response-badge flagged">FLAGGED</span></td>
+                        <td><span class="wiki-log-code">200</span></td>
+                        <td>Allowed but marked as suspicious for review. Not severe enough to block.</td>
+                        <td>Mild anomaly signal detected without enough corroboration to warrant blocking.</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="wiki-verdict-legend">
+                <span class="wiki-verdict-legend-label">Status codes:</span>
+                <span class="wiki-log-code">200</span> OK
+                <span class="wiki-verdict-sep">·</span>
+                <span class="wiki-log-code">403</span> Forbidden
+                <span class="wiki-verdict-sep">·</span>
+                <span class="wiki-log-code">429</span> Too Many Requests
+            </div>
+        </div>
+
+        <!-- Field Reference Table -->
+        <span class="wiki-log-section-label">Field Reference</span>
+        <div class="wiki-log-table-wrap">
+            <table class="wiki-log-table">
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Description</th>
+                        <th>Example</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>request_id</td>
+                        <td>Unique identifier assigned to every request. Use this when referencing an event or submitting an appeal.</td>
+                        <td><span class="wiki-log-code">a3f8…d21c</span></td>
+                    </tr>
+                    <tr>
+                        <td>timestamp</td>
+                        <td>Date and time the request arrived at the gateway, in UTC.</td>
+                        <td><span class="wiki-log-code">2026-03-13 14:22:05</span></td>
+                    </tr>
+                    <tr>
+                        <td>ip</td>
+                        <td>IP address the request originated from. May reflect a proxy or load balancer.</td>
+                        <td><span class="wiki-log-code">203.0.113.42</span></td>
+                    </tr>
+                    <tr>
+                        <td>api_key</td>
+                        <td>The API key used to authenticate the request — displayed masked, showing only the last 4 characters.</td>
+                        <td><span class="wiki-log-code">****a9f2</span></td>
+                    </tr>
+                    <tr>
+                        <td>endpoint</td>
+                        <td>The URL path that was requested.</td>
+                        <td><span class="wiki-log-code">/api/v1/data</span></td>
+                    </tr>
+                    <tr>
+                        <td>method</td>
+                        <td>HTTP method used in the request.</td>
+                        <td><span class="wiki-log-code">GET</span></td>
+                    </tr>
+                    <tr>
+                        <td>decision</td>
+                        <td>The gateway's security verdict for this request. See the Verdict Reference above.</td>
+                        <td><span class="wiki-log-code">BLOCKED</span></td>
+                    </tr>
+                    <tr>
+                        <td>reason</td>
+                        <td>A human-readable explanation of why the verdict was issued.</td>
+                        <td><span class="wiki-log-code">High block ratio detected</span></td>
+                    </tr>
+                    <tr>
+                        <td>status</td>
+                        <td>The HTTP status code returned to the client for this request.</td>
+                        <td><span class="wiki-log-code">403</span></td>
+                    </tr>
+                    <tr>
+                        <td>latency</td>
+                        <td>Total time in milliseconds the gateway spent processing the request.</td>
+                        <td><span class="wiki-log-code">14 ms</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+    <!-- /logs -->
+
+</div>
