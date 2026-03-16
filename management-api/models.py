@@ -24,6 +24,8 @@ class User(Base):
     token_version = Column(Integer, default=0, nullable=False)  # Increment to invalidate JWTs
     last_login_at = Column(DateTime, nullable=True)  # Last successful login timestamp
     avatar = Column(Text, nullable=True)  # Base64 Data URL for profile picture
+    failed_login_attempts = Column(Integer, default=0, nullable=False)  # Failed login counter
+    locked_until = Column(DateTime, nullable=True)  # Account lockout timestamp
     
     # Relationship to API keys
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
@@ -95,3 +97,18 @@ class UserSession(Base):
     is_revoked = Column(Boolean, default=False, nullable=False)
 
     user = relationship("User", back_populates="sessions")
+
+
+class AuditLog(Base):
+    """Records security-relevant account events (login, password change, MFA, etc.)."""
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    event_type = Column(String, nullable=False, index=True)
+    detail = Column(String, nullable=True)
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False, index=True)
+
+    user = relationship("User")

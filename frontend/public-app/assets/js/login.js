@@ -90,9 +90,10 @@ passwordInput.addEventListener('keyup', (e) => {
 function showAlert(message, type = 'error') {
     alertBox.textContent = message;
     alertBox.className = `alert ${type} show`;
+    const duration = (type === 'warning' || message.includes('locked')) ? 10000 : 5000;
     setTimeout(() => {
         alertBox.classList.remove('show');
-    }, 5000);
+    }, duration);
 }
 
 // Shake animation trigger
@@ -158,7 +159,12 @@ loginForm.addEventListener('submit', async (e) => {
             })
         });
 
-        const data = await response.json();
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseErr) {
+            throw new Error('Server returned an invalid response');
+        }
         
         if (response.ok) {
             // Check if MFA is required
@@ -210,9 +216,25 @@ loginForm.addEventListener('submit', async (e) => {
             // Show error message from server
             loginCard.classList.remove('loading');
             skeletonLoader.classList.remove('active');
-            showAlert(data.detail || 'Invalid credentials');
+            const msg = data.detail || 'Invalid credentials';
+            if (response.status === 429) {
+                showAlert(msg, 'error');
+                // Disable form for visual feedback during lockout
+                submitButton.disabled = true;
+                submitButton.textContent = 'Account Locked';
+                setTimeout(() => {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Sign In';
+                }, 30000);
+            } else {
+                if (msg.includes('Warning:')) {
+                    showAlert(msg, 'warning');
+                } else {
+                    showAlert(msg);
+                }
+                submitButton.disabled = false;
+            }
             triggerShake();
-            submitButton.disabled = false;
         }
     } catch (error) {
         console.error('Login error:', error);

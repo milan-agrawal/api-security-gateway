@@ -20,7 +20,7 @@ import redis
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from deps import get_db
-from models import User, APIKey, SecurityEvent
+from models import User, APIKey, SecurityEvent, AuditLog
 from utils import generate_secure_password, send_credentials_email
 from db import DATABASE_URL, SessionLocal
 
@@ -904,3 +904,38 @@ async def system_status(admin: User = Depends(get_current_admin)):
         "online": online_count,
         "total": total
     }
+
+
+@router.get("/users/{user_id}/audit-log")
+def get_user_audit_log(
+    user_id: int,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    """Return a user's security audit log (newest first). Admin-only."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found"
+        )
+
+    events = (
+        db.query(AuditLog)
+        .filter(AuditLog.user_id == user_id)
+        .order_by(AuditLog.created_at.desc())
+        .limit(min(limit, 200))
+        .all()
+    )
+
+    return [
+        {
+            "id": e.id,
+            "event_type": e.event_type,
+            "detail": e.detail,
+            "ip_address": e.ip_address,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+        }
+        for e in events
+    ]

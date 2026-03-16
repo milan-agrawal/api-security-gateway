@@ -1,1 +1,505 @@
-﻿Need To be Done
+﻿<link rel="stylesheet" href="assests/css/admin-settings.css?v=2">
+
+<div class="as-page">
+
+    <!-- ============================================================
+         SECURITY SCORE HERO
+         ============================================================ -->
+    <div class="as-score-hero">
+        <!-- Left: Score Ring + Grade -->
+        <div class="as-score-left">
+            <div class="as-score-ring-wrap">
+                <svg class="as-score-ring" viewBox="0 0 120 120">
+                    <circle class="as-ring-bg" cx="60" cy="60" r="52" />
+                    <circle class="as-ring-fill" id="asRingFill" cx="60" cy="60" r="52" />
+                </svg>
+                <div class="as-score-value">
+                    <span class="as-score-num" id="asScoreNum">0</span>
+                </div>
+            </div>
+            <div class="as-score-meta">
+                <span class="as-score-grade" id="asScoreGrade">—</span>
+                <span class="as-score-grade-label">Security Grade</span>
+            </div>
+        </div>
+
+        <!-- Right: Breakdown Cards -->
+        <div class="as-score-right">
+            <div class="as-score-heading">
+                <h3>Security Posture</h3>
+                <p>Improve your score by enabling all security features</p>
+            </div>
+            <div class="as-score-grid">
+                <div class="as-score-card" id="asScoreMfa">
+                    <div class="as-score-card-icon">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    </div>
+                    <div class="as-score-card-body">
+                        <span class="as-score-card-title">MFA Enabled</span>
+                        <span class="as-score-card-desc">Two-factor authentication</span>
+                    </div>
+                    <div class="as-score-card-right">
+                        <span class="as-score-card-pts">+30</span>
+                        <span class="as-score-card-badge"></span>
+                    </div>
+                </div>
+                <div class="as-score-card" id="asScorePwd">
+                    <div class="as-score-card-icon">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                    </div>
+                    <div class="as-score-card-body">
+                        <span class="as-score-card-title">Password Fresh</span>
+                        <span class="as-score-card-desc">Changed in last 90 days</span>
+                    </div>
+                    <div class="as-score-card-right">
+                        <span class="as-score-card-pts">+25</span>
+                        <span class="as-score-card-badge"></span>
+                    </div>
+                </div>
+                <div class="as-score-card" id="asScoreSessions">
+                    <div class="as-score-card-icon">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    </div>
+                    <div class="as-score-card-body">
+                        <span class="as-score-card-title">Low Sessions</span>
+                        <span class="as-score-card-desc">3 or fewer active sessions</span>
+                    </div>
+                    <div class="as-score-card-right">
+                        <span class="as-score-card-pts">+20</span>
+                        <span class="as-score-card-badge"></span>
+                    </div>
+                </div>
+                <div class="as-score-card" id="asScoreActive">
+                    <div class="as-score-card-icon">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <div class="as-score-card-body">
+                        <span class="as-score-card-title">Account Active</span>
+                        <span class="as-score-card-desc">Account in good standing</span>
+                    </div>
+                    <div class="as-score-card-right">
+                        <span class="as-score-card-pts">+25</span>
+                        <span class="as-score-card-badge"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         TAB SETTINGS LAYOUT
+         ============================================================ -->
+    <div class="as-settings-layout">
+        <!-- Left: Tab Navigation -->
+        <nav class="as-tab-nav">
+            <button class="as-tab-btn active" data-tab="profile">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                <span>Profile</span>
+            </button>
+            <button class="as-tab-btn" data-tab="security">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                <span>Security</span>
+            </button>
+            <button class="as-tab-btn" data-tab="mfa">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                <span>MFA</span>
+            </button>
+            <button class="as-tab-btn" data-tab="sessions">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <span>Sessions</span>
+            </button>
+            <button class="as-tab-btn" data-tab="activity">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                <span>Activity</span>
+            </button>
+            <button class="as-tab-btn" data-tab="notifications">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                <span>Notifications</span>
+            </button>
+            <div class="as-tab-divider"></div>
+            <button class="as-tab-btn danger" data-tab="danger">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <span>Danger Zone</span>
+            </button>
+        </nav>
+
+        <!-- Right: Tab Content Panels -->
+        <div class="as-tab-panels">
+
+            <!-- ── PROFILE TAB ── -->
+            <div class="as-tab-panel active" data-panel="profile">
+                <div class="as-panel-header blue">
+                    <h3>Profile Information</h3>
+                    <p>Manage your admin identity and avatar</p>
+                </div>
+                <div class="as-panel-body">
+                    <div class="as-profile-row">
+                        <div class="as-avatar-wrap">
+                            <div class="as-avatar" id="asAvatar">AD</div>
+                            <button class="as-avatar-edit" id="asAvatarUpload" title="Change avatar">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            </button>
+                            <input type="file" id="asAvatarInput" accept="image/*" hidden>
+                        </div>
+                        <div class="as-profile-brief">
+                            <div class="as-profile-name-row">
+                                <strong id="asProfileName">Admin</strong>
+                                <span class="as-role-badge">Super Admin</span>
+                                <span class="as-status-badge active" id="asStatusBadge"><span class="as-status-dot"></span>Active</span>
+                            </div>
+                            <span class="as-profile-email" id="asProfileEmail">admin@example.com</span>
+                            <div class="as-profile-meta">
+                                <span class="as-meta-item">
+                                    <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                    Joined <span id="asJoinDate">—</span>
+                                </span>
+                                <span class="as-meta-item">
+                                    <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Last login <span id="asLastLogin">—</span>
+                                </span>
+                                <span class="as-meta-item">
+                                    <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                                    <span id="asKeyCount">0</span> API keys
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="as-divider"></div>
+                    <div class="as-form-group">
+                        <label class="as-label" for="asFullName">Full Name</label>
+                        <input class="as-input" type="text" id="asFullName" placeholder="Enter your name" autocomplete="name">
+                    </div>
+                    <div class="as-form-group">
+                        <label class="as-label" for="asEmail">Email Address</label>
+                        <input class="as-input" type="email" id="asEmail" placeholder="admin@example.com" autocomplete="email">
+                    </div>
+                    <div class="as-form-actions">
+                        <button class="as-btn as-btn-primary" id="asSaveProfile">
+                            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── SECURITY TAB ── -->
+            <div class="as-tab-panel" data-panel="security">
+                <div class="as-panel-header purple">
+                    <h3>Password & Authentication</h3>
+                    <p>Last changed <span id="asPwdChanged">never</span></p>
+                </div>
+                <div class="as-panel-body">
+                    <div class="as-ztna-callout">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>ZTNA requires strong, regularly rotated passwords. Use a unique password not shared with other accounts.</span>
+                    </div>
+                    <div class="as-form-group">
+                        <label class="as-label" for="asCurPwd">Current Password</label>
+                        <div class="as-input-wrap">
+                            <input class="as-input" type="password" id="asCurPwd" placeholder="Enter current password" autocomplete="current-password">
+                            <button class="as-pwd-toggle" data-target="asCurPwd" type="button" title="Toggle visibility">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="as-form-group">
+                        <label class="as-label" for="asNewPwd">New Password</label>
+                        <div class="as-input-wrap">
+                            <input class="as-input" type="password" id="asNewPwd" placeholder="Enter new password" autocomplete="new-password">
+                            <button class="as-pwd-toggle" data-target="asNewPwd" type="button" title="Toggle visibility">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            </button>
+                        </div>
+                        <div class="as-pwd-strength" id="asPwdStrength">
+                            <div class="as-pwd-bar"><div class="as-pwd-bar-fill" id="asPwdBarFill"></div></div>
+                            <span class="as-pwd-label" id="asPwdLabel"></span>
+                        </div>
+                    </div>
+                    <div class="as-form-group">
+                        <label class="as-label" for="asConfirmPwd">Confirm New Password</label>
+                        <div class="as-input-wrap">
+                            <input class="as-input" type="password" id="asConfirmPwd" placeholder="Confirm new password" autocomplete="new-password">
+                            <button class="as-pwd-toggle" data-target="asConfirmPwd" type="button" title="Toggle visibility">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <ul class="as-pwd-reqs" id="asPwdReqs">
+                        <li data-req="length">At least 8 characters</li>
+                        <li data-req="upper">One uppercase letter</li>
+                        <li data-req="lower">One lowercase letter</li>
+                        <li data-req="number">One number</li>
+                        <li data-req="special">One special character</li>
+                    </ul>
+                    <div class="as-form-actions">
+                        <button class="as-btn as-btn-primary" id="asChangePassword">
+                            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            Update Password
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── MFA TAB ── -->
+            <div class="as-tab-panel" data-panel="mfa">
+                <div class="as-panel-header cyan">
+                    <h3>Multi-Factor Authentication</h3>
+                    <span class="as-mfa-badge disabled" id="asMfaBadge">Disabled</span>
+                </div>
+                <div class="as-panel-body">
+                    <!-- Disabled state -->
+                    <div class="as-mfa-state" id="asMfaDisabled">
+                        <div class="as-mfa-prompt">
+                            <div class="as-mfa-prompt-icon">
+                                <svg width="36" height="36" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            </div>
+                            <div class="as-mfa-prompt-text">
+                                <h4>MFA is not enabled</h4>
+                                <p>Protect your admin account with TOTP. Compatible with Google Authenticator, Authy, and similar apps.</p>
+                            </div>
+                            <button class="as-btn as-btn-primary" id="asMfaSetupBtn">Enable MFA</button>
+                        </div>
+                    </div>
+
+                    <!-- Setup flow -->
+                    <div class="as-mfa-state" id="asMfaSetup" style="display:none">
+                        <div class="as-mfa-setup-grid">
+                            <div class="as-mfa-step">
+                                <div class="as-step-num">1</div>
+                                <h4>Scan QR Code</h4>
+                                <p>Open your authenticator app and scan</p>
+                                <div class="as-qr-box" id="asMfaQrBox"><div class="as-qr-loading">Generating...</div></div>
+                                <div class="as-mfa-secret-row">
+                                    <span class="as-label">Manual key:</span>
+                                    <code class="as-mfa-secret" id="asMfaSecret">—</code>
+                                    <button class="as-btn-icon" id="asCopySecret" title="Copy"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></button>
+                                </div>
+                            </div>
+                            <div class="as-mfa-step">
+                                <div class="as-step-num">2</div>
+                                <h4>Verify Code</h4>
+                                <p>Enter the 6-digit code from your app</p>
+                                <div class="as-form-group">
+                                    <input class="as-input as-mfa-code-input" type="text" id="asMfaCode" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric">
+                                </div>
+                                <button class="as-btn as-btn-primary" id="asMfaVerifyBtn" style="width:100%;justify-content:center">Verify & Enable</button>
+                                <button class="as-btn as-btn-ghost" id="asMfaCancelBtn" style="width:100%;justify-content:center;margin-top:8px">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Enabled state -->
+                    <div class="as-mfa-state" id="asMfaEnabled" style="display:none">
+                        <div class="as-mfa-enabled-row">
+                            <div class="as-mfa-check-icon">
+                                <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div>
+                                <h4>MFA is active</h4>
+                                <p>Your account is secured with two-factor authentication</p>
+                            </div>
+                            <div class="as-mfa-actions">
+                                <button class="as-btn as-btn-secondary" id="asRegenBackup">Regenerate Backup Codes</button>
+                                <button class="as-btn as-btn-danger-outline" id="asDisableMfa">Disable MFA</button>
+                            </div>
+                        </div>
+                        <div class="as-backup-codes" id="asBackupCodes" style="display:none">
+                            <div class="as-divider"></div>
+                            <h4>Backup Codes</h4>
+                            <p class="as-hint">Save these codes securely. Each can only be used once.</p>
+                            <div class="as-backup-grid" id="asBackupGrid"></div>
+                            <div class="as-backup-actions">
+                                <button class="as-btn as-btn-ghost" id="asCopyBackup"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg> Copy All</button>
+                                <button class="as-btn as-btn-ghost" id="asDownloadBackup"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Download</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── SESSIONS TAB ── -->
+            <div class="as-tab-panel" data-panel="sessions">
+                <div class="as-panel-header green">
+                    <h3>Active Sessions</h3>
+                    <span class="as-session-count" id="asSessionCount">0 sessions</span>
+                </div>
+                <div class="as-panel-body">
+                    <div class="as-sessions-table-wrap">
+                        <table class="as-sessions-table">
+                            <thead>
+                                <tr><th>Device</th><th>IP Address</th><th>Last Active</th><th>Created</th><th></th></tr>
+                            </thead>
+                            <tbody id="asSessionsBody">
+                                <tr><td colspan="5" class="as-loading-row">Loading sessions...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="as-form-actions" style="margin-top:16px">
+                        <button class="as-btn as-btn-danger-outline" id="asRevokeAll">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                            Revoke All Other Sessions
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── ACTIVITY TAB ── -->
+            <div class="as-tab-panel" data-panel="activity">
+                <div class="as-panel-header amber">
+                    <h3>Security Activity</h3>
+                    <p>Recent events and login heatmap</p>
+                </div>
+                <div class="as-panel-body">
+                    <!-- Login Heatmap -->
+                    <div class="as-heatmap-section">
+                        <h4 class="as-section-title">Login Heatmap — Last 7 Days</h4>
+                        <div class="as-heatmap-wrap">
+                            <div class="as-heatmap-labels">
+                                <span>12a</span><span>3a</span><span>6a</span><span>9a</span><span>12p</span><span>3p</span><span>6p</span><span>9p</span>
+                            </div>
+                            <div class="as-heatmap-grid" id="asHeatmapGrid">
+                                <!-- 7 rows × 8 time blocks filled by JS -->
+                            </div>
+                            <div class="as-heatmap-days" id="asHeatmapDays">
+                                <!-- Day labels filled by JS -->
+                            </div>
+                        </div>
+                        <div class="as-heatmap-legend">
+                            <span>Less</span>
+                            <span class="as-heat-cell" data-level="0"></span>
+                            <span class="as-heat-cell" data-level="1"></span>
+                            <span class="as-heat-cell" data-level="2"></span>
+                            <span class="as-heat-cell" data-level="3"></span>
+                            <span>More</span>
+                        </div>
+                    </div>
+                    <div class="as-divider"></div>
+                    <!-- Event Log -->
+                    <h4 class="as-section-title">Recent Events</h4>
+                    <div class="as-activity-list" id="asActivityList">
+                        <div class="as-loading-row">Loading activity...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── NOTIFICATIONS TAB ── -->
+            <div class="as-tab-panel" data-panel="notifications">
+                <div class="as-panel-header indigo">
+                    <h3>Notification Preferences</h3>
+                    <p>Control what security alerts you receive</p>
+                </div>
+                <div class="as-panel-body">
+                    <div class="as-toggle-row">
+                        <div>
+                            <strong>New Login Alert</strong>
+                            <p>Get notified when a new device logs in</p>
+                        </div>
+                        <label class="as-toggle">
+                            <input type="checkbox" id="asNotifLogin" checked>
+                            <span class="as-toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="as-toggle-row">
+                        <div>
+                            <strong>Password Change</strong>
+                            <p>Alert when your password is changed</p>
+                        </div>
+                        <label class="as-toggle">
+                            <input type="checkbox" id="asNotifPwd" checked>
+                            <span class="as-toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="as-toggle-row">
+                        <div>
+                            <strong>MFA Changes</strong>
+                            <p>Alert when MFA is enabled or disabled</p>
+                        </div>
+                        <label class="as-toggle">
+                            <input type="checkbox" id="asNotifMfa" checked>
+                            <span class="as-toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="as-toggle-row">
+                        <div>
+                            <strong>Failed Login Attempts</strong>
+                            <p>Alert after 3+ failed login attempts</p>
+                        </div>
+                        <label class="as-toggle">
+                            <input type="checkbox" id="asNotifFailed" checked>
+                            <span class="as-toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="as-toggle-row">
+                        <div>
+                            <strong>Weekly Security Digest</strong>
+                            <p>Summary of account activity every Monday</p>
+                        </div>
+                        <label class="as-toggle">
+                            <input type="checkbox" id="asNotifDigest">
+                            <span class="as-toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="as-form-actions">
+                        <button class="as-btn as-btn-primary" id="asSaveNotifs">Save Preferences</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── DANGER ZONE TAB ── -->
+            <div class="as-tab-panel" data-panel="danger">
+                <div class="as-panel-header red">
+                    <h3>Danger Zone</h3>
+                    <p>Irreversible and destructive actions</p>
+                </div>
+                <div class="as-panel-body">
+                    <div class="as-danger-row">
+                        <div>
+                            <strong>Delete Admin Account</strong>
+                            <p>Permanently remove your account, sessions, and all associated data. This cannot be undone.</p>
+                        </div>
+                        <button class="as-btn as-btn-danger" id="asDeleteAccount">Delete Account</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Toast container -->
+<div class="as-toast-container" id="asToastContainer"></div>
+
+<!-- Command bar (Ctrl+K) -->
+<div class="as-cmd-overlay" id="asCmdOverlay" style="display:none">
+    <div class="as-cmd-bar">
+        <div class="as-cmd-search-row">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input class="as-cmd-input" id="asCmdInput" type="text" placeholder="Type a command..." autocomplete="off">
+            <kbd class="as-kbd">ESC</kbd>
+        </div>
+        <div class="as-cmd-list" id="asCmdList">
+            <button class="as-cmd-item" data-action="tab:profile">Go to Profile</button>
+            <button class="as-cmd-item" data-action="tab:security">Change Password</button>
+            <button class="as-cmd-item" data-action="tab:mfa">Toggle MFA</button>
+            <button class="as-cmd-item" data-action="tab:sessions">View Sessions</button>
+            <button class="as-cmd-item" data-action="tab:activity">Security Activity</button>
+            <button class="as-cmd-item" data-action="tab:notifications">Notification Settings</button>
+            <button class="as-cmd-item" data-action="revoke-all">Revoke All Sessions</button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation modal -->
+<div class="as-modal-overlay" id="asModalOverlay" style="display:none">
+    <div class="as-modal">
+        <div class="as-modal-header">
+            <h3 id="asModalTitle">Confirm Action</h3>
+            <button class="as-modal-close" id="asModalClose">&times;</button>
+        </div>
+        <div class="as-modal-body" id="asModalBody"></div>
+        <div class="as-modal-footer">
+            <button class="as-btn as-btn-ghost" id="asModalCancel">Cancel</button>
+            <button class="as-btn as-btn-danger" id="asModalConfirm">Confirm</button>
+        </div>
+    </div>
+</div>

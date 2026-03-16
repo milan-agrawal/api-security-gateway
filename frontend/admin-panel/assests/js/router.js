@@ -83,7 +83,10 @@ const adminRoutes = {
     'admin-settings': {
         title: 'Account & MFA',
         subtitle: 'Admin account and security settings',
-        file: 'pages/admin-settings.html'
+        file: 'pages/admin-settings.html',
+        onLoad: function() {
+            if (typeof initAdminSettings === 'function') initAdminSettings();
+        }
     },
     'system-config': {
         title: 'System Config',

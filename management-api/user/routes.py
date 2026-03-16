@@ -4,7 +4,7 @@ User Self-Service Routes
 Endpoints for the user panel — users manage their own profile, password, etc.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
@@ -24,6 +24,7 @@ from utils import (
     generate_backup_codes,
     encrypt_secret,
     decrypt_secret,
+    log_audit,
 )
 
 router = APIRouter(prefix="/user", tags=["User Self-Service"])
@@ -186,6 +187,7 @@ def get_profile(user: User = Depends(get_current_user), db: Session = Depends(ge
 @router.patch("/profile", response_model=ProfileUpdateResponse)
 def update_profile(
     data: ProfileUpdateRequest,
+    request: Request,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -217,6 +219,7 @@ def update_profile(
             user.email = new_email
 
     user.updated_at = datetime.now(timezone.utc)
+    log_audit(db, user.id, "profile_updated", "Profile information updated", request)
     db.commit()
     db.refresh(user)
 
@@ -230,6 +233,7 @@ def update_profile(
 @router.post("/change-password", response_model=ChangePasswordResponse)
 def change_password(
     data: ChangePasswordRequest,
+    request: Request,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -281,6 +285,7 @@ def change_password(
         if s.session_token != current_sid:
             s.is_revoked = True
 
+    log_audit(db, user.id, "password_changed", "Password updated, other sessions revoked", request)
     db.commit()
 
     return ChangePasswordResponse(message="Password changed successfully. You will be logged out of other sessions.")
@@ -289,6 +294,7 @@ def change_password(
 @router.post("/delete-account")
 def delete_account(
     data: DeleteAccountRequest,
+    request: Request,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -535,7 +541,7 @@ def list_sessions(user: User = Depends(get_current_user), db: Session = Depends(
 
 
 @router.delete("/sessions/{session_id}")
-def revoke_session(session_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def revoke_session(session_id: int, request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Revoke a single session by its database ID."""
     session = db.query(UserSession).filter(
         UserSession.id == session_id,
@@ -556,13 +562,14 @@ def revoke_session(session_id: int, user: User = Depends(get_current_user), db: 
         )
 
     session.is_revoked = True
+    log_audit(db, user.id, "session_revoked", f"Session {session_id} revoked", request)
     db.commit()
 
     return {"message": "Session revoked successfully"}
 
 
 @router.delete("/sessions")
-def revoke_all_other_sessions(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def revoke_all_other_sessions(request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Revoke all sessions except the current one."""
     current_sid = getattr(user, '_current_session_id', None)
 
@@ -577,6 +584,40 @@ def revoke_all_other_sessions(user: User = Depends(get_current_user), db: Sessio
             s.is_revoked = True
             revoked_count += 1
 
+    log_audit(db, user.id, "sessions_revoked_all", f"{revoked_count} sessions revoked", request)
     db.commit()
 
     return {"message": f"{revoked_count} session(s) revoked", "revoked_count": revoked_count}
+
+
+# ============================================================================
+# Audit Log
+# ============================================================================
+
+@router.get("/audit-log")
+def get_audit_log(
+    limit: int = 50,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Return the current user's security audit log (newest first)."""
+    from models import AuditLog
+
+    events = (
+        db.query(AuditLog)
+        .filter(AuditLog.user_id == user.id)
+        .order_by(AuditLog.created_at.desc())
+        .limit(min(limit, 200))
+        .all()
+    )
+
+    return [
+        {
+            "id": e.id,
+            "event_type": e.event_type,
+            "detail": e.detail,
+            "ip_address": e.ip_address,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+        }
+        for e in events
+    ]

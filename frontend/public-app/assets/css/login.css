@@ -532,6 +532,12 @@ body::after {
     color: #10B981;
 }
 
+.alert.warning {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid #F59E0B;
+    color: #F59E0B;
+}
+
 .alert.show {
     display: block;
 }

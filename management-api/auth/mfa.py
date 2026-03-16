@@ -27,6 +27,7 @@ from utils import (
     parse_user_agent,
 )
 from utils import encrypt_secret, decrypt_secret
+from utils import log_audit
 
 router = APIRouter(prefix="/auth/mfa", tags=["MFA"])
 
@@ -339,6 +340,7 @@ def verify_mfa_setup(
     # Update last login timestamp
     user.last_login_at = datetime.now(timezone.utc)
     
+    log_audit(db, user.id, "mfa_enabled", "MFA setup completed", http_request)
     db.commit()
     
     # Create session record
@@ -424,6 +426,7 @@ def verify_mfa(
     
     # Update last login timestamp
     user.last_login_at = datetime.now(timezone.utc)
+    log_audit(db, user.id, "login", "MFA login successful", http_request)
     db.commit()
     
     # Create session record
@@ -476,6 +479,7 @@ def get_mfa_status(
 
 @router.post("/regenerate-backup-codes")
 def regenerate_backup_codes(
+    http_request: Request,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user_from_token)
 ):
@@ -493,6 +497,7 @@ def regenerate_backup_codes(
     plain_codes, hashed_codes = generate_backup_codes(8)
     user.mfa_backup_codes = json.dumps(hashed_codes)
     user.updated_at = datetime.now(timezone.utc)
+    log_audit(db, user.id, "backup_codes_regenerated", "Backup codes regenerated", http_request)
     db.commit()
     
     return {
@@ -504,6 +509,7 @@ def regenerate_backup_codes(
 
 @router.post("/disable")
 def disable_mfa(
+    http_request: Request,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user_from_token)
 ):
@@ -529,6 +535,7 @@ def disable_mfa(
     user.mfa_secret = None
     user.mfa_backup_codes = None
     user.updated_at = datetime.now(timezone.utc)
+    log_audit(db, user.id, "mfa_disabled", "MFA disabled", http_request)
     db.commit()
     
     return {

@@ -1040,3 +1040,33 @@ def parse_user_agent(ua: str) -> str:
         os_name = "ChromeOS"
 
     return f"{browser} on {os_name}"
+
+
+# ============================================================================
+# Audit Logging
+# ============================================================================
+
+def log_audit(db, user_id: int, event_type: str, detail: str = None, request=None):
+    """
+    Record a security-relevant account event.
+    `request` is a FastAPI Request object (optional) — used to extract IP and User-Agent.
+    """
+    from models import AuditLog
+    from datetime import datetime, timezone
+
+    ip = None
+    ua = None
+    if request is not None:
+        ip = request.client.host if request.client else None
+        ua = request.headers.get("user-agent", "")
+
+    entry = AuditLog(
+        user_id=user_id,
+        event_type=event_type,
+        detail=detail,
+        ip_address=ip,
+        user_agent=ua,
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(entry)
+    # Don't commit here — let the caller's commit include the audit row atomically

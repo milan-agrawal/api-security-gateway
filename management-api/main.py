@@ -16,7 +16,7 @@ from admin import router as admin_router
 from auth.mfa import router as mfa_router, create_mfa_temp_token
 from auth.password_reset import router as password_reset_router
 from user import router as user_router
-from utils import parse_user_agent
+from utils import parse_user_agent, log_audit
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -113,12 +113,44 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
             detail="Invalid email or password"
         )
     
+    # Check account lockout
+    if user.locked_until and user.locked_until > datetime.utcnow():
+        mins_left = int((user.locked_until - datetime.utcnow()).total_seconds() / 60) + 1
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Account locked due to too many failed attempts. Try again in {mins_left} minute(s)."
+        )
+    
     # Verify password
     if not verify_password(credentials.password, user.password_hash):
+        user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+        attempts = user.failed_login_attempts
+        # Lock after 5 consecutive failures
+        if attempts >= 5:
+            user.locked_until = datetime.utcnow() + timedelta(minutes=15)
+            log_audit(db, user.id, "login_failed", f"Account locked after {attempts} failed attempts", request)
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many failed attempts. Your account has been locked for 15 minutes."
+            )
+        log_audit(db, user.id, "login_failed", "Invalid password", request)
+        db.commit()
+        remaining = 5 - attempts
+        if remaining <= 2:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid email or password. Warning: {remaining} attempt(s) remaining before account lockout."
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
+    
+    # Reset failed attempts on success
+    if user.failed_login_attempts:
+        user.failed_login_attempts = 0
+        user.locked_until = None
     
     # Check if user is active
     if not user.is_active:
@@ -176,6 +208,7 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
     
     # Update last login timestamp
     user.last_login_at = datetime.now(timezone.utc)
+    log_audit(db, user.id, "login", "Login successful", request)
     db.commit()
     
     return LoginResponse(
