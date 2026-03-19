@@ -26,6 +26,7 @@ from utils import (
     get_totp_uri,
     parse_user_agent,
     get_ip_location,
+    evaluate_geo_policy,
 )
 from utils import encrypt_secret, decrypt_secret
 from utils import log_audit
@@ -366,6 +367,23 @@ def verify_mfa_setup(
             if not existing:
                 is_new = True
 
+    geo_policy = evaluate_geo_policy(user.allowed_countries, location)
+    if not geo_policy["allowed"]:
+        resolved_country = geo_policy["country"] or "Unknown"
+        policy_text = geo_policy["policy"] or "Global"
+        log_audit(
+            db,
+            user.id,
+            "login_blocked_geo",
+            f"Blocked MFA setup from {resolved_country} ({client_ip}). Policy: {policy_text}. Reason: {geo_policy['reason']}",
+            http_request,
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=geo_policy["detail"]
+        )
+
     session = UserSession(
         user_id=user.id,
         session_token=session_id,
@@ -472,6 +490,23 @@ def verify_mfa(
             ).first()
             if not existing:
                 is_new = True
+
+    geo_policy = evaluate_geo_policy(user.allowed_countries, location)
+    if not geo_policy["allowed"]:
+        resolved_country = geo_policy["country"] or "Unknown"
+        policy_text = geo_policy["policy"] or "Global"
+        log_audit(
+            db,
+            user.id,
+            "login_blocked_geo",
+            f"Blocked MFA verification from {resolved_country} ({client_ip}). Policy: {policy_text}. Reason: {geo_policy['reason']}",
+            http_request,
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=geo_policy["detail"]
+        )
 
     session = UserSession(
         user_id=user.id,

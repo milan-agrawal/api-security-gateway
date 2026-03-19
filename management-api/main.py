@@ -16,7 +16,7 @@ from admin import router as admin_router
 from auth.mfa import router as mfa_router, create_mfa_temp_token
 from auth.password_reset import router as password_reset_router
 from user import router as user_router
-from utils import parse_user_agent, log_audit, get_ip_location
+from utils import parse_user_agent, log_audit, get_ip_location, evaluate_geo_policy
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -159,6 +159,42 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
             detail="Account is disabled"
         )
     
+    client_ip = request.client.host if request.client else "unknown"
+    
+    # 🌍 Geo-fencing & New Location Detection
+    location = get_ip_location(client_ip, db)
+    country = None
+    city = None
+    is_new = False
+    
+    if location:
+        country = location.get("country")
+        city = location.get("city")
+        if country and country != "Local Network":
+            existing = db.query(UserSession).filter(
+                UserSession.user_id == user.id,
+                UserSession.country == country
+            ).first()
+            if not existing:
+                is_new = True
+
+    geo_policy = evaluate_geo_policy(user.allowed_countries, location)
+    if not geo_policy["allowed"]:
+        resolved_country = geo_policy["country"] or "Unknown"
+        policy_text = geo_policy["policy"] or "Global"
+        log_audit(
+            db,
+            user.id,
+            "login_blocked_geo",
+            f"Blocked login from {resolved_country} ({client_ip}). Policy: {policy_text}. Reason: {geo_policy['reason']}",
+            request,
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=geo_policy["detail"]
+        )
+
     # Check if MFA is enabled
     if user.mfa_enabled:
         # Generate temporary token for MFA verification
@@ -176,25 +212,7 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
     
     # Create session record
     ua_string = request.headers.get("user-agent", "")
-    client_ip = request.client.host if request.client else "unknown"
     session_id = str(uuid.uuid4())
-
-    # 🌍 Geo-fencing & New Location Detection
-    location = get_ip_location(client_ip, db)
-    country = None
-    city = None
-    is_new = False
-    
-    if location:
-        country = location.get("country")
-        city = location.get("city")
-        if country and country != "Local Network":
-            existing = db.query(UserSession).filter(
-                UserSession.user_id == user.id,
-                UserSession.country == country
-            ).first()
-            if not existing:
-                is_new = True
 
     # Cleanup: purge revoked sessions older than 30 days
     cutoff = datetime.utcnow() - timedelta(days=30)

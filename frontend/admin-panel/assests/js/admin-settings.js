@@ -265,11 +265,14 @@ function loadAdminProfile() {
         var pwdEl = document.getElementById('asPwdChanged');
         var fnEl = document.getElementById('asFullName');
         var emEl = document.getElementById('asEmail');
+        var geoEl = document.getElementById('asAllowedCountries');
 
         if (nameEl) nameEl.textContent = _asEsc(data.full_name || 'Admin');
         if (emailEl) emailEl.textContent = _asEsc(data.email || '');
         if (fnEl) fnEl.value = data.full_name || '';
         if (emEl) emEl.value = data.email || '';
+        if (geoEl) geoEl.value = data.allowed_countries || '';
+        _asUpdateGeoPolicyStatus(data.allowed_countries || '');
         if (joinEl) joinEl.textContent = _asFormatDate(data.created_at);
         if (loginEl) loginEl.textContent = data.last_login_at ? _asTimeAgo(data.last_login_at) : 'never';
         if (keyEl) keyEl.textContent = data.active_api_key_count || 0;
@@ -313,6 +316,19 @@ function loadAdminProfile() {
     }).catch(function (err) {
         _asToast('Failed to load profile: ' + err.message, 'error');
     });
+}
+
+function _asUpdateGeoPolicyStatus(policyText) {
+    var statusEl = document.getElementById('asGeoPolicyStatus');
+    if (!statusEl) return;
+
+    var normalized = (policyText || '').trim();
+    if (!normalized) {
+        statusEl.textContent = 'Current policy: Global access allowed';
+        return;
+    }
+
+    statusEl.textContent = 'Current policy: Only these countries can log in -> ' + normalized;
 }
 
 function saveAdminProfile() {
@@ -792,6 +808,28 @@ function bindAdminSettingsEvents() {
         navigator.clipboard.writeText(codes.join('\n'));
         _asToast('Backup codes copied', 'info');
     });
+
+    _asClick('asSaveGeoBlocking', function () {
+        var btn = document.getElementById('asSaveGeoBlocking');
+        var geoInput = document.getElementById('asAllowedCountries');
+        if (!geoInput) return;
+        _asBtnLoading(btn, true);
+        _asFetch('/user/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ allowed_countries: geoInput.value })
+        }).then(function (data) {
+            _asBtnLoading(btn, false);
+            if (geoInput) geoInput.value = data.allowed_countries || '';
+            _asUpdateGeoPolicyStatus(data.allowed_countries || '');
+            _asToast('ZTNA Geo-Blocking policy saved', 'success');
+            loadAdminProfile();
+        }).catch(function (err) {
+            _asBtnLoading(btn, false);
+            _asToast('Failed to save policy: ' + err.message, 'error');
+        });
+    });
+
     _asClick('asDownloadBackup', function () {
         var codes = Array.from(document.querySelectorAll('#asBackupGrid code')).map(function (c) { return c.textContent; });
         var blob = new Blob([codes.join('\n')], { type: 'text/plain' });

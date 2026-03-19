@@ -25,6 +25,7 @@ from utils import (
     encrypt_secret,
     decrypt_secret,
     log_audit,
+    normalize_allowed_countries,
 )
 
 router = APIRouter(prefix="/user", tags=["User Self-Service"])
@@ -131,15 +132,18 @@ class ProfileResponse(BaseModel):
     api_key_count: int
     active_api_key_count: int
     avatar: Optional[str] = None
+    allowed_countries: Optional[str] = None
 
 class ProfileUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
+    allowed_countries: Optional[str] = None
 
 class ProfileUpdateResponse(BaseModel):
     message: str
     email: str
     full_name: str
+    allowed_countries: Optional[str] = None
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
@@ -181,6 +185,7 @@ def get_profile(user: User = Depends(get_current_user), db: Session = Depends(ge
         api_key_count=total_keys,
         active_api_key_count=active_keys,
         avatar=user.avatar,
+        allowed_countries=user.allowed_countries,
     )
 
 
@@ -192,6 +197,10 @@ def update_profile(
     db: Session = Depends(get_db)
 ):
     """Update current user's profile (name and/or email)."""
+    profile_changes = []
+    geo_policy_changed = False
+    normalized_policy = user.allowed_countries
+
     if data.full_name is not None:
         name = data.full_name.strip()
         if len(name) < 2:
@@ -204,7 +213,9 @@ def update_profile(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Full name must be less than 100 characters"
             )
-        user.full_name = name
+        if name != user.full_name:
+            user.full_name = name
+            profile_changes.append("full_name")
 
     if data.email is not None:
         new_email = data.email.lower().strip()
@@ -217,9 +228,32 @@ def update_profile(
                     detail="Email already in use"
                 )
             user.email = new_email
+            profile_changes.append("email")
+
+    if data.allowed_countries is not None:
+        normalized_policy = normalize_allowed_countries(data.allowed_countries)
+        if normalized_policy != user.allowed_countries:
+            user.allowed_countries = normalized_policy
+            geo_policy_changed = True
 
     user.updated_at = datetime.now(timezone.utc)
-    log_audit(db, user.id, "profile_updated", "Profile information updated", request)
+    if profile_changes:
+        log_audit(
+            db,
+            user.id,
+            "profile_updated",
+            "Profile fields updated: " + ", ".join(profile_changes),
+            request,
+        )
+    if geo_policy_changed:
+        policy_detail = normalized_policy or "Global access allowed"
+        log_audit(
+            db,
+            user.id,
+            "ztna_policy_updated",
+            f"Zero Trust geo policy updated: {policy_detail}",
+            request,
+        )
     db.commit()
     db.refresh(user)
 
@@ -227,6 +261,7 @@ def update_profile(
         message="Profile updated successfully",
         email=user.email,
         full_name=user.full_name,
+        allowed_countries=user.allowed_countries,
     )
 
 

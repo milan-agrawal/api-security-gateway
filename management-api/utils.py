@@ -10,6 +10,7 @@ import os
 import urllib.request
 import urllib.error
 import json
+import ipaddress
 from typing import Optional
 from dotenv import load_dotenv
 
@@ -1080,12 +1081,19 @@ def log_audit(db, user_id: int, event_type: str, detail: str = None, request=Non
 
 def get_ip_location(ip: str, db) -> Optional[dict]:
     """
-    Fetch geolocation data for an IP using ip-api.com.
+    Fetch geolocation data for an IP using a secure HTTPS geolocation API.
     Checks the local `IpGeoCache` table first to avoid redundant external API calls.
     Returns a dictionary with 'country' and 'city' or None if lookup fails.
     """
-    if not ip or ip == "127.0.0.1" or ip == "localhost" or ip.startswith("192.168.") or ip.startswith("10."):
+    if not ip or ip == "localhost":
         return {"country": "Local Network", "city": "Local"}
+
+    try:
+        parsed_ip = ipaddress.ip_address(ip)
+        if parsed_ip.is_loopback or parsed_ip.is_private:
+            return {"country": "Local Network", "city": "Local"}
+    except ValueError:
+        pass
 
     from models import IpGeoCache
     from datetime import datetime, timezone
@@ -1100,21 +1108,21 @@ def get_ip_location(ip: str, db) -> Optional[dict]:
             "country_code": cached.country_code
         }
 
-    # 2. Fetch from external API (free, no key needed)
+    # 2. Fetch from external API over HTTPS
     try:
-        url = f"http://ip-api.com/json/{ip}"
+        url = f"https://ipwho.is/{ip}"
         req = urllib.request.Request(url, headers={'User-Agent': 'API-Security-Gateway'})
         with urllib.request.urlopen(req, timeout=3.0) as response:
             data = json.loads(response.read().decode('utf-8'))
             
-            if data.get("status") == "success":
+            if data.get("success") is True:
                 # 3. Save to local cache
                 new_cache = IpGeoCache(
                     ip_address=ip,
                     country=data.get("country"),
                     city=data.get("city"),
-                    region=data.get("regionName"),
-                    country_code=data.get("countryCode"),
+                    region=data.get("region"),
+                    country_code=data.get("country_code"),
                     latitude=str(data.get("lat")) if data.get("lat") else None,
                     longitude=str(data.get("lon")) if data.get("lon") else None,
                     isp=data.get("isp"),
@@ -1126,8 +1134,8 @@ def get_ip_location(ip: str, db) -> Optional[dict]:
                 return {
                     "country": data.get("country"),
                     "city": data.get("city"),
-                    "region": data.get("regionName"),
-                    "country_code": data.get("countryCode")
+                    "region": data.get("region"),
+                    "country_code": data.get("country_code")
                 }
     except Exception as e:
         print(f"IP Geo lookup failed for {ip}: {e}")
@@ -1135,3 +1143,91 @@ def get_ip_location(ip: str, db) -> Optional[dict]:
         pass
         
     return None
+
+
+def normalize_allowed_countries(raw_policy: Optional[str]) -> Optional[str]:
+    """
+    Normalize a comma-separated list of allowed countries for storage/display.
+    Empty input becomes None.
+    """
+    if raw_policy is None:
+        return None
+
+    normalized = []
+    seen = set()
+
+    for item in raw_policy.split(","):
+        country = " ".join(item.strip().split())
+        if not country:
+            continue
+
+        key = country.casefold()
+        if key in seen:
+            continue
+
+        normalized.append(country)
+        seen.add(key)
+
+    return ", ".join(normalized) if normalized else None
+
+
+def evaluate_geo_policy(allowed_countries: Optional[str], location: Optional[dict]) -> dict:
+    """
+    Evaluate whether a login location satisfies the configured Zero Trust policy.
+    """
+    policy = normalize_allowed_countries(allowed_countries)
+    country = (location or {}).get("country")
+
+    if not policy:
+        return {
+            "allowed": True,
+            "policy": None,
+            "country": country,
+            "detail": None,
+            "reason": "No geo policy configured",
+        }
+
+    if country == "Local Network":
+        return {
+            "allowed": True,
+            "policy": policy,
+            "country": country,
+            "detail": None,
+            "reason": "Local network bypass",
+        }
+
+    if not location:
+        return {
+            "allowed": False,
+            "policy": policy,
+            "country": None,
+            "detail": "Access denied by Zero Trust policy: unable to verify login location",
+            "reason": "Location lookup failed",
+        }
+
+    if not country:
+        return {
+            "allowed": False,
+            "policy": policy,
+            "country": None,
+            "detail": "Access denied by Zero Trust policy: login country could not be determined",
+            "reason": "Country missing from lookup result",
+        }
+
+    allowed_list = [item.casefold() for item in policy.split(",") if item.strip()]
+    if country.casefold() in allowed_list:
+        return {
+            "allowed": True,
+            "policy": policy,
+            "country": country,
+            "detail": None,
+            "reason": "Country allowed",
+        }
+
+    return {
+        "allowed": False,
+        "policy": policy,
+        "country": country,
+        "detail": f"Access denied from {country} by Zero Trust policy",
+        "reason": f"Country '{country}' is not in allowed list",
+    }

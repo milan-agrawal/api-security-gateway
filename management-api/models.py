@@ -26,6 +26,7 @@ class User(Base):
     avatar = Column(Text, nullable=True)  # Base64 Data URL for profile picture
     failed_login_attempts = Column(Integer, default=0, nullable=False)  # Failed login counter
     locked_until = Column(DateTime, nullable=True)  # Account lockout timestamp
+    allowed_countries = Column(String, nullable=True)  # Comma-separated list of allowed countries (ZTNA)
     
     # Relationship to API keys
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
