@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    ADMIN SETTINGS v2 — Tab-Based Layout  (admin-settings.js)
    Tab switching · Security Score Ring · Login Heatmap
    Command Bar (Ctrl+K) · Notification Prefs · API calls
@@ -26,18 +26,18 @@ function initAdminSettings() {
    ============================================================ */
 function _asInitTabs() {
     var btns = document.querySelectorAll('.as-tab-btn');
-    btns.forEach(function(btn) {
-        btn.addEventListener('click', function() {
+    btns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
             _asSwitchTab(btn.getAttribute('data-tab'));
         });
     });
 }
 
 function _asSwitchTab(tabName) {
-    document.querySelectorAll('.as-tab-btn').forEach(function(b) {
+    document.querySelectorAll('.as-tab-btn').forEach(function (b) {
         b.classList.toggle('active', b.getAttribute('data-tab') === tabName);
     });
-    document.querySelectorAll('.as-tab-panel').forEach(function(p) {
+    document.querySelectorAll('.as-tab-panel').forEach(function (p) {
         p.classList.toggle('active', p.getAttribute('data-panel') === tabName);
     });
 }
@@ -111,7 +111,7 @@ function _asAnimateNum(el, target) {
     var current = parseInt(el.textContent) || 0;
     if (current === target) { el.textContent = target; return; }
     var step = target > current ? 1 : -1;
-    _asScoreInterval = setInterval(function() {
+    _asScoreInterval = setInterval(function () {
         current += step;
         el.textContent = current;
         if (current === target) { clearInterval(_asScoreInterval); _asScoreInterval = null; }
@@ -125,7 +125,7 @@ function _asInitCmdBar() {
     if (_asCmdBound) return;
     _asCmdBound = true;
 
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
             e.preventDefault();
             _asCmdToggle();
@@ -134,17 +134,17 @@ function _asInitCmdBar() {
 
     var overlay = document.getElementById('asCmdOverlay');
     if (overlay) {
-        overlay.addEventListener('click', function(e) {
+        overlay.addEventListener('click', function (e) {
             if (e.target === overlay) _asCmdClose();
         });
     }
 
     var input = document.getElementById('asCmdInput');
     if (input) {
-        input.addEventListener('input', function() {
+        input.addEventListener('input', function () {
             _asCmdFilter(input.value.toLowerCase().trim());
         });
-        input.addEventListener('keydown', function(e) {
+        input.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') _asCmdClose();
             if (e.key === 'Enter') {
                 var focused = document.querySelector('.as-cmd-item.focused');
@@ -158,8 +158,8 @@ function _asInitCmdBar() {
         });
     }
 
-    document.querySelectorAll('.as-cmd-item').forEach(function(item) {
-        item.addEventListener('click', function() {
+    document.querySelectorAll('.as-cmd-item').forEach(function (item) {
+        item.addEventListener('click', function () {
             var action = item.getAttribute('data-action');
             _asCmdClose();
             _asCmdExec(action);
@@ -186,7 +186,7 @@ function _asCmdClose() {
 }
 
 function _asCmdFilter(q) {
-    document.querySelectorAll('.as-cmd-item').forEach(function(item) {
+    document.querySelectorAll('.as-cmd-item').forEach(function (item) {
         var text = item.textContent.toLowerCase();
         var match = !q || text.indexOf(q) !== -1;
         item.classList.toggle('hidden', !match);
@@ -199,8 +199,8 @@ function _asCmdFilter(q) {
 function _asCmdNavigate(dir) {
     var items = Array.from(document.querySelectorAll('.as-cmd-item:not(.hidden)'));
     if (!items.length) return;
-    var idx = items.findIndex(function(i) { return i.classList.contains('focused'); });
-    items.forEach(function(i) { i.classList.remove('focused'); });
+    var idx = items.findIndex(function (i) { return i.classList.contains('focused'); });
+    items.forEach(function (i) { i.classList.remove('focused'); });
     idx += dir;
     if (idx < 0) idx = items.length - 1;
     if (idx >= items.length) idx = 0;
@@ -223,20 +223,20 @@ function _asCmdExec(action) {
 function _asInitNotifPrefs() {
     var prefs = _asGetNotifPrefs();
     var keys = ['Login', 'Pwd', 'Mfa', 'Failed', 'Digest'];
-    keys.forEach(function(k) {
+    keys.forEach(function (k) {
         var el = document.getElementById('asNotif' + k);
         if (el) el.checked = prefs[k.toLowerCase()] !== false;
     });
 
     var saveBtn = document.getElementById('asSaveNotifs');
     if (saveBtn) {
-        saveBtn.addEventListener('click', function() {
+        saveBtn.addEventListener('click', function () {
             var obj = {};
-            keys.forEach(function(k) {
+            keys.forEach(function (k) {
                 var el = document.getElementById('asNotif' + k);
                 obj[k.toLowerCase()] = el ? el.checked : true;
             });
-            try { localStorage.setItem('as_notif_prefs', JSON.stringify(obj)); } catch(e) {}
+            try { localStorage.setItem('as_notif_prefs', JSON.stringify(obj)); } catch (e) { }
             _asToast('Notification preferences saved', 'success');
         });
     }
@@ -246,14 +246,14 @@ function _asGetNotifPrefs() {
     try {
         var raw = localStorage.getItem('as_notif_prefs');
         return raw ? JSON.parse(raw) : {};
-    } catch(e) { return {}; }
+    } catch (e) { return {}; }
 }
 
 /* ============================================================
    PROFILE API
    ============================================================ */
 function loadAdminProfile() {
-    _asFetch('/user/profile').then(function(data) {
+    _asFetch('/user/profile').then(function (data) {
         _asProfileData = data;
         var nameEl = document.getElementById('asProfileName');
         var emailEl = document.getElementById('asProfileEmail');
@@ -274,6 +274,19 @@ function loadAdminProfile() {
         if (loginEl) loginEl.textContent = data.last_login_at ? _asTimeAgo(data.last_login_at) : 'never';
         if (keyEl) keyEl.textContent = data.active_api_key_count || 0;
 
+        // Load saved timezone into dropdown + show hint
+        var tzSel = document.getElementById('asTimezone');
+        var savedTz = _asGetTz();
+        if (tzSel) {
+            // Try to select saved tz; if not in list, default to browser tz
+            var found = Array.from(tzSel.options).some(function (o) { return o.value === savedTz; });
+            tzSel.value = found ? savedTz : (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+            // Always hint from the actual selected value (in case of fallback)
+            _asUpdateTzHint(tzSel.value);
+        } else {
+            _asUpdateTzHint(savedTz);
+        }
+
         if (statusEl) {
             statusEl.className = 'as-status-badge ' + (data.is_active ? 'active' : '');
             statusEl.innerHTML = '<span class="as-status-dot"></span>' + (data.is_active ? 'Active' : 'Inactive');
@@ -291,13 +304,13 @@ function loadAdminProfile() {
                 avatarEl.textContent = '';
                 avatarEl.appendChild(img);
             } else {
-                var initials = (data.full_name || 'A').split(' ').map(function(w) { return w[0]; }).join('').substring(0, 2).toUpperCase();
+                var initials = (data.full_name || 'A').split(' ').map(function (w) { return w[0]; }).join('').substring(0, 2).toUpperCase();
                 avatarEl.textContent = initials;
             }
         }
 
         _asUpdateScore();
-    }).catch(function(err) {
+    }).catch(function (err) {
         _asToast('Failed to load profile: ' + err.message, 'error');
     });
 }
@@ -307,6 +320,12 @@ function saveAdminProfile() {
     var email = (document.getElementById('asEmail') || {}).value || '';
     if (!name.trim() || !email.trim()) return _asToast('Name and email are required', 'error');
 
+    // Save timezone preference to localStorage
+    var tzSel = document.getElementById('asTimezone');
+    if (tzSel && tzSel.value) {
+        localStorage.setItem('as_timezone', tzSel.value);
+    }
+
     var btn = document.getElementById('asSaveProfile');
     _asBtnLoading(btn, true);
 
@@ -314,11 +333,11 @@ function saveAdminProfile() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ full_name: name.trim(), email: email.trim() })
-    }).then(function() {
+    }).then(function () {
         _asBtnLoading(btn, false);
-        _asToast('Profile updated successfully', 'success');
+        _asToast('Profile updated · Timezone set to ' + _asGetTz(), 'success');
         loadAdminProfile();
-    }).catch(function(err) {
+    }).catch(function (err) {
         _asBtnLoading(btn, false);
         _asToast('Update failed: ' + err.message, 'error');
     });
@@ -333,8 +352,8 @@ function handleAvatarUpload(file) {
     var fd = new FormData();
     fd.append('file', file);
     _asFetch('/user/avatar', { method: 'POST', body: fd, rawBody: true })
-        .then(function() { _asToast('Avatar updated', 'success'); loadAdminProfile(); })
-        .catch(function(err) { _asToast('Upload failed: ' + err.message, 'error'); });
+        .then(function () { _asToast('Avatar updated', 'success'); loadAdminProfile(); })
+        .catch(function (err) { _asToast('Upload failed: ' + err.message, 'error'); });
 }
 
 /* ============================================================
@@ -342,7 +361,7 @@ function handleAvatarUpload(file) {
    ============================================================ */
 function changeAdminPassword() {
     var cur = (document.getElementById('asCurPwd') || {}).value || '';
-    var nw  = (document.getElementById('asNewPwd') || {}).value || '';
+    var nw = (document.getElementById('asNewPwd') || {}).value || '';
     var cnf = (document.getElementById('asConfirmPwd') || {}).value || '';
 
     if (!cur || !nw) return _asToast('Fill in all password fields', 'error');
@@ -356,7 +375,7 @@ function changeAdminPassword() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ current_password: cur, new_password: nw })
-    }).then(function() {
+    }).then(function () {
         _asBtnLoading(btn, false);
         _asToast('Password changed successfully', 'success');
         document.getElementById('asCurPwd').value = '';
@@ -364,7 +383,7 @@ function changeAdminPassword() {
         document.getElementById('asConfirmPwd').value = '';
         _asUpdatePwdStrength('');
         loadAdminProfile();
-    }).catch(function(err) {
+    }).catch(function (err) {
         _asBtnLoading(btn, false);
         _asToast('Password change failed: ' + err.message, 'error');
     });
@@ -376,10 +395,10 @@ function _asUpdatePwdStrength(val) {
     if (!bar || !label) return;
 
     var s = 0;
-    if (val.length >= 8)          s++;
-    if (/[A-Z]/.test(val))        s++;
-    if (/[a-z]/.test(val))        s++;
-    if (/[0-9]/.test(val))        s++;
+    if (val.length >= 8) s++;
+    if (/[A-Z]/.test(val)) s++;
+    if (/[a-z]/.test(val)) s++;
+    if (/[0-9]/.test(val)) s++;
     if (/[^A-Za-z0-9]/.test(val)) s++;
 
     var pct = (s / 5) * 100;
@@ -392,7 +411,7 @@ function _asUpdatePwdStrength(val) {
 
     // Live requirement checks
     var reqs = { length: val.length >= 8, upper: /[A-Z]/.test(val), lower: /[a-z]/.test(val), number: /[0-9]/.test(val), special: /[^A-Za-z0-9]/.test(val) };
-    document.querySelectorAll('.as-pwd-reqs li').forEach(function(li) {
+    document.querySelectorAll('.as-pwd-reqs li').forEach(function (li) {
         var key = li.getAttribute('data-req');
         li.classList.toggle('met', !!reqs[key]);
     });
@@ -402,7 +421,7 @@ function _asUpdatePwdStrength(val) {
    MFA
    ============================================================ */
 function loadAdminMfaStatus() {
-    _asFetch('/auth/mfa/status').then(function(data) {
+    _asFetch('/auth/mfa/status').then(function (data) {
         var badge = document.getElementById('asMfaBadge');
         var dEl = document.getElementById('asMfaDisabled');
         var sEl = document.getElementById('asMfaSetup');
@@ -416,7 +435,7 @@ function loadAdminMfaStatus() {
         if (dEl) dEl.style.display = enabled ? 'none' : '';
         if (sEl) sEl.style.display = 'none';
         if (eEl) eEl.style.display = enabled ? '' : 'none';
-    }).catch(function() {});
+    }).catch(function () { });
 }
 
 function setupAdminMfa() {
@@ -425,7 +444,7 @@ function setupAdminMfa() {
     if (dEl) dEl.style.display = 'none';
     if (sEl) sEl.style.display = '';
 
-    _asFetch('/user/mfa/setup', { method: 'POST' }).then(function(data) {
+    _asFetch('/user/mfa/setup', { method: 'POST' }).then(function (data) {
         var qrBox = document.getElementById('asMfaQrBox');
         var secretEl = document.getElementById('asMfaSecret');
         if (qrBox && data.qr_code) {
@@ -434,7 +453,7 @@ function setupAdminMfa() {
         if (secretEl && data.secret) {
             secretEl.textContent = data.secret;
         }
-    }).catch(function(err) {
+    }).catch(function (err) {
         _asToast('MFA setup failed: ' + err.message, 'error');
         if (dEl) dEl.style.display = '';
         if (sEl) sEl.style.display = 'none';
@@ -449,34 +468,34 @@ function verifyAdminMfa() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: code })
-    }).then(function(data) {
+    }).then(function (data) {
         _asToast('MFA enabled successfully!', 'success');
         loadAdminMfaStatus();
         if (data.backup_codes) _asShowBackupCodes(data.backup_codes);
         loadAdminProfile();
-    }).catch(function(err) {
+    }).catch(function (err) {
         _asToast('Verification failed: ' + err.message, 'error');
     });
 }
 
 function disableAdminMfa() {
-    _asShowModal('Disable MFA', '<p>Are you sure? This will remove two-factor authentication from your admin account.</p>', function() {
-        _asFetch('/auth/mfa/disable', { method: 'POST' }).then(function() {
+    _asShowModal('Disable MFA', '<p>Are you sure? This will remove two-factor authentication from your admin account.</p>', function () {
+        _asFetch('/auth/mfa/disable', { method: 'POST' }).then(function () {
             _asToast('MFA disabled', 'success');
             _asCloseModal();
             loadAdminMfaStatus();
             loadAdminProfile();
-        }).catch(function(err) {
+        }).catch(function (err) {
             _asToast('Failed: ' + err.message, 'error');
         });
     });
 }
 
 function regenerateAdminBackupCodes() {
-    _asFetch('/auth/mfa/regenerate-backup-codes', { method: 'POST' }).then(function(data) {
+    _asFetch('/auth/mfa/regenerate-backup-codes', { method: 'POST' }).then(function (data) {
         if (data.backup_codes) _asShowBackupCodes(data.backup_codes);
         _asToast('Backup codes regenerated', 'success');
-    }).catch(function(err) {
+    }).catch(function (err) {
         _asToast('Failed: ' + err.message, 'error');
     });
 }
@@ -486,14 +505,14 @@ function _asShowBackupCodes(codes) {
     var grid = document.getElementById('asBackupGrid');
     if (!wrap || !grid) return;
     wrap.style.display = '';
-    grid.innerHTML = codes.map(function(c) { return '<code>' + _asEsc(c) + '</code>'; }).join('');
+    grid.innerHTML = codes.map(function (c) { return '<code>' + _asEsc(c) + '</code>'; }).join('');
 }
 
 /* ============================================================
    SESSIONS
    ============================================================ */
 function loadAdminSessions() {
-    _asFetch('/user/sessions').then(function(data) {
+    _asFetch('/user/sessions').then(function (data) {
         _asSessionData = data;
         var tbody = document.getElementById('asSessionsBody');
         var countEl = document.getElementById('asSessionCount');
@@ -507,7 +526,7 @@ function loadAdminSessions() {
         }
 
         tbody.innerHTML = '';
-        data.forEach(function(s) {
+        data.forEach(function (s) {
             var isCurrent = s.is_current;
             var tr = document.createElement('tr');
 
@@ -537,7 +556,7 @@ function loadAdminSessions() {
                 btn.className = 'as-btn-icon';
                 btn.title = 'Revoke';
                 btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
-                btn.addEventListener('click', (function(sid) { return function() { revokeSession(sid); }; })(s.id));
+                btn.addEventListener('click', (function (sid) { return function () { revokeSession(sid); }; })(s.id));
                 tdAction.appendChild(btn);
             }
             tr.appendChild(tdAction);
@@ -546,27 +565,27 @@ function loadAdminSessions() {
         });
 
         _asUpdateScore();
-    }).catch(function(err) {
+    }).catch(function (err) {
         _asToast('Failed to load sessions: ' + err.message, 'error');
     });
 }
 
 function revokeSession(id) {
-    _asFetch('/user/sessions/' + id, { method: 'DELETE' }).then(function() {
+    _asFetch('/user/sessions/' + id, { method: 'DELETE' }).then(function () {
         _asToast('Session revoked', 'success');
         loadAdminSessions();
-    }).catch(function(err) {
+    }).catch(function (err) {
         _asToast('Revoke failed: ' + err.message, 'error');
     });
 }
 
 function revokeAllAdminSessions() {
-    _asShowModal('Revoke All Sessions', '<p>This will log you out of all other devices. Continue?</p>', function() {
-        _asFetch('/user/sessions', { method: 'DELETE' }).then(function() {
+    _asShowModal('Revoke All Sessions', '<p>This will log you out of all other devices. Continue?</p>', function () {
+        _asFetch('/user/sessions', { method: 'DELETE' }).then(function () {
             _asToast('All other sessions revoked', 'success');
             _asCloseModal();
             loadAdminSessions();
-        }).catch(function(err) {
+        }).catch(function (err) {
             _asToast('Failed: ' + err.message, 'error');
         });
     });
@@ -576,10 +595,10 @@ function revokeAllAdminSessions() {
    ACTIVITY + HEATMAP
    ============================================================ */
 function loadAdminActivity() {
-    _asFetch('/user/audit-log?limit=50').then(function(events) {
+    _asFetch('/user/audit-log?limit=50').then(function (events) {
         _asRenderActivity(events);
         _asRenderHeatmap(events);
-    }).catch(function() {
+    }).catch(function () {
         var list = document.getElementById('asActivityList');
         if (list) list.innerHTML = '<div class="as-activity-empty">No activity data available</div>';
         _asRenderHeatmap([]);
@@ -596,20 +615,20 @@ function _asRenderActivity(events) {
     }
 
     var iconMap = {
-        login:               { cls: 'login',    icon: '🔑' },
-        login_failed:        { cls: 'danger',   icon: '⚠' },
-        password_changed:    { cls: 'password', icon: '🔒' },
-        profile_updated:     { cls: 'login',    icon: '✏' },
-        mfa_enabled:         { cls: 'mfa',      icon: '🛡' },
-        mfa_disabled:        { cls: 'danger',   icon: '⛔' },
-        session_revoked:     { cls: 'session',  icon: '✖' },
-        sessions_revoked_all:{ cls: 'session',  icon: '🔄' }
+        login: { cls: 'login', icon: '🔑' },
+        login_failed: { cls: 'danger', icon: '⚠' },
+        password_changed: { cls: 'password', icon: '🔒' },
+        profile_updated: { cls: 'login', icon: '✏' },
+        mfa_enabled: { cls: 'mfa', icon: '🛡' },
+        mfa_disabled: { cls: 'danger', icon: '⛔' },
+        session_revoked: { cls: 'session', icon: '✖' },
+        sessions_revoked_all: { cls: 'session', icon: '🔄' }
     };
 
-    var html = events.slice(0, 25).map(function(ev) {
+    var html = events.slice(0, 25).map(function (ev) {
         var type = (ev.event_type || '').toLowerCase();
         var info = iconMap[type] || { cls: 'default', icon: '📋' };
-        var label = type.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+        var label = type.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
         return '<div class="as-activity-item">' +
             '<div class="as-activity-icon ' + info.cls + '">' + info.icon + '</div>' +
             '<div class="as-activity-info"><strong>' + _asEsc(label) + '</strong><span>' + _asEsc(ev.detail || '') + (ev.ip_address ? ' · ' + _asEsc(ev.ip_address) : '') + '</span></div>' +
@@ -636,7 +655,7 @@ function _asRenderHeatmap(events) {
     }
 
     if (events && events.length) {
-        events.forEach(function(ev) {
+        events.forEach(function (ev) {
             var ts = new Date(ev.created_at);
             var diffDays = Math.floor((now - ts) / (24 * 60 * 60 * 1000));
             if (diffDays < 0 || diffDays > 6) return;
@@ -648,7 +667,7 @@ function _asRenderHeatmap(events) {
     }
 
     var maxVal = 1;
-    matrix.forEach(function(row) { row.forEach(function(v) { if (v > maxVal) maxVal = v; }); });
+    matrix.forEach(function (row) { row.forEach(function (v) { if (v > maxVal) maxVal = v; }); });
 
     var html = '';
     for (var i = 0; i < 7; i++) {
@@ -683,7 +702,7 @@ function deleteAdminAccount() {
     btn.textContent = 'Delete Permanently';
     overlay.style.display = '';
 
-    btn.onclick = function() {
+    btn.onclick = function () {
         var pwd = (document.getElementById('asDeletePwd') || {}).value || '';
         var conf = (document.getElementById('asDeleteConfirm') || {}).value || '';
         if (!pwd) return _asToast('Password is required', 'error');
@@ -693,12 +712,12 @@ function deleteAdminAccount() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ password: pwd, confirmation: conf })
-        }).then(function() {
+        }).then(function () {
             _asToast('Account deleted', 'info');
             _asCloseModal();
             localStorage.removeItem('token');
-            setTimeout(function() { window.location.href = '/'; }, 1500);
-        }).catch(function(err) {
+            setTimeout(function () { window.location.href = '/'; }, 1500);
+        }).catch(function (err) {
             _asToast('Deletion failed: ' + err.message, 'error');
         });
     };
@@ -709,21 +728,30 @@ function deleteAdminAccount() {
    ============================================================ */
 function bindAdminSettingsEvents() {
     _asClick('asSaveProfile', saveAdminProfile);
-    _asClick('asAvatarUpload', function() {
+
+    // Live timezone preview on dropdown change
+    var tzSel = document.getElementById('asTimezone');
+    if (tzSel) {
+        tzSel.addEventListener('change', function () {
+            _asUpdateTzHint(tzSel.value);
+        });
+    }
+
+    _asClick('asAvatarUpload', function () {
         var inp = document.getElementById('asAvatarInput');
         if (inp) inp.click();
     });
     var avatarInput = document.getElementById('asAvatarInput');
-    if (avatarInput) avatarInput.addEventListener('change', function() {
+    if (avatarInput) avatarInput.addEventListener('change', function () {
         if (this.files && this.files[0]) handleAvatarUpload(this.files[0]);
     });
 
     _asClick('asChangePassword', changeAdminPassword);
     var newPwd = document.getElementById('asNewPwd');
-    if (newPwd) newPwd.addEventListener('input', function() { _asUpdatePwdStrength(this.value); });
+    if (newPwd) newPwd.addEventListener('input', function () { _asUpdatePwdStrength(this.value); });
 
-    document.querySelectorAll('.as-pwd-toggle').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+    document.querySelectorAll('.as-pwd-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
             var target = document.getElementById(btn.getAttribute('data-target'));
             if (!target) return;
             target.type = target.type === 'password' ? 'text' : 'password';
@@ -732,20 +760,20 @@ function bindAdminSettingsEvents() {
 
     _asClick('asMfaSetupBtn', setupAdminMfa);
     _asClick('asMfaVerifyBtn', verifyAdminMfa);
-    _asClick('asMfaCancelBtn', function() { loadAdminMfaStatus(); });
+    _asClick('asMfaCancelBtn', function () { loadAdminMfaStatus(); });
     _asClick('asDisableMfa', disableAdminMfa);
     _asClick('asRegenBackup', regenerateAdminBackupCodes);
-    _asClick('asCopySecret', function() {
+    _asClick('asCopySecret', function () {
         var el = document.getElementById('asMfaSecret');
         if (el) { navigator.clipboard.writeText(el.textContent); _asToast('Secret copied', 'info'); }
     });
-    _asClick('asCopyBackup', function() {
-        var codes = Array.from(document.querySelectorAll('#asBackupGrid code')).map(function(c) { return c.textContent; });
+    _asClick('asCopyBackup', function () {
+        var codes = Array.from(document.querySelectorAll('#asBackupGrid code')).map(function (c) { return c.textContent; });
         navigator.clipboard.writeText(codes.join('\n'));
         _asToast('Backup codes copied', 'info');
     });
-    _asClick('asDownloadBackup', function() {
-        var codes = Array.from(document.querySelectorAll('#asBackupGrid code')).map(function(c) { return c.textContent; });
+    _asClick('asDownloadBackup', function () {
+        var codes = Array.from(document.querySelectorAll('#asBackupGrid code')).map(function (c) { return c.textContent; });
         var blob = new Blob([codes.join('\n')], { type: 'text/plain' });
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -777,7 +805,7 @@ function _asFetch(url, opts) {
         delete opts.rawBody;
     }
     opts.headers = headers;
-    return fetch(API_URL + url, opts).then(function(r) {
+    return fetch(API_URL + url, opts).then(function (r) {
         if (r.status === 401) {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
@@ -785,11 +813,11 @@ function _asFetch(url, opts) {
             return Promise.reject(new Error('Session expired'));
         }
         if (!r.ok) {
-            return r.json().then(function(d) {
+            return r.json().then(function (d) {
                 var msg = d.detail;
-                if (typeof msg === 'object') msg = Array.isArray(msg) ? msg.map(function(e) { return e.msg || JSON.stringify(e); }).join(', ') : JSON.stringify(msg);
+                if (typeof msg === 'object') msg = Array.isArray(msg) ? msg.map(function (e) { return e.msg || JSON.stringify(e); }).join(', ') : JSON.stringify(msg);
                 throw new Error(msg || r.statusText);
-            }).catch(function(e) {
+            }).catch(function (e) {
                 if (e instanceof Error) throw e;
                 throw new Error(r.statusText);
             });
@@ -801,14 +829,14 @@ function _asFetch(url, opts) {
 
 var _asToastIcons = {
     success: '&#10003;',
-    error:   '&#10007;',
-    info:    '&#8505;',
+    error: '&#10007;',
+    info: '&#8505;',
     warning: '&#9888;'
 };
 var _asToastTitles = {
     success: 'Success',
-    error:   'Error',
-    info:    'Info',
+    error: 'Error',
+    info: 'Info',
     warning: 'Warning'
 };
 
@@ -825,8 +853,8 @@ function _asToast(msg, type, duration) {
     t.innerHTML =
         '<span class="as-toast-icon">' + (_asToastIcons[type] || '') + '</span>' +
         '<div class="as-toast-content">' +
-            '<div class="as-toast-title">' + (_asToastTitles[type] || 'Notice') + '</div>' +
-            '<div class="as-toast-msg">' + _asEsc(msg) + '</div>' +
+        '<div class="as-toast-title">' + (_asToastTitles[type] || 'Notice') + '</div>' +
+        '<div class="as-toast-msg">' + _asEsc(msg) + '</div>' +
         '</div>' +
         '<button class="as-toast-close" aria-label="Close">&times;</button>' +
         '<div class="as-toast-progress"></div>';
@@ -834,28 +862,28 @@ function _asToast(msg, type, duration) {
     container.appendChild(t);
 
     /* Close on click */
-    t.querySelector('.as-toast-close').onclick = function() { _asDismissToast(t); };
+    t.querySelector('.as-toast-close').onclick = function () { _asDismissToast(t); };
 
     /* Auto dismiss */
-    var timer = setTimeout(function() { _asDismissToast(t); }, duration);
+    var timer = setTimeout(function () { _asDismissToast(t); }, duration);
 
     /* Pause on hover */
-    t.addEventListener('mouseenter', function() {
+    t.addEventListener('mouseenter', function () {
         clearTimeout(timer);
         var bar = t.querySelector('.as-toast-progress');
         if (bar) bar.style.animationPlayState = 'paused';
     });
-    t.addEventListener('mouseleave', function() {
+    t.addEventListener('mouseleave', function () {
         var bar = t.querySelector('.as-toast-progress');
         if (bar) bar.style.animationPlayState = 'running';
-        timer = setTimeout(function() { _asDismissToast(t); }, 1500);
+        timer = setTimeout(function () { _asDismissToast(t); }, 1500);
     });
 }
 
 function _asDismissToast(el) {
     if (!el || !el.parentNode) return;
     el.classList.add('as-toast-exit');
-    setTimeout(function() { el.remove(); }, 250);
+    setTimeout(function () { el.remove(); }, 250);
 }
 
 function _asEsc(s) {
@@ -894,23 +922,67 @@ function _asCloseModal() {
     if (overlay) overlay.style.display = 'none';
 }
 
-function _asFormatDate(iso) {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+/* ============================================================
+   TIMEZONE HELPERS
+   ============================================================ */
+
+/** Get currently selected timezone (localStorage → browser default) */
+function _asGetTz() {
+    return localStorage.getItem('as_timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 }
 
+/** Format date in selected timezone: "Mar 19, 2026 · 5:30 PM" */
+function _asFormatDate(iso) {
+    if (!iso) return '—';
+    try {
+        return new Intl.DateTimeFormat('en-US', {
+            timeZone: _asGetTz(),
+            month: 'short', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', hour12: true
+        }).format(new Date(iso));
+    } catch (e) {
+        return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+}
+
+/** Time-ago string + exact time in parens using timezone */
 function _asTimeAgo(iso) {
     if (!iso) return '—';
     var diff = Date.now() - new Date(iso).getTime();
     var s = Math.floor(diff / 1000);
-    if (s < 60) return 'just now';
-    var m = Math.floor(s / 60);
-    if (m < 60) return m + 'm ago';
-    var h = Math.floor(m / 60);
-    if (h < 24) return h + 'h ago';
-    var d = Math.floor(h / 24);
-    if (d < 30) return d + 'd ago';
-    return _asFormatDate(iso);
+    var rel;
+    if (s < 60) rel = 'just now';
+    else {
+        var m = Math.floor(s / 60);
+        if (m < 60) rel = m + 'm ago';
+        else {
+            var h = Math.floor(m / 60);
+            if (h < 24) rel = h + 'h ago';
+            else {
+                var d = Math.floor(h / 24);
+                rel = d < 30 ? d + 'd ago' : null;
+            }
+        }
+    }
+    var exact = _asFormatDate(iso);
+    return rel ? rel + ' (' + exact + ')' : exact;
+}
+
+/** Update the timezone hint text below the dropdown */
+function _asUpdateTzHint(tz) {
+    var hint = document.getElementById('asTzHint');
+    if (!hint) return;
+    try {
+        var now = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            month: 'short', day: 'numeric', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', hour12: true,
+            timeZoneName: 'short'
+        }).format(new Date());
+        hint.textContent = '🕐 Current time in this timezone: ' + now;
+    } catch (e) {
+        hint.textContent = 'Invalid timezone';
+    }
 }
 
 
