@@ -520,7 +520,7 @@ function loadAdminSessions() {
 
         if (!tbody) return;
         if (!data.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="as-loading-row">No active sessions</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="as-loading-row">No active sessions</td></tr>';
             _asUpdateScore();
             return;
         }
@@ -541,6 +541,26 @@ function loadAdminSessions() {
             ipCode.textContent = s.ip_address || '—';
             tdIp.appendChild(ipCode);
             tr.appendChild(tdIp);
+
+            var tdLoc = document.createElement('td');
+            var locText = document.createElement('span');
+            if (s.country && s.country !== 'Local Network') {
+                locText.textContent = (s.city ? s.city + ', ' : '') + s.country;
+            } else if (s.country === 'Local Network') {
+                locText.textContent = 'Local Network';
+            } else {
+                locText.textContent = '—';
+            }
+            tdLoc.appendChild(locText);
+            
+            if (s.is_new_location) {
+                var newBadge = document.createElement('span');
+                newBadge.className = 'as-current-badge';
+                newBadge.style.cssText = 'background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.2);margin-left:8px;';
+                newBadge.innerHTML = '&#9888; New Location';
+                tdLoc.appendChild(newBadge);
+            }
+            tr.appendChild(tdLoc);
 
             var tdActive = document.createElement('td');
             tdActive.textContent = _asTimeAgo(s.last_active_at || s.updated_at);

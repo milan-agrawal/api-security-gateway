@@ -512,6 +512,9 @@ class SessionResponse(BaseModel):
     id: int
     device_label: str
     ip_address: str
+    country: Optional[str] = None
+    city: Optional[str] = None
+    is_new_location: bool = False
     created_at: str
     last_active_at: str
     is_current: bool
@@ -532,6 +535,9 @@ def list_sessions(user: User = Depends(get_current_user), db: Session = Depends(
             id=s.id,
             device_label=s.device_label or "Unknown Device",
             ip_address=s.ip_address or "—",
+            country=s.country,
+            city=s.city,
+            is_new_location=s.is_new_location or False,
             created_at=(s.created_at.isoformat() + "Z") if s.created_at else "",
             last_active_at=(s.last_active_at.isoformat() + "Z") if s.last_active_at else "",
             is_current=(s.session_token == current_sid) if current_sid else False,

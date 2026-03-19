@@ -16,7 +16,7 @@ from admin import router as admin_router
 from auth.mfa import router as mfa_router, create_mfa_temp_token
 from auth.password_reset import router as password_reset_router
 from user import router as user_router
-from utils import parse_user_agent, log_audit
+from utils import parse_user_agent, log_audit, get_ip_location
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -179,6 +179,23 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
     client_ip = request.client.host if request.client else "unknown"
     session_id = str(uuid.uuid4())
 
+    # 🌍 Geo-fencing & New Location Detection
+    location = get_ip_location(client_ip, db)
+    country = None
+    city = None
+    is_new = False
+    
+    if location:
+        country = location.get("country")
+        city = location.get("city")
+        if country and country != "Local Network":
+            existing = db.query(UserSession).filter(
+                UserSession.user_id == user.id,
+                UserSession.country == country
+            ).first()
+            if not existing:
+                is_new = True
+
     # Cleanup: purge revoked sessions older than 30 days
     cutoff = datetime.utcnow() - timedelta(days=30)
     db.query(UserSession).filter(
@@ -193,6 +210,9 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
         ip_address=client_ip,
         user_agent=ua_string,
         device_label=parse_user_agent(ua_string),
+        country=country,
+        city=city,
+        is_new_location=is_new,
         created_at=datetime.utcnow(),
         last_active_at=datetime.utcnow(),
     )

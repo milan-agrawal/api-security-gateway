@@ -92,6 +92,9 @@ class UserSession(Base):
     ip_address = Column(String, nullable=True)
     user_agent = Column(String, nullable=True)
     device_label = Column(String, nullable=True)  # Parsed: "Chrome on Windows"
+    country = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    is_new_location = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
     last_active_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
     is_revoked = Column(Boolean, default=False, nullable=False)
@@ -112,3 +115,18 @@ class AuditLog(Base):
     created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False, index=True)
 
     user = relationship("User")
+
+
+class IpGeoCache(Base):
+    """Caches IP geolocation data to avoid hitting external APIs multiple times for the same IP."""
+    __tablename__ = "ip_geo_cache"
+
+    ip_address = Column(String, primary_key=True, index=True)
+    country = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    region = Column(String, nullable=True)
+    country_code = Column(String, nullable=True)
+    latitude = Column(String, nullable=True)  # Using String/Float depends, String is safe for API parity
+    longitude = Column(String, nullable=True)
+    isp = Column(String, nullable=True)
+    looked_up_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)

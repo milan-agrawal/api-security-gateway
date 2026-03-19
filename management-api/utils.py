@@ -7,6 +7,9 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
+import urllib.request
+import urllib.error
+import json
 from typing import Optional
 from dotenv import load_dotenv
 
@@ -1070,3 +1073,65 @@ def log_audit(db, user_id: int, event_type: str, detail: str = None, request=Non
     )
     db.add(entry)
     # Don't commit here — let the caller's commit include the audit row atomically
+
+# =============================================================================
+# IP Geolocation Helper
+# =============================================================================
+
+def get_ip_location(ip: str, db) -> Optional[dict]:
+    """
+    Fetch geolocation data for an IP using ip-api.com.
+    Checks the local `IpGeoCache` table first to avoid redundant external API calls.
+    Returns a dictionary with 'country' and 'city' or None if lookup fails.
+    """
+    if not ip or ip == "127.0.0.1" or ip == "localhost" or ip.startswith("192.168.") or ip.startswith("10."):
+        return {"country": "Local Network", "city": "Local"}
+
+    from models import IpGeoCache
+    from datetime import datetime, timezone
+
+    # 1. Check local cache
+    cached = db.query(IpGeoCache).filter(IpGeoCache.ip_address == ip).first()
+    if cached:
+        return {
+            "country": cached.country,
+            "city": cached.city,
+            "region": cached.region,
+            "country_code": cached.country_code
+        }
+
+    # 2. Fetch from external API (free, no key needed)
+    try:
+        url = f"http://ip-api.com/json/{ip}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'API-Security-Gateway'})
+        with urllib.request.urlopen(req, timeout=3.0) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            
+            if data.get("status") == "success":
+                # 3. Save to local cache
+                new_cache = IpGeoCache(
+                    ip_address=ip,
+                    country=data.get("country"),
+                    city=data.get("city"),
+                    region=data.get("regionName"),
+                    country_code=data.get("countryCode"),
+                    latitude=str(data.get("lat")) if data.get("lat") else None,
+                    longitude=str(data.get("lon")) if data.get("lon") else None,
+                    isp=data.get("isp"),
+                    looked_up_at=datetime.now(timezone.utc)
+                )
+                db.add(new_cache)
+                db.commit()
+
+                return {
+                    "country": data.get("country"),
+                    "city": data.get("city"),
+                    "region": data.get("regionName"),
+                    "country_code": data.get("countryCode")
+                }
+    except Exception as e:
+        print(f"IP Geo lookup failed for {ip}: {e}")
+        # Gracefully fail so it doesn't break the login flow
+        pass
+        
+    return None

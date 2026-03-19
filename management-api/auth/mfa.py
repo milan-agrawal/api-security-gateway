@@ -25,6 +25,7 @@ from utils import (
     verify_backup_code,
     get_totp_uri,
     parse_user_agent,
+    get_ip_location,
 )
 from utils import encrypt_secret, decrypt_secret
 from utils import log_audit
@@ -347,12 +348,33 @@ def verify_mfa_setup(
     ua_string = http_request.headers.get("user-agent", "")
     client_ip = http_request.client.host if http_request.client else "unknown"
     session_id = str(uuid.uuid4())
+
+    # 🌍 Geo-fencing & New Location Detection
+    location = get_ip_location(client_ip, db)
+    country = None
+    city = None
+    is_new = False
+    
+    if location:
+        country = location.get("country")
+        city = location.get("city")
+        if country and country != "Local Network":
+            existing = db.query(UserSession).filter(
+                UserSession.user_id == user.id,
+                UserSession.country == country
+            ).first()
+            if not existing:
+                is_new = True
+
     session = UserSession(
         user_id=user.id,
         session_token=session_id,
         ip_address=client_ip,
         user_agent=ua_string,
         device_label=parse_user_agent(ua_string),
+        country=country,
+        city=city,
+        is_new_location=is_new,
         created_at=datetime.utcnow(),
         last_active_at=datetime.utcnow(),
     )
@@ -433,12 +455,33 @@ def verify_mfa(
     ua_string = http_request.headers.get("user-agent", "")
     client_ip = http_request.client.host if http_request.client else "unknown"
     session_id = str(uuid.uuid4())
+
+    # 🌍 Geo-fencing & New Location Detection
+    location = get_ip_location(client_ip, db)
+    country = None
+    city = None
+    is_new = False
+    
+    if location:
+        country = location.get("country")
+        city = location.get("city")
+        if country and country != "Local Network":
+            existing = db.query(UserSession).filter(
+                UserSession.user_id == user.id,
+                UserSession.country == country
+            ).first()
+            if not existing:
+                is_new = True
+
     session = UserSession(
         user_id=user.id,
         session_token=session_id,
         ip_address=client_ip,
         user_agent=ua_string,
         device_label=parse_user_agent(ua_string),
+        country=country,
+        city=city,
+        is_new_location=is_new,
         created_at=datetime.utcnow(),
         last_active_at=datetime.utcnow(),
     )
