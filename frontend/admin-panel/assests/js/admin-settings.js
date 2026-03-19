@@ -804,6 +804,50 @@ function bindAdminSettingsEvents() {
     _asClick('asRevokeAll', revokeAllAdminSessions);
     _asClick('asDeleteAccount', deleteAdminAccount);
 
+    _asClick('asExportAuditLog', function () {
+        var btn = document.getElementById('asExportAuditLog');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = 'Exporting...';
+        }
+        var token = localStorage.getItem('token') || '';
+        fetch(API_URL + '/user/audit-log/export', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        }).then(function(res) {
+            if (!res.ok) throw new Error('Export failed. Check console.');
+            
+            // Try extracting filename from headers, fallback to generic
+            var cd = res.headers.get('content-disposition');
+            var filename = 'audit_logs.csv';
+            if (cd) {
+                var m = cd.match(/filename="?([^";]+)"?/);
+                if (m) filename = m[1];
+            }
+            
+            return res.blob().then(function(blob) {
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+            });
+        }).then(function() {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> Export to CSV';
+            }
+            _asToast('Export successful', 'success');
+        }).catch(function(err) {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> Export to CSV';
+            }
+            _asToast('Error exporting logs: ' + err.message, 'error');
+        });
+    });
+
     _asClick('asModalClose', _asCloseModal);
     _asClick('asModalCancel', _asCloseModal);
 }

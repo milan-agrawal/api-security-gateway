@@ -627,3 +627,42 @@ def get_audit_log(
         }
         for e in events
     ]
+
+@router.get("/audit-log/export")
+def export_audit_log(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Export the last 90 days of audit logs as a CSV file."""
+    from models import AuditLog
+    import csv
+    import io
+    from datetime import datetime, timedelta
+    from fastapi.responses import Response
+
+    cutoff = datetime.utcnow() - timedelta(days=90)
+    events = (
+        db.query(AuditLog)
+        .filter(AuditLog.user_id == user.id)
+        .filter(AuditLog.created_at >= cutoff)
+        .order_by(AuditLog.created_at.desc())
+        .all()
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Timestamp (UTC)", "Event Type", "Detail", "IP Address", "User Agent"])
+
+    for e in events:
+        writer.writerow([
+            e.created_at.isoformat() if e.created_at else "",
+            e.event_type,
+            "\"" + str(e.detail) + "\"" if e.detail else "",
+            e.ip_address or "",
+            e.user_agent or ""
+        ])
+
+    headers = {
+        "Content-Disposition": f"attachment; filename=audit_logs_{user.id}_{datetime.utcnow().strftime('%Y%m%d')}.csv"
+    }
+    return Response(content=output.getvalue(), media_type="text/csv", headers=headers)
