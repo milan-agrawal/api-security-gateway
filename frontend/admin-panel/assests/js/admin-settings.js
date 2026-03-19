@@ -531,7 +531,7 @@ function loadAdminSessions() {
             var tr = document.createElement('tr');
 
             var tdDevice = document.createElement('td');
-            tdDevice.textContent = s.device || s.user_agent || 'Unknown';
+            tdDevice.textContent = s.device_label || s.device || 'Unknown';
             if (isCurrent) { var badge = document.createElement('span'); badge.className = 'as-current-badge'; badge.textContent = 'current'; tdDevice.appendChild(badge); }
             tr.appendChild(tdDevice);
 
