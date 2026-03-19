@@ -281,11 +281,9 @@ function loadAdminProfile() {
         var tzSel = document.getElementById('asTimezone');
         var savedTz = _asGetTz();
         if (tzSel) {
-            // Try to select saved tz; if not in list, default to browser tz
-            var found = Array.from(tzSel.options).some(function (o) { return o.value === savedTz; });
-            tzSel.value = found ? savedTz : (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
-            // Always hint from the actual selected value (in case of fallback)
-            _asUpdateTzHint(tzSel.value);
+            var resolvedTz = _asResolveDropdownTz(savedTz, tzSel);
+            tzSel.value = resolvedTz;
+            _asUpdateTzHint(resolvedTz);
         } else {
             _asUpdateTzHint(savedTz);
         }
@@ -339,7 +337,7 @@ function saveAdminProfile() {
     // Save timezone preference to localStorage
     var tzSel = document.getElementById('asTimezone');
     if (tzSel && tzSel.value) {
-        localStorage.setItem('as_timezone', tzSel.value);
+        localStorage.setItem('as_timezone', _asNormalizeTz(tzSel.value));
     }
 
     var btn = document.getElementById('asSaveProfile');
@@ -365,11 +363,24 @@ function saveAdminProfile() {
 function handleAvatarUpload(file) {
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) return _asToast('Image must be under 2 MB', 'error');
-    var fd = new FormData();
-    fd.append('file', file);
-    _asFetch('/user/avatar', { method: 'POST', body: fd, rawBody: true })
-        .then(function () { _asToast('Avatar updated', 'success'); loadAdminProfile(); })
-        .catch(function (err) { _asToast('Upload failed: ' + err.message, 'error'); });
+    if (!/^image\/(png|jpeg|gif|webp)$/.test(file.type)) {
+        return _asToast('Only PNG, JPEG, GIF, or WebP images are allowed', 'error');
+    }
+
+    var reader = new FileReader();
+    reader.onload = function () {
+        _asFetch('/user/avatar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ avatar: reader.result })
+        })
+            .then(function () { _asToast('Avatar updated', 'success'); loadAdminProfile(); })
+            .catch(function (err) { _asToast('Upload failed: ' + err.message, 'error'); });
+    };
+    reader.onerror = function () {
+        _asToast('Upload failed: could not read the image file', 'error');
+    };
+    reader.readAsDataURL(file);
 }
 
 /* ============================================================
@@ -1029,8 +1040,36 @@ function _asCloseModal() {
    ============================================================ */
 
 /** Get currently selected timezone (localStorage → browser default) */
+var _asTimezoneAliases = {
+    'Asia/Calcutta': 'Asia/Kolkata'
+};
+
+function _asNormalizeTz(tz) {
+    var raw = (tz || '').trim();
+    if (!raw) return 'UTC';
+    return _asTimezoneAliases[raw] || raw;
+}
+
+function _asResolveDropdownTz(tz, selectEl) {
+    var normalized = _asNormalizeTz(tz);
+    if (!selectEl) return normalized;
+
+    var hasOption = Array.from(selectEl.options).some(function (o) {
+        return o.value === normalized;
+    });
+    if (hasOption) return normalized;
+
+    var browserTz = _asNormalizeTz(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+    var hasBrowserOption = Array.from(selectEl.options).some(function (o) {
+        return o.value === browserTz;
+    });
+    if (hasBrowserOption) return browserTz;
+
+    return 'UTC';
+}
+
 function _asGetTz() {
-    return localStorage.getItem('as_timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    return _asNormalizeTz(localStorage.getItem('as_timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
 }
 
 /** Format date in selected timezone: "Mar 19, 2026 · 5:30 PM" */
@@ -1074,9 +1113,10 @@ function _asTimeAgo(iso) {
 function _asUpdateTzHint(tz) {
     var hint = document.getElementById('asTzHint');
     if (!hint) return;
+    var safeTz = _asNormalizeTz(tz);
     try {
         var now = new Intl.DateTimeFormat('en-US', {
-            timeZone: tz,
+            timeZone: safeTz,
             month: 'short', day: 'numeric', year: 'numeric',
             hour: 'numeric', minute: '2-digit', hour12: true,
             timeZoneName: 'short'
