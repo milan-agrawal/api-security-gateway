@@ -608,6 +608,36 @@
                     </div>
                     <div class="as-divider"></div>
                     <!-- Event Log -->
+                    <div class="as-activity-filters">
+                        <select class="as-input" id="asAuditEventType">
+                            <option value="">All event types</option>
+                            <option value="login">Login</option>
+                            <option value="login_failed">Login Failed</option>
+                            <option value="login_blocked_geo">Geo Blocked Login</option>
+                            <option value="profile_updated">Profile Updated</option>
+                            <option value="password_changed">Password Changed</option>
+                            <option value="email_change_requested">Email Change Requested</option>
+                            <option value="email_change_verified">Email Change Verified</option>
+                            <option value="mfa_enabled">MFA Enabled</option>
+                            <option value="mfa_disabled">MFA Disabled</option>
+                            <option value="session_revoked">Session Revoked</option>
+                            <option value="sessions_revoked_all">All Sessions Revoked</option>
+                            <option value="ztna_policy_updated">ZTNA Policy Updated</option>
+                            <option value="reauth_failed">Re-auth Failed</option>
+                        </select>
+                        <select class="as-input" id="asAuditSeverity">
+                            <option value="">All severities</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                        <input class="as-input" type="date" id="asAuditDateFrom">
+                        <input class="as-input" type="date" id="asAuditDateTo">
+                        <div class="as-activity-filter-actions">
+                            <button class="as-btn as-btn-primary" id="asApplyAuditFilters" type="button">Apply Filters</button>
+                            <button class="as-btn as-btn-ghost" id="asResetAuditFilters" type="button">Reset</button>
+                        </div>
+                    </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                         <h4 class="as-section-title" style="margin-bottom:0;">Recent Events</h4>
                         <button class="as-btn as-btn-secondary" id="asExportAuditLog" style="font-size:12px; padding:6px 12px;">

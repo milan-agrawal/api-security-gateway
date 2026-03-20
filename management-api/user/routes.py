@@ -4,7 +4,7 @@ User Self-Service Routes
 Endpoints for the user panel — users manage their own profile, password, etc.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
@@ -903,22 +903,84 @@ def revoke_all_other_sessions(request: Request, user: User = Depends(get_current
 # Audit Log
 # ============================================================================
 
+def _parse_audit_filter_date(value: Optional[str], is_end: bool = False) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        if "T" in value:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if parsed.tzinfo:
+                parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+            return parsed
+
+        parsed = datetime.strptime(value, "%Y-%m-%d")
+        if is_end:
+            parsed = parsed + timedelta(days=1)
+        return parsed
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid date filter: {value}"
+        )
+
+
+def _audit_event_severity(event_type: str) -> str:
+    event_type = (event_type or "").lower()
+    if event_type in {"login_blocked_geo", "reauth_failed", "mfa_disabled", "account_deleted"}:
+        return "high"
+    if event_type in {"login_failed", "password_changed", "email_change_requested", "email_change_verified", "sessions_revoked_all", "session_revoked"}:
+        return "medium"
+    return "low"
+
+
+def _severity_event_types(severity: str) -> list[str]:
+    severity = (severity or "").lower()
+    severity_map = {
+        "high": {"login_blocked_geo", "reauth_failed", "mfa_disabled", "account_deleted"},
+        "medium": {"login_failed", "password_changed", "email_change_requested", "email_change_verified", "sessions_revoked_all", "session_revoked"},
+        "low": {"login", "profile_updated", "ztna_policy_updated", "mfa_enabled", "backup_codes_regenerated", "notification_preferences_updated"},
+    }
+    return list(severity_map.get(severity, set()))
+
 @router.get("/audit-log")
 def get_audit_log(
     limit: int = 50,
+    event_type: Optional[str] = Query(None),
+    severity: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Return the current user's security audit log (newest first)."""
     from models import AuditLog
+    query = db.query(AuditLog).filter(AuditLog.user_id == user.id)
 
-    events = (
-        db.query(AuditLog)
-        .filter(AuditLog.user_id == user.id)
-        .order_by(AuditLog.created_at.desc())
-        .limit(min(limit, 200))
-        .all()
-    )
+    if event_type:
+        query = query.filter(AuditLog.event_type == event_type.strip().lower())
+
+    if severity:
+        matching_types = _severity_event_types(severity)
+        if not matching_types:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid severity filter: {severity}"
+            )
+        query = query.filter(AuditLog.event_type.in_(matching_types))
+
+    parsed_date_from = _parse_audit_filter_date(date_from)
+    parsed_date_to = _parse_audit_filter_date(date_to, is_end=True)
+    if parsed_date_from and parsed_date_to and parsed_date_from >= parsed_date_to:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="date_from must be earlier than date_to"
+        )
+    if parsed_date_from:
+        query = query.filter(AuditLog.created_at >= parsed_date_from)
+    if parsed_date_to:
+        query = query.filter(AuditLog.created_at < parsed_date_to)
+
+    events = query.order_by(AuditLog.created_at.desc()).limit(min(limit, 200)).all()
 
     return [
         {
@@ -927,12 +989,17 @@ def get_audit_log(
             "detail": e.detail,
             "ip_address": e.ip_address,
             "created_at": e.created_at.isoformat() if e.created_at else None,
+            "severity": _audit_event_severity(e.event_type),
         }
         for e in events
     ]
 
 @router.get("/audit-log/export")
 def export_audit_log(
+    event_type: Optional[str] = Query(None),
+    severity: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -943,23 +1010,46 @@ def export_audit_log(
     from datetime import datetime, timedelta
     from fastapi.responses import Response
 
-    cutoff = datetime.utcnow() - timedelta(days=90)
-    events = (
-        db.query(AuditLog)
-        .filter(AuditLog.user_id == user.id)
-        .filter(AuditLog.created_at >= cutoff)
-        .order_by(AuditLog.created_at.desc())
-        .all()
-    )
+    query = db.query(AuditLog).filter(AuditLog.user_id == user.id)
+
+    if event_type:
+        query = query.filter(AuditLog.event_type == event_type.strip().lower())
+
+    if severity:
+        matching_types = _severity_event_types(severity)
+        if not matching_types:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid severity filter: {severity}"
+            )
+        query = query.filter(AuditLog.event_type.in_(matching_types))
+
+    parsed_date_from = _parse_audit_filter_date(date_from)
+    parsed_date_to = _parse_audit_filter_date(date_to, is_end=True)
+    if parsed_date_from and parsed_date_to and parsed_date_from >= parsed_date_to:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="date_from must be earlier than date_to"
+        )
+    if parsed_date_from:
+        query = query.filter(AuditLog.created_at >= parsed_date_from)
+    else:
+        query = query.filter(AuditLog.created_at >= (datetime.utcnow() - timedelta(days=90)))
+
+    if parsed_date_to:
+        query = query.filter(AuditLog.created_at < parsed_date_to)
+
+    events = query.order_by(AuditLog.created_at.desc()).all()
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Timestamp (UTC)", "Event Type", "Detail", "IP Address", "User Agent"])
+    writer.writerow(["Timestamp (UTC)", "Event Type", "Severity", "Detail", "IP Address", "User Agent"])
 
     for e in events:
         writer.writerow([
             e.created_at.isoformat() if e.created_at else "",
             e.event_type,
+            _audit_event_severity(e.event_type),
             "\"" + str(e.detail) + "\"" if e.detail else "",
             e.ip_address or "",
             e.user_agent or ""

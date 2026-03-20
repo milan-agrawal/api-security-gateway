@@ -721,7 +721,7 @@ function revokeAllAdminSessions() {
    ACTIVITY + HEATMAP
    ============================================================ */
 function loadAdminActivity() {
-    _asFetch('/user/audit-log?limit=50').then(function (events) {
+    _asFetch('/user/audit-log?' + _asBuildAuditLogQuery(true)).then(function (events) {
         _asRenderActivity(events);
         _asRenderHeatmap(events);
     }).catch(function () {
@@ -729,6 +729,26 @@ function loadAdminActivity() {
         if (list) list.innerHTML = '<div class="as-activity-empty">No activity data available</div>';
         _asRenderHeatmap([]);
     });
+}
+
+function _asGetAuditLogFilters() {
+    return {
+        event_type: ((document.getElementById('asAuditEventType') || {}).value || '').trim(),
+        severity: ((document.getElementById('asAuditSeverity') || {}).value || '').trim(),
+        date_from: ((document.getElementById('asAuditDateFrom') || {}).value || '').trim(),
+        date_to: ((document.getElementById('asAuditDateTo') || {}).value || '').trim()
+    };
+}
+
+function _asBuildAuditLogQuery(includeLimit) {
+    var params = new URLSearchParams();
+    var filters = _asGetAuditLogFilters();
+    if (includeLimit) params.set('limit', '50');
+    if (filters.event_type) params.set('event_type', filters.event_type);
+    if (filters.severity) params.set('severity', filters.severity);
+    if (filters.date_from) params.set('date_from', filters.date_from);
+    if (filters.date_to) params.set('date_to', filters.date_to);
+    return params.toString();
 }
 
 function _asRenderActivity(events) {
@@ -755,9 +775,10 @@ function _asRenderActivity(events) {
         var type = (ev.event_type || '').toLowerCase();
         var info = iconMap[type] || { cls: 'default', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8"/><path d="M9 2v3"/><path d="M15 2v3"/><rect x="4" y="5" width="16" height="17" rx="2"/><path d="M8 10h8"/><path d="M8 14h8"/><path d="M8 18h5"/></svg>' };
         var label = type.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+        var severity = (ev.severity || 'low').toLowerCase();
         return '<div class="as-activity-item">' +
             '<div class="as-activity-icon ' + info.cls + '">' + info.icon + '</div>' +
-            '<div class="as-activity-info"><strong>' + _asEsc(label) + '</strong><span>' + _asEsc(ev.detail || '') + (ev.ip_address ? ' - ' + _asEsc(ev.ip_address) : '') + '</span></div>' +
+            '<div class="as-activity-info"><strong>' + _asEsc(label) + '<span class="as-activity-severity ' + _asEsc(severity) + '">' + _asEsc(severity) + '</span></strong><span>' + _asEsc(ev.detail || '') + (ev.ip_address ? ' - ' + _asEsc(ev.ip_address) : '') + '</span></div>' +
             '<span class="as-activity-time">' + _asTimeAgo(ev.created_at) + '</span>' +
             '</div>';
     }).join('');
@@ -951,7 +972,8 @@ function bindAdminSettingsEvents() {
             btn.innerHTML = 'Exporting...';
         }
         var token = localStorage.getItem('token') || '';
-        fetch(API_URL + '/user/audit-log/export', {
+        var query = _asBuildAuditLogQuery(false);
+        fetch(API_URL + '/user/audit-log/export' + (query ? ('?' + query) : ''), {
             headers: { 'Authorization': 'Bearer ' + token }
         }).then(function(res) {
             if (!res.ok) throw new Error('Export failed. Check console.');
@@ -986,6 +1008,18 @@ function bindAdminSettingsEvents() {
             }
             _asToast('Error exporting logs: ' + err.message, 'error');
         });
+    });
+    _asClick('asApplyAuditFilters', loadAdminActivity);
+    _asClick('asResetAuditFilters', function () {
+        var eventType = document.getElementById('asAuditEventType');
+        var severity = document.getElementById('asAuditSeverity');
+        var dateFrom = document.getElementById('asAuditDateFrom');
+        var dateTo = document.getElementById('asAuditDateTo');
+        if (eventType) eventType.value = '';
+        if (severity) severity.value = '';
+        if (dateFrom) dateFrom.value = '';
+        if (dateTo) dateTo.value = '';
+        loadAdminActivity();
     });
 
     _asClick('asModalClose', _asCloseModal);
