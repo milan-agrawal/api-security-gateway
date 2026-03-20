@@ -510,6 +510,28 @@
     flex-shrink: 0;
 }
 
+.as-avatar-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+    flex-shrink: 0;
+    padding-top: 8px;
+}
+
+.as-btn-sm {
+    min-height: 34px;
+    padding: 8px 12px;
+    font-size: 12px;
+}
+
+.as-avatar-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    max-width: 180px;
+}
+
 .as-avatar {
     width: 72px;
     height: 72px;

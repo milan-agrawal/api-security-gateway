@@ -276,6 +276,8 @@ function loadAdminProfile() {
         var fnEl = document.getElementById('asFullName');
         var emEl = document.getElementById('asEmail');
         var geoEl = document.getElementById('asAllowedCountries');
+        var removeAvatarBtn = document.getElementById('asRemoveAvatar');
+        var avatarHintEl = document.getElementById('asAvatarHint');
 
         if (nameEl) nameEl.textContent = _asEsc(data.full_name || 'Admin');
         if (emailEl) emailEl.textContent = _asEsc(data.email || '');
@@ -319,6 +321,13 @@ function loadAdminProfile() {
                 var initials = (data.full_name || 'A').split(' ').map(function (w) { return w[0]; }).join('').substring(0, 2).toUpperCase();
                 avatarEl.textContent = initials;
             }
+        }
+
+        if (removeAvatarBtn) {
+            removeAvatarBtn.disabled = !data.avatar;
+        }
+        if (avatarHintEl) {
+            avatarHintEl.textContent = data.avatar ? 'Upload a new image or remove the current avatar.' : 'PNG, JPG, GIF, or WebP up to 2 MB';
         }
 
         _asUpdateScore();
@@ -395,6 +404,23 @@ function handleAvatarUpload(file) {
         _asToast('Upload failed: could not read the image file', 'error');
     };
     reader.readAsDataURL(file);
+}
+
+function removeAdminAvatar() {
+    var btn = document.getElementById('asRemoveAvatar');
+    if (btn && btn.disabled) return;
+
+    _asShowModal('Remove Avatar', '<p>Your profile photo will be removed and replaced with your initials. Continue?</p>', function () {
+        _asFetch('/user/avatar', { method: 'DELETE' })
+            .then(function () {
+                _asToast('Avatar removed', 'success');
+                _asCloseModal();
+                loadAdminProfile();
+            })
+            .catch(function (err) {
+                _asToast('Remove failed: ' + err.message, 'error');
+            });
+    });
 }
 
 /* ============================================================
@@ -802,6 +828,7 @@ function bindAdminSettingsEvents() {
         var inp = document.getElementById('asAvatarInput');
         if (inp) inp.click();
     });
+    _asClick('asRemoveAvatar', removeAdminAvatar);
     var avatarInput = document.getElementById('asAvatarInput');
     if (avatarInput) avatarInput.addEventListener('change', function () {
         if (this.files && this.files[0]) handleAvatarUpload(this.files[0]);
@@ -920,7 +947,10 @@ function bindAdminSettingsEvents() {
    ============================================================ */
 function _asClick(id, fn) {
     var el = document.getElementById(id);
-    if (el) el.addEventListener('click', fn);
+    if (!el) return;
+    if (el.dataset.asClickBound === 'true') return;
+    el.dataset.asClickBound = 'true';
+    el.addEventListener('click', fn);
 }
 
 function _asFetch(url, opts) {
