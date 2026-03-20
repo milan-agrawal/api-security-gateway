@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from deps import get_db
 from models import User, APIKey, SecurityEvent, AuditLog
-from utils import generate_secure_password, send_credentials_email
+from utils import generate_secure_password, send_credentials_email, send_password_changed_notification
 from db import DATABASE_URL, SessionLocal
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -543,6 +543,7 @@ def reset_user_password(
     # Generate new secure password
     new_password = generate_secure_password(14)
     user.password_hash = pwd_context.hash(new_password)
+    user.password_changed_at = datetime.now(timezone.utc)
     
     # Increment token_version to invalidate all existing sessions/JWTs
     user.token_version = (user.token_version or 0) + 1
@@ -559,6 +560,13 @@ def reset_user_password(
         role=user.role,
         mfa_enabled=user.mfa_enabled
     )
+
+    if getattr(user, "password_change_alert_enabled", True):
+        background_tasks.add_task(
+            send_password_changed_notification,
+            user.email,
+            "Admin reset"
+        )
     
     return {
         "success": True,

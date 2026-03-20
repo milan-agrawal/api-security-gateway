@@ -1,22 +1,32 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+import asyncio
 import jwt
 import os
 import uuid
 
 from db import engine, Base
-from models import User, UserSession
+from models import User, UserSession, AuditLog
 from deps import get_db
 from admin import router as admin_router
 from auth.mfa import router as mfa_router, create_mfa_temp_token
 from auth.password_reset import router as password_reset_router
 from user import router as user_router
-from utils import parse_user_agent, log_audit, get_ip_location, evaluate_geo_policy
+from utils import (
+    parse_user_agent,
+    log_audit,
+    get_ip_location,
+    evaluate_geo_policy,
+    send_new_login_alert_email,
+    send_failed_login_attempts_alert,
+    send_weekly_security_digest_email,
+)
+from db import SessionLocal
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -44,6 +54,66 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],  # Include OPTIONS for preflight
     allow_headers=["*"],  # Allow all headers for preflight compatibility
 )
+
+
+async def _weekly_digest_scheduler():
+    while True:
+        try:
+            _run_weekly_digest_cycle()
+        except Exception as exc:
+            print(f"Weekly digest worker error: {exc}")
+        await asyncio.sleep(3600)
+
+
+def _run_weekly_digest_cycle():
+    now = datetime.utcnow()
+    if now.weekday() != 0:
+        return
+
+    week_start = now - timedelta(days=7)
+    db = SessionLocal()
+    try:
+        users = db.query(User).filter(User.weekly_security_digest_enabled == True).all()
+        for user in users:
+            if user.last_weekly_digest_sent_at and (now - user.last_weekly_digest_sent_at) < timedelta(days=7):
+                continue
+
+            events = db.query(AuditLog).filter(
+                AuditLog.user_id == user.id,
+                AuditLog.created_at >= week_start
+            ).all()
+
+            active_sessions = db.query(UserSession).filter(
+                UserSession.user_id == user.id,
+                UserSession.is_revoked == False
+            ).count()
+
+            summary = {
+                "logins": sum(1 for e in events if e.event_type == "login"),
+                "login_failed": sum(1 for e in events if e.event_type == "login_failed"),
+                "login_blocked_geo": sum(1 for e in events if e.event_type == "login_blocked_geo"),
+                "password_changed": sum(1 for e in events if e.event_type == "password_changed"),
+                "mfa_changes": sum(1 for e in events if e.event_type in ("mfa_enabled", "mfa_disabled")),
+                "active_sessions": active_sessions,
+            }
+
+            if send_weekly_security_digest_email(user.email, user.full_name, summary):
+                user.last_weekly_digest_sent_at = now
+                db.commit()
+    finally:
+        db.close()
+
+
+@app.on_event("startup")
+async def startup_digest_worker():
+    app.state.weekly_digest_task = asyncio.create_task(_weekly_digest_scheduler())
+
+
+@app.on_event("shutdown")
+async def shutdown_digest_worker():
+    task = getattr(app.state, "weekly_digest_task", None)
+    if task:
+        task.cancel()
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -99,7 +169,12 @@ def root():
     }
 
 @app.post("/auth/login", response_model=LoginResponse)
-def login(credentials: LoginRequest, request: Request, db: Session = Depends(get_db)):
+def login(
+    credentials: LoginRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     """
     Authenticate user and return JWT token.
     If MFA is enabled, returns temp_token instead for MFA verification.
@@ -136,6 +211,15 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
             )
         log_audit(db, user.id, "login_failed", "Invalid password", request)
         db.commit()
+        if attempts == 3 and user.failed_login_alert_enabled:
+            client_ip = request.client.host if request.client else "unknown"
+            background_tasks.add_task(
+                send_failed_login_attempts_alert,
+                recipient_email=user.email,
+                full_name=user.full_name,
+                attempts=attempts,
+                ip_address=client_ip,
+            )
         remaining = 5 - attempts
         if remaining <= 2:
             raise HTTPException(
@@ -248,6 +332,19 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
     user.last_login_at = datetime.now(timezone.utc)
     log_audit(db, user.id, "login", "Login successful", request)
     db.commit()
+
+    if user.new_login_alert_enabled:
+        location_label = "Local Network" if country == "Local Network" else ", ".join(
+            [part for part in [city, country] if part]
+        ) or "Unknown location"
+        background_tasks.add_task(
+            send_new_login_alert_email,
+            recipient_email=user.email,
+            full_name=user.full_name,
+            device_label=session.device_label,
+            ip_address=client_ip,
+            location_label=location_label,
+        )
     
     return LoginResponse(
         token=token,

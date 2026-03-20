@@ -27,6 +27,12 @@ class User(Base):
     failed_login_attempts = Column(Integer, default=0, nullable=False)  # Failed login counter
     locked_until = Column(DateTime, nullable=True)  # Account lockout timestamp
     allowed_countries = Column(String, nullable=True)  # Comma-separated list of allowed countries (ZTNA)
+    new_login_alert_enabled = Column(Boolean, default=True, nullable=False)  # Email alert on successful login
+    password_change_alert_enabled = Column(Boolean, default=True, nullable=False)  # Email alert on password change
+    mfa_change_alert_enabled = Column(Boolean, default=True, nullable=False)  # Email alert on MFA enabled/disabled
+    failed_login_alert_enabled = Column(Boolean, default=True, nullable=False)  # Email alert on repeated failed login attempts
+    weekly_security_digest_enabled = Column(Boolean, default=False, nullable=False)  # Weekly security digest email
+    last_weekly_digest_sent_at = Column(DateTime, nullable=True)  # Last weekly digest delivery timestamp
     
     # Relationship to API keys
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")

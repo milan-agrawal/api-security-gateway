@@ -260,7 +260,8 @@ def reset_password(body: ResetPasswordRequest, http_request: Request, db: Sessio
 
     # Send notification email (best-effort) so user knows their password was changed
     try:
-        send_password_changed_notification(user.email, client_ip)
+        if getattr(user, "password_change_alert_enabled", True):
+            send_password_changed_notification(user.email, client_ip)
     except Exception:
         pass  # don't fail the request if email fails
 

@@ -1000,6 +1000,253 @@ def send_password_changed_notification(recipient_email: str, ip_address: str = "
         return False
 
 
+def send_new_login_alert_email(
+    recipient_email: str,
+    full_name: str,
+    device_label: str,
+    ip_address: str = "Unknown",
+    location_label: str = "Unknown location",
+    login_time: str = None,
+) -> bool:
+    """
+    Send an email alert for a successful login.
+    """
+    from datetime import datetime
+
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    from_email = os.getenv("FROM_EMAIL", smtp_user)
+
+    if not smtp_user or not smtp_password:
+        print("ERROR: SMTP credentials not configured in .env file")
+        return False
+
+    login_time = login_time or datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    safe_name = full_name or recipient_email
+    safe_device = device_label or "Unknown Device"
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "New login to your API Security Gateway account"
+        msg["From"] = f"API Security Gateway <{from_email}>"
+        msg["To"] = recipient_email
+
+        html_body = f"""
+        <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #2563EB;">New Login Alert</h2>
+            <p>Hello {safe_name},</p>
+            <p>We detected a successful login to your API Security Gateway account.</p>
+            <table style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0; width: 100%;">
+                <tr><td><strong>Time:</strong></td><td>{login_time}</td></tr>
+                <tr><td><strong>Device:</strong></td><td>{safe_device}</td></tr>
+                <tr><td><strong>IP Address:</strong></td><td>{ip_address}</td></tr>
+                <tr><td><strong>Location:</strong></td><td>{location_label}</td></tr>
+            </table>
+            <p>If this was you, no action is needed.</p>
+            <p style="color: #EF4444;"><strong>If this was not you</strong>, change your password immediately and review your active sessions.</p>
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 24px 0;">
+            <p style="color: #666; font-size: 12px;">This is an automated security notification from API Security Gateway.</p>
+        </div>
+        </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(html_body, "html"))
+
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(from_email, recipient_email, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"ERROR: Failed to send new login alert to {recipient_email}: {str(e)}")
+        return False
+
+
+def send_mfa_change_notification(
+    recipient_email: str,
+    enabled: bool,
+    ip_address: str = "Unknown",
+) -> bool:
+    """
+    Send an email alert when MFA is enabled or disabled.
+    """
+    from datetime import datetime
+
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    from_email = os.getenv("FROM_EMAIL", smtp_user)
+
+    if not smtp_user or not smtp_password:
+        print("ERROR: SMTP credentials not configured in .env file")
+        return False
+
+    action = "enabled" if enabled else "disabled"
+    action_title = "Enabled" if enabled else "Disabled"
+    change_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"MFA {action_title} on your API Security Gateway account"
+        msg["From"] = f"API Security Gateway <{from_email}>"
+        msg["To"] = recipient_email
+
+        html_body = f"""
+        <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #2563EB;">MFA {action_title}</h2>
+            <p>Multi-factor authentication was {action} for your API Security Gateway account.</p>
+            <table style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0; width: 100%;">
+                <tr><td><strong>Time:</strong></td><td>{change_time}</td></tr>
+                <tr><td><strong>IP Address:</strong></td><td>{ip_address}</td></tr>
+            </table>
+            <p>If this was not you, secure your account immediately.</p>
+        </div>
+        </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(html_body, "html"))
+
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(from_email, recipient_email, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"ERROR: Failed to send MFA change notification to {recipient_email}: {str(e)}")
+        return False
+
+
+def send_failed_login_attempts_alert(
+    recipient_email: str,
+    full_name: str,
+    attempts: int,
+    ip_address: str = "Unknown",
+) -> bool:
+    """
+    Send an email alert once the failed-login threshold is reached.
+    """
+    from datetime import datetime
+
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    from_email = os.getenv("FROM_EMAIL", smtp_user)
+
+    if not smtp_user or not smtp_password:
+        print("ERROR: SMTP credentials not configured in .env file")
+        return False
+
+    alert_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    safe_name = full_name or recipient_email
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Warning: repeated failed login attempts detected"
+        msg["From"] = f"API Security Gateway <{from_email}>"
+        msg["To"] = recipient_email
+
+        html_body = f"""
+        <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #EF4444;">Failed Login Attempts Detected</h2>
+            <p>Hello {safe_name},</p>
+            <p>We detected {attempts} consecutive failed login attempts on your API Security Gateway account.</p>
+            <table style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0; width: 100%;">
+                <tr><td><strong>Time:</strong></td><td>{alert_time}</td></tr>
+                <tr><td><strong>IP Address:</strong></td><td>{ip_address}</td></tr>
+            </table>
+            <p>If this was not you, consider changing your password immediately.</p>
+        </div>
+        </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(html_body, "html"))
+
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(from_email, recipient_email, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"ERROR: Failed to send failed-login alert to {recipient_email}: {str(e)}")
+        return False
+
+
+def send_weekly_security_digest_email(recipient_email: str, full_name: str, summary: dict) -> bool:
+    """
+    Send a weekly security digest email.
+    """
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    from_email = os.getenv("FROM_EMAIL", smtp_user)
+
+    if not smtp_user or not smtp_password:
+        print("ERROR: SMTP credentials not configured in .env file")
+        return False
+
+    safe_name = full_name or recipient_email
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Your weekly API Security Gateway digest"
+        msg["From"] = f"API Security Gateway <{from_email}>"
+        msg["To"] = recipient_email
+
+        html_body = f"""
+        <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #2563EB;">Weekly Security Digest</h2>
+            <p>Hello {safe_name},</p>
+            <p>Here is your account security summary for the last 7 days.</p>
+            <table style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0; width: 100%;">
+                <tr><td><strong>Successful logins:</strong></td><td>{summary.get('logins', 0)}</td></tr>
+                <tr><td><strong>Failed login attempts:</strong></td><td>{summary.get('login_failed', 0)}</td></tr>
+                <tr><td><strong>Blocked geo logins:</strong></td><td>{summary.get('login_blocked_geo', 0)}</td></tr>
+                <tr><td><strong>Password changes:</strong></td><td>{summary.get('password_changed', 0)}</td></tr>
+                <tr><td><strong>MFA changes:</strong></td><td>{summary.get('mfa_changes', 0)}</td></tr>
+                <tr><td><strong>Active sessions:</strong></td><td>{summary.get('active_sessions', 0)}</td></tr>
+            </table>
+            <p>Review your account if anything looks unexpected.</p>
+        </div>
+        </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(html_body, "html"))
+
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(from_email, recipient_email, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"ERROR: Failed to send weekly security digest to {recipient_email}: {str(e)}")
+        return False
+
+
 # ============================================================================
 # User-Agent Parser — lightweight, no external dependency
 # ============================================================================

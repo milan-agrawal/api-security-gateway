@@ -228,6 +228,19 @@ function _asInitNotifPrefs() {
         if (el) el.checked = prefs[k.toLowerCase()] !== false;
     });
 
+    _asFetch('/user/notification-preferences').then(function (data) {
+        var loginToggle = document.getElementById('asNotifLogin');
+        var pwdToggle = document.getElementById('asNotifPwd');
+        var mfaToggle = document.getElementById('asNotifMfa');
+        var failedToggle = document.getElementById('asNotifFailed');
+        var digestToggle = document.getElementById('asNotifDigest');
+        if (loginToggle) loginToggle.checked = data.new_login_alert_enabled !== false;
+        if (pwdToggle) pwdToggle.checked = data.password_change_alert_enabled !== false;
+        if (mfaToggle) mfaToggle.checked = data.mfa_change_alert_enabled !== false;
+        if (failedToggle) failedToggle.checked = data.failed_login_alert_enabled !== false;
+        if (digestToggle) digestToggle.checked = data.weekly_security_digest_enabled === true;
+    }).catch(function () { });
+
     var saveBtn = document.getElementById('asSaveNotifs');
     if (saveBtn) {
         saveBtn.addEventListener('click', function () {
@@ -237,7 +250,21 @@ function _asInitNotifPrefs() {
                 obj[k.toLowerCase()] = el ? el.checked : true;
             });
             try { localStorage.setItem('as_notif_prefs', JSON.stringify(obj)); } catch (e) { }
-            _asToast('Notification preferences saved', 'success');
+            _asFetch('/user/notification-preferences', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    new_login_alert_enabled: obj.login !== false,
+                    password_change_alert_enabled: obj.pwd !== false,
+                    mfa_change_alert_enabled: obj.mfa !== false,
+                    failed_login_alert_enabled: obj.failed !== false,
+                    weekly_security_digest_enabled: obj.digest === true
+                })
+            }).then(function () {
+                _asToast('Notification preferences saved', 'success');
+            }).catch(function (err) {
+                _asToast('Failed to save notification preferences: ' + err.message, 'error');
+            });
         });
     }
 }

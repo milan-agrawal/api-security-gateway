@@ -2,7 +2,7 @@
 MFA (Multi-Factor Authentication) endpoints
 Handles TOTP-based 2FA for users and MFA for admins
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime, timezone, timedelta
@@ -27,6 +27,8 @@ from utils import (
     parse_user_agent,
     get_ip_location,
     evaluate_geo_policy,
+    send_new_login_alert_email,
+    send_mfa_change_notification,
 )
 from utils import encrypt_secret, decrypt_secret
 from utils import log_audit
@@ -287,6 +289,7 @@ def setup_mfa(
 def verify_mfa_setup(
     request: MFAVerifySetupRequest,
     http_request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     """
@@ -344,6 +347,15 @@ def verify_mfa_setup(
     
     log_audit(db, user.id, "mfa_enabled", "MFA setup completed", http_request)
     db.commit()
+
+    if user.mfa_change_alert_enabled:
+        client_ip = http_request.client.host if http_request.client else "Unknown"
+        background_tasks.add_task(
+            send_mfa_change_notification,
+            recipient_email=user.email,
+            enabled=True,
+            ip_address=client_ip,
+        )
     
     # Create session record
     ua_string = http_request.headers.get("user-agent", "")
@@ -399,6 +411,19 @@ def verify_mfa_setup(
     db.add(session)
     db.commit()
 
+    if user.new_login_alert_enabled:
+        location_label = "Local Network" if country == "Local Network" else ", ".join(
+            [part for part in [city, country] if part]
+        ) or "Unknown location"
+        background_tasks.add_task(
+            send_new_login_alert_email,
+            recipient_email=user.email,
+            full_name=user.full_name,
+            device_label=session.device_label,
+            ip_address=client_ip,
+            location_label=location_label,
+        )
+
     # Generate full access token
     token = create_full_access_token(user.email, user.role, user.full_name, user.id, token_version=getattr(user, "token_version", 0), session_id=session_id)
     
@@ -416,6 +441,7 @@ def verify_mfa_setup(
 def verify_mfa(
     request: MFAVerifyRequest,
     http_request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     """
@@ -523,6 +549,19 @@ def verify_mfa(
     db.add(session)
     db.commit()
 
+    if user.new_login_alert_enabled:
+        location_label = "Local Network" if country == "Local Network" else ", ".join(
+            [part for part in [city, country] if part]
+        ) or "Unknown location"
+        background_tasks.add_task(
+            send_new_login_alert_email,
+            recipient_email=user.email,
+            full_name=user.full_name,
+            device_label=session.device_label,
+            ip_address=client_ip,
+            location_label=location_label,
+        )
+
     # Generate full access token (include token_version)
     token = create_full_access_token(user.email, user.role, user.full_name, user.id, token_version=getattr(user, "token_version", 0), session_id=session_id)
     
@@ -588,6 +627,7 @@ def regenerate_backup_codes(
 @router.post("/disable")
 def disable_mfa(
     http_request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user_from_token)
 ):
@@ -615,6 +655,15 @@ def disable_mfa(
     user.updated_at = datetime.now(timezone.utc)
     log_audit(db, user.id, "mfa_disabled", "MFA disabled", http_request)
     db.commit()
+
+    if user.mfa_change_alert_enabled:
+        client_ip = http_request.client.host if http_request.client else "Unknown"
+        background_tasks.add_task(
+            send_mfa_change_notification,
+            recipient_email=user.email,
+            enabled=False,
+            ip_address=client_ip,
+        )
     
     return {
         "success": True,

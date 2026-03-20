@@ -26,6 +26,8 @@ from utils import (
     decrypt_secret,
     log_audit,
     normalize_allowed_countries,
+    send_password_changed_notification,
+    send_mfa_change_notification,
 )
 
 router = APIRouter(prefix="/user", tags=["User Self-Service"])
@@ -133,6 +135,11 @@ class ProfileResponse(BaseModel):
     active_api_key_count: int
     avatar: Optional[str] = None
     allowed_countries: Optional[str] = None
+    new_login_alert_enabled: bool = True
+    password_change_alert_enabled: bool = True
+    mfa_change_alert_enabled: bool = True
+    failed_login_alert_enabled: bool = True
+    weekly_security_digest_enabled: bool = False
 
 class ProfileUpdateRequest(BaseModel):
     full_name: Optional[str] = None
@@ -144,6 +151,22 @@ class ProfileUpdateResponse(BaseModel):
     email: str
     full_name: str
     allowed_countries: Optional[str] = None
+
+
+class NotificationPreferencesResponse(BaseModel):
+    new_login_alert_enabled: bool
+    password_change_alert_enabled: bool
+    mfa_change_alert_enabled: bool
+    failed_login_alert_enabled: bool
+    weekly_security_digest_enabled: bool
+
+
+class NotificationPreferencesUpdateRequest(BaseModel):
+    new_login_alert_enabled: Optional[bool] = None
+    password_change_alert_enabled: Optional[bool] = None
+    mfa_change_alert_enabled: Optional[bool] = None
+    failed_login_alert_enabled: Optional[bool] = None
+    weekly_security_digest_enabled: Optional[bool] = None
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
@@ -186,6 +209,11 @@ def get_profile(user: User = Depends(get_current_user), db: Session = Depends(ge
         active_api_key_count=active_keys,
         avatar=user.avatar,
         allowed_countries=user.allowed_countries,
+        new_login_alert_enabled=user.new_login_alert_enabled,
+        password_change_alert_enabled=user.password_change_alert_enabled,
+        mfa_change_alert_enabled=user.mfa_change_alert_enabled,
+        failed_login_alert_enabled=user.failed_login_alert_enabled,
+        weekly_security_digest_enabled=user.weekly_security_digest_enabled,
     )
 
 
@@ -265,6 +293,74 @@ def update_profile(
     )
 
 
+@router.get("/notification-preferences", response_model=NotificationPreferencesResponse)
+def get_notification_preferences(user: User = Depends(get_current_user)):
+    """Return persisted notification preferences for the authenticated user."""
+    return NotificationPreferencesResponse(
+        new_login_alert_enabled=user.new_login_alert_enabled,
+        password_change_alert_enabled=user.password_change_alert_enabled,
+        mfa_change_alert_enabled=user.mfa_change_alert_enabled,
+        failed_login_alert_enabled=user.failed_login_alert_enabled,
+        weekly_security_digest_enabled=user.weekly_security_digest_enabled,
+    )
+
+
+@router.patch("/notification-preferences", response_model=NotificationPreferencesResponse)
+def update_notification_preferences(
+    data: NotificationPreferencesUpdateRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update persisted notification preferences for the authenticated user."""
+    changed = False
+
+    if data.new_login_alert_enabled is not None and data.new_login_alert_enabled != user.new_login_alert_enabled:
+        user.new_login_alert_enabled = data.new_login_alert_enabled
+        user.updated_at = datetime.now(timezone.utc)
+        changed = True
+    if data.password_change_alert_enabled is not None and data.password_change_alert_enabled != user.password_change_alert_enabled:
+        user.password_change_alert_enabled = data.password_change_alert_enabled
+        user.updated_at = datetime.now(timezone.utc)
+        changed = True
+    if data.mfa_change_alert_enabled is not None and data.mfa_change_alert_enabled != user.mfa_change_alert_enabled:
+        user.mfa_change_alert_enabled = data.mfa_change_alert_enabled
+        user.updated_at = datetime.now(timezone.utc)
+        changed = True
+    if data.failed_login_alert_enabled is not None and data.failed_login_alert_enabled != user.failed_login_alert_enabled:
+        user.failed_login_alert_enabled = data.failed_login_alert_enabled
+        user.updated_at = datetime.now(timezone.utc)
+        changed = True
+    if data.weekly_security_digest_enabled is not None and data.weekly_security_digest_enabled != user.weekly_security_digest_enabled:
+        user.weekly_security_digest_enabled = data.weekly_security_digest_enabled
+        user.updated_at = datetime.now(timezone.utc)
+        changed = True
+
+    if changed:
+        states = []
+        states.append(f"New login alert email {'enabled' if user.new_login_alert_enabled else 'disabled'}")
+        states.append(f"Password change alert email {'enabled' if user.password_change_alert_enabled else 'disabled'}")
+        states.append(f"MFA change alert email {'enabled' if user.mfa_change_alert_enabled else 'disabled'}")
+        states.append(f"Failed login alert email {'enabled' if user.failed_login_alert_enabled else 'disabled'}")
+        states.append(f"Weekly security digest {'enabled' if user.weekly_security_digest_enabled else 'disabled'}")
+        log_audit(
+            db,
+            user.id,
+            "notification_preferences_updated",
+            "; ".join(states),
+            request,
+        )
+        db.commit()
+
+    return NotificationPreferencesResponse(
+        new_login_alert_enabled=user.new_login_alert_enabled,
+        password_change_alert_enabled=user.password_change_alert_enabled,
+        mfa_change_alert_enabled=user.mfa_change_alert_enabled,
+        failed_login_alert_enabled=user.failed_login_alert_enabled,
+        weekly_security_digest_enabled=user.weekly_security_digest_enabled,
+    )
+
+
 @router.post("/change-password", response_model=ChangePasswordResponse)
 def change_password(
     data: ChangePasswordRequest,
@@ -322,6 +418,10 @@ def change_password(
 
     log_audit(db, user.id, "password_changed", "Password updated, other sessions revoked", request)
     db.commit()
+
+    if user.password_change_alert_enabled:
+        client_ip = request.client.host if request.client else "Unknown"
+        send_password_changed_notification(user.email, client_ip)
 
     return ChangePasswordResponse(message="Password changed successfully. You will be logged out of other sessions.")
 
@@ -395,6 +495,7 @@ def user_mfa_setup(
 @router.post("/mfa/verify-setup")
 def user_mfa_verify_setup(
     data: MfaSetupCodeRequest,
+    request: Request,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -428,6 +529,10 @@ def user_mfa_verify_setup(
     user.mfa_enabled = True
     user.updated_at = datetime.now(timezone.utc)
     db.commit()
+
+    if user.mfa_change_alert_enabled:
+        client_ip = request.client.host if request.client else "Unknown"
+        send_mfa_change_notification(user.email, True, client_ip)
 
     return {
         "success": True,
