@@ -9,14 +9,17 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import jwt
 import os
 import re
 import json
+import secrets
+import hashlib
+import hmac
 
 from deps import get_db
-from models import User, APIKey, UserSession
+from models import User, APIKey, UserSession, EmailChangeToken
 from utils import (
     generate_mfa_secret,
     generate_qr_code_base64,
@@ -28,6 +31,8 @@ from utils import (
     normalize_allowed_countries,
     send_password_changed_notification,
     send_mfa_change_notification,
+    send_email_change_verification_email,
+    send_email_change_notice,
 )
 
 router = APIRouter(prefix="/user", tags=["User Self-Service"])
@@ -38,6 +43,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # JWT settings
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
+EMAIL_CHANGE_TOKEN_EXPIRE_MINUTES = int(os.getenv("EMAIL_CHANGE_TOKEN_EXPIRE_MINUTES", "60"))
 
 
 # ============================================================================
@@ -135,6 +141,7 @@ class ProfileResponse(BaseModel):
     active_api_key_count: int
     avatar: Optional[str] = None
     allowed_countries: Optional[str] = None
+    pending_email: Optional[str] = None
     new_login_alert_enabled: bool = True
     password_change_alert_enabled: bool = True
     mfa_change_alert_enabled: bool = True
@@ -152,6 +159,7 @@ class ProfileUpdateResponse(BaseModel):
     email: str
     full_name: str
     allowed_countries: Optional[str] = None
+    pending_email: Optional[str] = None
 
 
 class NotificationPreferencesResponse(BaseModel):
@@ -181,6 +189,19 @@ class DeleteAccountRequest(BaseModel):
     confirmation: str  # Must be "DELETE MY ACCOUNT"
 
 
+class VerifyEmailChangeRequest(BaseModel):
+    token: str
+
+
+def _get_pending_email_change(db: Session, user_id: int) -> Optional[EmailChangeToken]:
+    now = datetime.utcnow()
+    return db.query(EmailChangeToken).filter(
+        EmailChangeToken.user_id == user_id,
+        EmailChangeToken.used == False,
+        EmailChangeToken.expires_at > now
+    ).order_by(EmailChangeToken.created_at.desc()).first()
+
+
 # ============================================================================
 # Endpoints
 # ============================================================================
@@ -193,6 +214,7 @@ def get_profile(user: User = Depends(get_current_user), db: Session = Depends(ge
         APIKey.user_id == user.id,
         APIKey.is_active == True
     ).count()
+    pending_email_change = _get_pending_email_change(db, user.id)
 
     return ProfileResponse(
         id=user.id,
@@ -210,6 +232,7 @@ def get_profile(user: User = Depends(get_current_user), db: Session = Depends(ge
         active_api_key_count=active_keys,
         avatar=user.avatar,
         allowed_countries=user.allowed_countries,
+        pending_email=pending_email_change.new_email if pending_email_change else None,
         new_login_alert_enabled=user.new_login_alert_enabled,
         password_change_alert_enabled=user.password_change_alert_enabled,
         mfa_change_alert_enabled=user.mfa_change_alert_enabled,
@@ -230,6 +253,7 @@ def update_profile(
     geo_policy_changed = False
     normalized_policy = user.allowed_countries
     requires_reauth = False
+    requested_email_change = None
 
     if data.full_name is not None:
         name = data.full_name.strip()
@@ -258,8 +282,7 @@ def update_profile(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Email already in use"
                 )
-            user.email = new_email
-            profile_changes.append("email")
+            requested_email_change = new_email
 
     if data.allowed_countries is not None:
         normalized_policy = normalize_allowed_countries(data.allowed_countries)
@@ -307,14 +330,68 @@ def update_profile(
             f"Zero Trust geo policy updated: {policy_detail}",
             request,
         )
+
+    if requested_email_change:
+        now = datetime.utcnow()
+        db.query(EmailChangeToken).filter(
+            EmailChangeToken.user_id == user.id,
+            EmailChangeToken.used == False,
+            EmailChangeToken.expires_at > now
+        ).update({"used": True})
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        db.add(EmailChangeToken(
+            user_id=user.id,
+            new_email=requested_email_change,
+            token_hash=token_hash,
+            created_at=now,
+            expires_at=now + timedelta(minutes=EMAIL_CHANGE_TOKEN_EXPIRE_MINUTES),
+            used=False,
+            request_ip=request.client.host if request.client else None,
+            request_user_agent=request.headers.get("user-agent"),
+        ))
+        log_audit(
+            db,
+            user.id,
+            "email_change_requested",
+            f"Email change requested from {user.email} to {requested_email_change}",
+            request,
+        )
     db.commit()
     db.refresh(user)
 
+    if requested_email_change:
+        try:
+            sent = send_email_change_verification_email(
+                requested_email_change,
+                user.full_name,
+                raw_token,
+                expires_minutes=EMAIL_CHANGE_TOKEN_EXPIRE_MINUTES,
+            )
+        except Exception:
+            sent = False
+
+        if not sent:
+            db.query(EmailChangeToken).filter(
+                EmailChangeToken.user_id == user.id,
+                EmailChangeToken.used == False,
+                EmailChangeToken.new_email == requested_email_change,
+            ).update({"used": True})
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Unable to send the verification email right now. Please try again."
+            )
+
+    pending_email_change = _get_pending_email_change(db, user.id)
+
     return ProfileUpdateResponse(
-        message="Profile updated successfully",
+        message="Verification email sent to the new address. Your current email will stay active until verification is completed." if requested_email_change else "Profile updated successfully",
         email=user.email,
         full_name=user.full_name,
         allowed_countries=user.allowed_countries,
+        pending_email=pending_email_change.new_email if pending_email_change else None,
     )
 
 
@@ -328,6 +405,67 @@ def get_notification_preferences(user: User = Depends(get_current_user)):
         failed_login_alert_enabled=user.failed_login_alert_enabled,
         weekly_security_digest_enabled=user.weekly_security_digest_enabled,
     )
+
+
+@router.post("/verify-email-change")
+def verify_email_change(
+    body: VerifyEmailChangeRequest,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    submitted_hash = hashlib.sha256(body.token.encode()).hexdigest()
+    now = datetime.utcnow()
+
+    token_row = None
+    candidates = db.query(EmailChangeToken).filter(
+        EmailChangeToken.used == False,
+        EmailChangeToken.expires_at > now
+    ).all()
+    for candidate in candidates:
+        if hmac.compare_digest(candidate.token_hash, submitted_hash):
+            token_row = candidate
+            break
+
+    if not token_row:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token")
+
+    user = db.query(User).filter(User.id == token_row.user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid verification request")
+
+    existing = db.query(User).filter(User.email == token_row.new_email, User.id != user.id).first()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That email address is already in use")
+
+    previous_email = user.email
+    user.email = token_row.new_email
+    user.updated_at = datetime.utcnow()
+    user.token_version = (user.token_version or 0) + 1
+
+    db.query(EmailChangeToken).filter(
+        EmailChangeToken.user_id == user.id,
+        EmailChangeToken.used == False
+    ).update({"used": True})
+
+    log_audit(
+        db,
+        user.id,
+        "email_change_verified",
+        f"Email changed from {previous_email} to {user.email}",
+        request,
+    )
+    db.commit()
+
+    try:
+        send_email_change_notice(previous_email, user.email)
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "message": "Email address verified successfully. Please sign in again with your new email address.",
+        "email": user.email,
+    }
 
 
 @router.patch("/notification-preferences", response_model=NotificationPreferencesResponse)

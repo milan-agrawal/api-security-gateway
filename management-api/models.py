@@ -38,6 +38,7 @@ class User(Base):
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
     # Relationship to password reset tokens
     password_reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
+    email_change_tokens = relationship("EmailChangeToken", back_populates="user", cascade="all, delete-orphan")
     # Relationship to sessions
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
 
@@ -70,7 +71,23 @@ class PasswordResetToken(Base):
     request_ip = Column(String, nullable=True)
     request_user_agent = Column(String, nullable=True)
 
-    user = relationship("User")
+    user = relationship("User", back_populates="password_reset_tokens")
+
+
+class EmailChangeToken(Base):
+    __tablename__ = "email_change_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    new_email = Column(String, nullable=False, index=True)
+    token_hash = Column(String, nullable=False, unique=True, index=True)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False, nullable=False)
+    request_ip = Column(String, nullable=True)
+    request_user_agent = Column(String, nullable=True)
+
+    user = relationship("User", back_populates="email_change_tokens")
 
 
 class SecurityEvent(Base):

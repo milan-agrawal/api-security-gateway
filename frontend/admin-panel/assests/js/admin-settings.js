@@ -275,6 +275,7 @@ function loadAdminProfile() {
         var pwdEl = document.getElementById('asPwdChanged');
         var fnEl = document.getElementById('asFullName');
         var emEl = document.getElementById('asEmail');
+        var pendingEmailHintEl = document.getElementById('asPendingEmailHint');
         var geoEl = document.getElementById('asAllowedCountries');
         var removeAvatarBtn = document.getElementById('asRemoveAvatar');
         var avatarHintEl = document.getElementById('asAvatarHint');
@@ -284,6 +285,15 @@ function loadAdminProfile() {
         if (typeof setHeaderUserInfo === 'function') setHeaderUserInfo(data);
         if (fnEl) fnEl.value = data.full_name || '';
         if (emEl) emEl.value = data.email || '';
+        if (pendingEmailHintEl) {
+            if (data.pending_email) {
+                pendingEmailHintEl.style.display = '';
+                pendingEmailHintEl.textContent = 'Pending verification for ' + data.pending_email + '. Your current login email remains ' + (data.email || '') + ' until verification is completed.';
+            } else {
+                pendingEmailHintEl.style.display = 'none';
+                pendingEmailHintEl.textContent = '';
+            }
+        }
         if (geoEl) geoEl.value = data.allowed_countries || '';
         _asUpdateGeoPolicyStatus(data.allowed_countries || '');
         if (joinEl) joinEl.textContent = _asFormatDate(data.created_at);
@@ -373,10 +383,10 @@ function saveAdminProfile() {
                 email: email.trim(),
                 current_password: currentPassword || null
             })
-        }).then(function () {
+        }).then(function (data) {
             _asBtnLoading(btn, false);
             _asCloseModal();
-            _asToast('Profile updated - Timezone set to ' + _asGetTz(), 'success');
+            _asToast((data && data.message) || ('Profile updated - Timezone set to ' + _asGetTz()), 'success');
             loadAdminProfile();
         }).catch(function (err) {
             _asBtnLoading(btn, false);

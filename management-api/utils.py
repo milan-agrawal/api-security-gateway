@@ -1000,6 +1000,110 @@ def send_password_changed_notification(recipient_email: str, ip_address: str = "
         return False
 
 
+def send_email_change_verification_email(
+    recipient_email: str,
+    full_name: str,
+    token: str,
+    expires_minutes: int = 60,
+) -> bool:
+    """
+    Send a verification email to confirm a pending email-address change.
+    """
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    from_email = os.getenv("FROM_EMAIL", smtp_user)
+
+    if not smtp_user or not smtp_password:
+        print("ERROR: SMTP credentials not configured in .env file")
+        return False
+
+    verify_link = f"http://localhost:3000/verify-email-change.html?token={token}"
+    safe_name = full_name or recipient_email
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Verify your new email address"
+        msg["From"] = f"API Security Gateway <{from_email}>"
+        msg["To"] = recipient_email
+
+        html_body = f"""
+        <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #2563EB;">Verify Your New Email Address</h2>
+            <p>Hello {safe_name},</p>
+            <p>We received a request to change the email address for your API Security Gateway account to <strong>{recipient_email}</strong>.</p>
+            <p>Please verify this address by clicking the link below. This link will expire in {expires_minutes} minutes and can only be used once.</p>
+            <p><a href="{verify_link}">Verify new email address</a></p>
+            <p>If you did not request this change, you can safely ignore this email.</p>
+        </div>
+        </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(html_body, "html"))
+
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(from_email, recipient_email, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"ERROR: Failed to send email change verification to {recipient_email}: {str(e)}")
+        return False
+
+
+def send_email_change_notice(previous_email: str, new_email: str) -> bool:
+    """
+    Notify the previous email address that the account email was changed.
+    """
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    from_email = os.getenv("FROM_EMAIL", smtp_user)
+
+    if not smtp_user or not smtp_password:
+        print("ERROR: SMTP credentials not configured in .env file")
+        return False
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Your account email address was changed"
+        msg["From"] = f"API Security Gateway <{from_email}>"
+        msg["To"] = previous_email
+
+        html_body = f"""
+        <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #EF4444;">Email Address Changed</h2>
+            <p>This is a security notification that your API Security Gateway account email was changed from <strong>{previous_email}</strong> to <strong>{new_email}</strong>.</p>
+            <p>If you made this change, no further action is required.</p>
+            <p style="color: #EF4444;"><strong>If you did not make this change</strong>, contact your administrator immediately.</p>
+        </div>
+        </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(html_body, "html"))
+
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(from_email, previous_email, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"ERROR: Failed to send email change notice to {previous_email}: {str(e)}")
+        return False
+
+
 def send_new_login_alert_email(
     recipient_email: str,
     full_name: str,
