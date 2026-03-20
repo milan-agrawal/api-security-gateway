@@ -275,7 +275,16 @@ function loadAdminProfile() {
         var pwdEl = document.getElementById('asPwdChanged');
         var fnEl = document.getElementById('asFullName');
         var emEl = document.getElementById('asEmail');
+        var verificationBannerEl = document.getElementById('asVerificationBanner');
+        var verificationBannerTitleEl = document.getElementById('asVerificationBannerTitle');
+        var verificationBannerTextEl = document.getElementById('asVerificationBannerText');
         var pendingEmailHintEl = document.getElementById('asPendingEmailHint');
+        var pendingEmailActionsEl = document.getElementById('asPendingEmailActions');
+        var resendPendingBtn = document.getElementById('asResendPendingEmail');
+        var cancelPendingBtn = document.getElementById('asCancelPendingEmail');
+        var emailStatusVerifiedEl = document.getElementById('asEmailStatusVerified');
+        var emailStatusPendingEl = document.getElementById('asEmailStatusPending');
+        var emailStatusCurrentEl = document.getElementById('asEmailStatusCurrent');
         var geoEl = document.getElementById('asAllowedCountries');
         var removeAvatarBtn = document.getElementById('asRemoveAvatar');
         var avatarHintEl = document.getElementById('asAvatarHint');
@@ -288,12 +297,40 @@ function loadAdminProfile() {
         if (pendingEmailHintEl) {
             if (data.pending_email) {
                 pendingEmailHintEl.style.display = '';
-                pendingEmailHintEl.textContent = 'Pending verification for ' + data.pending_email + '. Your current login email remains ' + (data.email || '') + ' until verification is completed.';
+                var pendingText = 'Pending verification for ' + data.pending_email + '. Your current login email remains ' + (data.email || '') + ' until verification is completed.';
+                if (data.pending_email_expires_at) {
+                    pendingText += ' Expires ' + _asTimeAgoUtc(data.pending_email_expires_at) + '.';
+                }
+                pendingEmailHintEl.textContent = pendingText;
             } else {
                 pendingEmailHintEl.style.display = 'none';
                 pendingEmailHintEl.textContent = '';
             }
         }
+        if (verificationBannerEl) {
+            if (data.pending_email) {
+                verificationBannerEl.style.display = '';
+                if (verificationBannerTitleEl) verificationBannerTitleEl.textContent = 'Email verification pending';
+                if (verificationBannerTextEl) {
+                    var bannerText = 'We sent a verification link to ' + data.pending_email + '. Your current login email stays active until that link is completed.';
+                    if (data.pending_email_expires_at) {
+                        bannerText += ' It expires ' + _asTimeAgoUtc(data.pending_email_expires_at) + '.';
+                    }
+                    verificationBannerTextEl.textContent = bannerText;
+                }
+            } else {
+                verificationBannerEl.style.display = 'none';
+                if (verificationBannerTitleEl) verificationBannerTitleEl.textContent = '';
+                if (verificationBannerTextEl) verificationBannerTextEl.textContent = '';
+            }
+        }
+        if (pendingEmailActionsEl) pendingEmailActionsEl.style.display = data.pending_email ? '' : 'none';
+        if (resendPendingBtn) resendPendingBtn.disabled = !data.pending_email;
+        if (cancelPendingBtn) cancelPendingBtn.disabled = !data.pending_email;
+        var hasPendingEmail = !!data.pending_email;
+        if (emailStatusVerifiedEl) emailStatusVerifiedEl.style.display = hasPendingEmail ? 'none' : '';
+        if (emailStatusPendingEl) emailStatusPendingEl.style.display = hasPendingEmail ? '' : 'none';
+        if (emailStatusCurrentEl) emailStatusCurrentEl.style.display = hasPendingEmail ? '' : 'none';
         if (geoEl) geoEl.value = data.allowed_countries || '';
         _asUpdateGeoPolicyStatus(data.allowed_countries || '');
         if (joinEl) joinEl.textContent = _asFormatDate(data.created_at);
@@ -405,6 +442,47 @@ function saveAdminProfile() {
     }
 
     submitProfileUpdate(null);
+}
+
+function resendPendingEmailChange() {
+    var btn = document.getElementById('asResendPendingEmail');
+    if (btn && btn.disabled) return;
+    _asBtnLoading(btn, true, 'Resending...');
+    _asFetch('/user/email-change/resend', {
+        method: 'POST'
+    }).then(function (data) {
+        _asBtnLoading(btn, false);
+        _asToast((data && data.message) || 'Verification email resent', 'success');
+        loadAdminProfile();
+    }).catch(function (err) {
+        _asBtnLoading(btn, false);
+        _asToast('Resend failed: ' + err.message, 'error');
+    });
+}
+
+function cancelPendingEmailChange() {
+    var btn = document.getElementById('asCancelPendingEmail');
+    if (btn && btn.disabled) return;
+
+    _asShowModal(
+        'Cancel Pending Email Change',
+        '<p>The pending email verification request will be cancelled and your current email will remain trusted. Continue?</p>',
+        function () {
+            _asBtnLoading(btn, true, 'Cancelling...');
+            _asFetch('/user/email-change', {
+                method: 'DELETE'
+            }).then(function (data) {
+                _asBtnLoading(btn, false);
+                _asCloseModal();
+                _asToast((data && data.message) || 'Pending email change cancelled', 'success');
+                loadAdminProfile();
+            }).catch(function (err) {
+                _asBtnLoading(btn, false);
+                _asCloseModal();
+                _asToast('Cancel failed: ' + err.message, 'error');
+            });
+        }
+    );
 }
 
 /* ============================================================
@@ -765,6 +843,10 @@ function _asRenderActivity(events) {
         login_failed: { cls: 'danger', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>' },
         password_changed: { cls: 'password', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' },
         profile_updated: { cls: 'login', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="m16.5 3.5 4 4L7 21H3v-4Z"/></svg>' },
+        email_change_requested: { cls: 'default', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="m22 6-10 7L2 6"/></svg>' },
+        email_change_verified: { cls: 'login', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12c0 5-4 9-10 9S2 17 2 12 6 3 12 3c2.6 0 4.9 1 6.6 2.6"/><path d="m9 12 2 2 5-5"/></svg>' },
+        email_change_verification_resent: { cls: 'session', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg>' },
+        email_change_cancelled: { cls: 'danger', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>' },
         mfa_enabled: { cls: 'mfa', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-4 8 4z"/><path d="m9 12 2 2 4-4"/></svg>' },
         mfa_disabled: { cls: 'danger', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-4 8 4z"/><path d="m9 9 6 6"/><path d="m15 9-6 6"/></svg>' },
         session_revoked: { cls: 'session', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>' },
@@ -875,6 +957,10 @@ function deleteAdminAccount() {
    ============================================================ */
 function bindAdminSettingsEvents() {
     _asClick('asSaveProfile', saveAdminProfile);
+    _asClick('asResendPendingEmail', resendPendingEmailChange);
+    _asClick('asCancelPendingEmail', cancelPendingEmailChange);
+    _asClick('asBannerResendPendingEmail', resendPendingEmailChange);
+    _asClick('asBannerCancelPendingEmail', cancelPendingEmailChange);
 
     // Live timezone preview on dropdown change
     var tzSel = document.getElementById('asTimezone');
@@ -1220,24 +1306,38 @@ function _asGetTz() {
     return _asNormalizeTz(localStorage.getItem('as_timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
 }
 
+function _asParseIsoUtc(iso) {
+    if (!iso) return null;
+    var raw = String(iso).trim();
+    if (!raw) return null;
+    if (/Z$|[+-]\d{2}:\d{2}$/.test(raw)) return new Date(raw);
+    return new Date(raw + 'Z');
+}
+
 /** Format date in selected timezone: "Mar 19, 2026, 5:30 PM" */
 function _asFormatDate(iso) {
     if (!iso) return '-';
     try {
+        var parsed = _asParseIsoUtc(iso);
+        if (!parsed || isNaN(parsed.getTime())) return '-';
         return new Intl.DateTimeFormat('en-US', {
             timeZone: _asGetTz(),
             month: 'short', day: 'numeric', year: 'numeric',
             hour: 'numeric', minute: '2-digit', hour12: true
-        }).format(new Date(iso));
+        }).format(parsed);
     } catch (e) {
-        return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        var fallback = _asParseIsoUtc(iso);
+        if (!fallback || isNaN(fallback.getTime())) return '-';
+        return fallback.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
 }
 
 /** Time-ago string + exact time in parens using timezone */
 function _asTimeAgo(iso) {
     if (!iso) return '-';
-    var diff = Date.now() - new Date(iso).getTime();
+    var parsed = _asParseIsoUtc(iso);
+    if (!parsed || isNaN(parsed.getTime())) return '-';
+    var diff = Date.now() - parsed.getTime();
     var s = Math.floor(diff / 1000);
     var rel;
     if (s < 60) rel = 'just now';
@@ -1255,6 +1355,10 @@ function _asTimeAgo(iso) {
     }
     var exact = _asFormatDate(iso);
     return rel ? rel + ' (' + exact + ')' : exact;
+}
+
+function _asTimeAgoUtc(iso) {
+    return _asTimeAgo(iso);
 }
 
 /** Update the timezone hint text below the dropdown */

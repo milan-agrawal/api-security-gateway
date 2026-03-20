@@ -166,6 +166,16 @@
                     <p>Manage your admin identity and avatar</p>
                 </div>
                 <div class="as-panel-body">
+                    <div class="as-verification-banner" id="asVerificationBanner" style="display:none;">
+                        <div class="as-verification-banner-copy">
+                            <strong id="asVerificationBannerTitle">Email verification pending</strong>
+                            <span id="asVerificationBannerText">A new email address is waiting for verification.</span>
+                        </div>
+                        <div class="as-verification-banner-actions">
+                            <button class="as-btn as-btn-secondary as-btn-sm" id="asBannerResendPendingEmail" type="button">Resend Verification</button>
+                            <button class="as-btn as-btn-ghost as-btn-sm" id="asBannerCancelPendingEmail" type="button">Cancel Pending Change</button>
+                        </div>
+                    </div>
                     <div class="as-profile-row">
                         <div class="as-avatar-wrap">
                             <div class="as-avatar" id="asAvatar">AD</div>
@@ -223,10 +233,21 @@
                             autocomplete="name">
                     </div>
                     <div class="as-form-group">
-                        <label class="as-label" for="asEmail">Email Address</label>
+                        <div class="as-label-row">
+                            <label class="as-label" for="asEmail">Email Address</label>
+                            <div class="as-status-chip-row">
+                                <span class="as-status-chip verified" id="asEmailStatusVerified">Verified</span>
+                                <span class="as-status-chip pending" id="asEmailStatusPending" style="display:none;">Pending Verification</span>
+                                <span class="as-status-chip neutral" id="asEmailStatusCurrent" style="display:none;">Current Email Active</span>
+                            </div>
+                        </div>
                         <input class="as-input" type="email" id="asEmail" placeholder="admin@example.com"
                             autocomplete="email">
                         <p class="as-hint" id="asPendingEmailHint" style="display:none;"></p>
+                        <div class="as-inline-actions" id="asPendingEmailActions" style="display:none;">
+                            <button class="as-btn as-btn-secondary as-btn-sm" id="asResendPendingEmail" type="button">Resend Verification</button>
+                            <button class="as-btn as-btn-ghost as-btn-sm" id="asCancelPendingEmail" type="button">Cancel Pending Change</button>
+                        </div>
                     </div>
                     <div class="as-form-group">
                         <label class="as-label" for="asTimezone">
@@ -618,6 +639,8 @@
                             <option value="password_changed">Password Changed</option>
                             <option value="email_change_requested">Email Change Requested</option>
                             <option value="email_change_verified">Email Change Verified</option>
+                            <option value="email_change_verification_resent">Email Verification Resent</option>
+                            <option value="email_change_cancelled">Email Change Cancelled</option>
                             <option value="mfa_enabled">MFA Enabled</option>
                             <option value="mfa_disabled">MFA Disabled</option>
                             <option value="session_revoked">Session Revoked</option>

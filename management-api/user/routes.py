@@ -77,8 +77,8 @@ def get_current_user(
         user = db.query(User).filter(User.email == email).first()
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token is no longer valid for this account"
             )
         # Enforce token_version for session invalidation
         token_version = payload.get("token_version", 0)
@@ -142,6 +142,7 @@ class ProfileResponse(BaseModel):
     avatar: Optional[str] = None
     allowed_countries: Optional[str] = None
     pending_email: Optional[str] = None
+    pending_email_expires_at: Optional[str] = None
     new_login_alert_enabled: bool = True
     password_change_alert_enabled: bool = True
     mfa_change_alert_enabled: bool = True
@@ -160,6 +161,13 @@ class ProfileUpdateResponse(BaseModel):
     full_name: str
     allowed_countries: Optional[str] = None
     pending_email: Optional[str] = None
+    pending_email_expires_at: Optional[str] = None
+
+
+class PendingEmailResponse(BaseModel):
+    message: str
+    pending_email: Optional[str] = None
+    pending_email_expires_at: Optional[str] = None
 
 
 class NotificationPreferencesResponse(BaseModel):
@@ -233,6 +241,7 @@ def get_profile(user: User = Depends(get_current_user), db: Session = Depends(ge
         avatar=user.avatar,
         allowed_countries=user.allowed_countries,
         pending_email=pending_email_change.new_email if pending_email_change else None,
+        pending_email_expires_at=pending_email_change.expires_at.isoformat() if pending_email_change and pending_email_change.expires_at else None,
         new_login_alert_enabled=user.new_login_alert_enabled,
         password_change_alert_enabled=user.password_change_alert_enabled,
         mfa_change_alert_enabled=user.mfa_change_alert_enabled,
@@ -392,6 +401,98 @@ def update_profile(
         full_name=user.full_name,
         allowed_countries=user.allowed_countries,
         pending_email=pending_email_change.new_email if pending_email_change else None,
+        pending_email_expires_at=pending_email_change.expires_at.isoformat() if pending_email_change and pending_email_change.expires_at else None,
+    )
+
+
+@router.post("/email-change/resend", response_model=PendingEmailResponse)
+def resend_pending_email_change(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    pending_email_change = _get_pending_email_change(db, user.id)
+    if not pending_email_change:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No pending email change request found"
+        )
+
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    now = datetime.utcnow()
+    pending_email_change.token_hash = token_hash
+    pending_email_change.created_at = now
+    pending_email_change.expires_at = now + timedelta(minutes=EMAIL_CHANGE_TOKEN_EXPIRE_MINUTES)
+    pending_email_change.request_ip = request.client.host if request.client else None
+    pending_email_change.request_user_agent = request.headers.get("user-agent")
+    user.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+    try:
+        sent = send_email_change_verification_email(
+            pending_email_change.new_email,
+            user.full_name,
+            raw_token,
+            expires_minutes=EMAIL_CHANGE_TOKEN_EXPIRE_MINUTES,
+        )
+    except Exception:
+        sent = False
+
+    if not sent:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to resend the verification email right now. Please try again."
+        )
+
+    log_audit(
+        db,
+        user.id,
+        "email_change_verification_resent",
+        f"Verification email resent for pending email change to {pending_email_change.new_email}",
+        request,
+    )
+    db.commit()
+
+    return PendingEmailResponse(
+        message="Verification email resent to the pending new address.",
+        pending_email=pending_email_change.new_email,
+        pending_email_expires_at=pending_email_change.expires_at.isoformat() if pending_email_change.expires_at else None,
+    )
+
+
+@router.delete("/email-change", response_model=PendingEmailResponse)
+def cancel_pending_email_change(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    pending_email_change = _get_pending_email_change(db, user.id)
+    if not pending_email_change:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No pending email change request found"
+        )
+
+    cancelled_email = pending_email_change.new_email
+    db.query(EmailChangeToken).filter(
+        EmailChangeToken.user_id == user.id,
+        EmailChangeToken.used == False
+    ).update({"used": True})
+    user.updated_at = datetime.now(timezone.utc)
+    log_audit(
+        db,
+        user.id,
+        "email_change_cancelled",
+        f"Pending email change to {cancelled_email} was cancelled",
+        request,
+    )
+    db.commit()
+
+    return PendingEmailResponse(
+        message="Pending email change cancelled. Your current email remains active.",
+        pending_email=None,
+        pending_email_expires_at=None,
     )
 
 
@@ -928,7 +1029,7 @@ def _audit_event_severity(event_type: str) -> str:
     event_type = (event_type or "").lower()
     if event_type in {"login_blocked_geo", "reauth_failed", "mfa_disabled", "account_deleted"}:
         return "high"
-    if event_type in {"login_failed", "password_changed", "email_change_requested", "email_change_verified", "sessions_revoked_all", "session_revoked"}:
+    if event_type in {"login_failed", "password_changed", "email_change_requested", "email_change_verified", "email_change_verification_resent", "email_change_cancelled", "sessions_revoked_all", "session_revoked"}:
         return "medium"
     return "low"
 
@@ -937,7 +1038,7 @@ def _severity_event_types(severity: str) -> list[str]:
     severity = (severity or "").lower()
     severity_map = {
         "high": {"login_blocked_geo", "reauth_failed", "mfa_disabled", "account_deleted"},
-        "medium": {"login_failed", "password_changed", "email_change_requested", "email_change_verified", "sessions_revoked_all", "session_revoked"},
+        "medium": {"login_failed", "password_changed", "email_change_requested", "email_change_verified", "email_change_verification_resent", "email_change_cancelled", "sessions_revoked_all", "session_revoked"},
         "low": {"login", "profile_updated", "ztna_policy_updated", "mfa_enabled", "backup_codes_regenerated", "notification_preferences_updated"},
     }
     return list(severity_map.get(severity, set()))
