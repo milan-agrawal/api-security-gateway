@@ -62,21 +62,57 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Load user information
-function loadUserInfo() {
+async function loadUserInfo() {
     const email = localStorage.getItem('userEmail') || 'admin@example.com';
     const fullName = localStorage.getItem('fullName') || 'Admin';
+    const token = localStorage.getItem('token');
     
-    // Update user avatar with initials
     const userAvatar = document.getElementById('userAvatar');
-    if (userAvatar) {
-        const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-        userAvatar.textContent = initials || 'AD';
-    }
-    
-    // Update user name
+    const userAvatarImage = document.getElementById('userAvatarImage');
+    const userAvatarInitials = document.getElementById('userAvatarInitials');
     const userName = document.getElementById('userName');
+    const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) || 'AD';
+
+    if (userAvatarInitials) {
+        userAvatarInitials.textContent = initials;
+        userAvatarInitials.style.display = '';
+    }
+    if (userAvatarImage) {
+        userAvatarImage.style.display = 'none';
+        userAvatarImage.removeAttribute('src');
+    }
     if (userName) {
         userName.textContent = fullName;
+    }
+
+    if (!token) return;
+
+    try {
+        const resp = await fetch(`${API_URL}/user/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!resp.ok) return;
+
+        const data = await resp.json();
+        if (userName && data.full_name) {
+            userName.textContent = data.full_name;
+        }
+
+        if (userAvatar && userAvatarImage && userAvatarInitials) {
+            if (data.avatar) {
+                userAvatarImage.src = data.avatar;
+                userAvatarImage.style.display = 'block';
+                userAvatarInitials.style.display = 'none';
+            } else {
+                const profileInitials = (data.full_name || fullName).split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                userAvatarInitials.textContent = profileInitials || initials;
+                userAvatarInitials.style.display = '';
+                userAvatarImage.style.display = 'none';
+                userAvatarImage.removeAttribute('src');
+            }
+        }
+    } catch {
+        // Keep the initials fallback if profile fetch fails.
     }
 }
 

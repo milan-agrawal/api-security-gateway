@@ -401,7 +401,11 @@ function handleAvatarUpload(file) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ avatar: reader.result })
         })
-            .then(function () { _asToast('Avatar updated', 'success'); loadAdminProfile(); })
+            .then(function () {
+                _asToast('Avatar updated', 'success');
+                loadAdminProfile();
+                if (typeof loadUserInfo === 'function') loadUserInfo();
+            })
             .catch(function (err) { _asToast('Upload failed: ' + err.message, 'error'); });
     };
     reader.onerror = function () {
