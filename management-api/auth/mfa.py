@@ -5,6 +5,7 @@ Handles TOTP-based 2FA for users and MFA for admins
 from fastapi import APIRouter, Depends, HTTPException, status, Header, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 import jwt
@@ -34,6 +35,7 @@ from utils import encrypt_secret, decrypt_secret
 from utils import log_audit
 
 router = APIRouter(prefix="/auth/mfa", tags=["MFA"])
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT settings
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
@@ -624,8 +626,13 @@ def regenerate_backup_codes(
     }
 
 
+class DisableMfaRequest(BaseModel):
+    current_password: str
+
+
 @router.post("/disable")
 def disable_mfa(
+    data: DisableMfaRequest,
     http_request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
@@ -639,6 +646,14 @@ def disable_mfa(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admins cannot disable MFA. Multi-factor authentication is mandatory for admin accounts."
+        )
+
+    if not pwd_context.verify(data.current_password, user.password_hash):
+        log_audit(db, user.id, "reauth_failed", "Failed password re-authentication for MFA disable", http_request)
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
         )
     
     if not user.mfa_enabled:

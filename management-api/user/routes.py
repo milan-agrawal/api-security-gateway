@@ -145,6 +145,7 @@ class ProfileUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
     allowed_countries: Optional[str] = None
+    current_password: Optional[str] = None
 
 class ProfileUpdateResponse(BaseModel):
     message: str
@@ -228,6 +229,7 @@ def update_profile(
     profile_changes = []
     geo_policy_changed = False
     normalized_policy = user.allowed_countries
+    requires_reauth = False
 
     if data.full_name is not None:
         name = data.full_name.strip()
@@ -248,6 +250,7 @@ def update_profile(
     if data.email is not None:
         new_email = data.email.lower().strip()
         if new_email != user.email:
+            requires_reauth = True
             # Check for duplicate
             existing = db.query(User).filter(User.email == new_email).first()
             if existing:
@@ -261,8 +264,30 @@ def update_profile(
     if data.allowed_countries is not None:
         normalized_policy = normalize_allowed_countries(data.allowed_countries)
         if normalized_policy != user.allowed_countries:
+            requires_reauth = True
             user.allowed_countries = normalized_policy
             geo_policy_changed = True
+
+    if requires_reauth:
+        current_password = (data.current_password or "").strip()
+        if not current_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is required for sensitive profile changes"
+            )
+        if not pwd_context.verify(current_password, user.password_hash):
+            log_audit(
+                db,
+                user.id,
+                "reauth_failed",
+                "Failed password re-authentication for sensitive profile change",
+                request,
+            )
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect"
+            )
 
     user.updated_at = datetime.now(timezone.utc)
     if profile_changes:

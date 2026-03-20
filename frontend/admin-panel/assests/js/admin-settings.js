@@ -361,20 +361,40 @@ function saveAdminProfile() {
     }
 
     var btn = document.getElementById('asSaveProfile');
-    _asBtnLoading(btn, true);
+    var emailChanged = !!(_asProfileData && email.trim().toLowerCase() !== (_asProfileData.email || '').toLowerCase());
 
-    _asFetch('/user/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: name.trim(), email: email.trim() })
-    }).then(function () {
-        _asBtnLoading(btn, false);
-        _asToast('Profile updated - Timezone set to ' + _asGetTz(), 'success');
-        loadAdminProfile();
-    }).catch(function (err) {
-        _asBtnLoading(btn, false);
-        _asToast('Update failed: ' + err.message, 'error');
-    });
+    function submitProfileUpdate(currentPassword) {
+        _asBtnLoading(btn, true);
+        return _asFetch('/user/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                full_name: name.trim(),
+                email: email.trim(),
+                current_password: currentPassword || null
+            })
+        }).then(function () {
+            _asBtnLoading(btn, false);
+            _asCloseModal();
+            _asToast('Profile updated - Timezone set to ' + _asGetTz(), 'success');
+            loadAdminProfile();
+        }).catch(function (err) {
+            _asBtnLoading(btn, false);
+            _asCloseModal();
+            _asToast('Update failed: ' + err.message, 'error');
+        });
+    }
+
+    if (emailChanged) {
+        _asPromptCurrentPassword(
+            'Verify Current Password',
+            'Changing your email is a sensitive action. Enter your current password to continue.',
+            submitProfileUpdate
+        );
+        return;
+    }
+
+    submitProfileUpdate(null);
 }
 
 /* ============================================================
@@ -546,16 +566,25 @@ function verifyAdminMfa() {
 }
 
 function disableAdminMfa() {
-    _asShowModal('Disable MFA', '<p>Are you sure? This will remove two-factor authentication from your admin account.</p>', function () {
-        _asFetch('/auth/mfa/disable', { method: 'POST' }).then(function () {
-            _asToast('MFA disabled', 'success');
-            _asCloseModal();
-            loadAdminMfaStatus();
-            loadAdminProfile();
-        }).catch(function (err) {
-            _asToast('Failed: ' + err.message, 'error');
-        });
-    });
+    _asPromptCurrentPassword(
+        'Disable MFA',
+        'Enter your current password to disable two-factor authentication for this account.',
+        function (currentPassword) {
+            return _asFetch('/auth/mfa/disable', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ current_password: currentPassword })
+            }).then(function () {
+                _asToast('MFA disabled', 'success');
+                _asCloseModal();
+                loadAdminMfaStatus();
+                loadAdminProfile();
+            }).catch(function (err) {
+                _asCloseModal();
+                _asToast('Failed: ' + err.message, 'error');
+            });
+        }
+    );
 }
 
 function regenerateAdminBackupCodes() {
@@ -865,21 +894,32 @@ function bindAdminSettingsEvents() {
         var btn = document.getElementById('asSaveGeoBlocking');
         var geoInput = document.getElementById('asAllowedCountries');
         if (!geoInput) return;
-        _asBtnLoading(btn, true);
-        _asFetch('/user/profile', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ allowed_countries: geoInput.value })
-        }).then(function (data) {
-            _asBtnLoading(btn, false);
-            if (geoInput) geoInput.value = data.allowed_countries || '';
-            _asUpdateGeoPolicyStatus(data.allowed_countries || '');
-            _asToast('ZTNA Geo-Blocking policy saved', 'success');
-            loadAdminProfile();
-        }).catch(function (err) {
-            _asBtnLoading(btn, false);
-            _asToast('Failed to save policy: ' + err.message, 'error');
-        });
+        _asPromptCurrentPassword(
+            'Verify Current Password',
+            'Geo-blocking is a critical security setting. Enter your current password to save this policy.',
+            function (currentPassword) {
+                _asBtnLoading(btn, true);
+                return _asFetch('/user/profile', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        allowed_countries: geoInput.value,
+                        current_password: currentPassword
+                    })
+                }).then(function (data) {
+                    _asBtnLoading(btn, false);
+                    _asCloseModal();
+                    if (geoInput) geoInput.value = data.allowed_countries || '';
+                    _asUpdateGeoPolicyStatus(data.allowed_countries || '');
+                    _asToast('ZTNA Geo-Blocking policy saved', 'success');
+                    loadAdminProfile();
+                }).catch(function (err) {
+                    _asBtnLoading(btn, false);
+                    _asCloseModal();
+                    _asToast('Failed to save policy: ' + err.message, 'error');
+                });
+            }
+        );
     });
 
     _asClick('asDownloadBackup', function () {
@@ -1050,12 +1090,12 @@ function _asEsc(s) {
 }
 
 /* Button loading state */
-function _asBtnLoading(btn, loading) {
+function _asBtnLoading(btn, loading, label) {
     if (!btn) return;
     if (loading) {
         btn._origHTML = btn.innerHTML;
         btn.classList.add('as-btn-saving');
-        btn.innerHTML = '<span class="as-btn-spinner"></span> Saving...';
+        btn.innerHTML = '<span class="as-btn-spinner"></span> ' + (label || 'Saving...');
     } else {
         btn.classList.remove('as-btn-saving');
         if (btn._origHTML) btn.innerHTML = btn._origHTML;
@@ -1072,6 +1112,26 @@ function _asShowModal(title, bodyHtml, onConfirm) {
     if (bodyEl) bodyEl.innerHTML = bodyHtml;
     if (confirmBtn) confirmBtn.onclick = onConfirm;
     overlay.style.display = '';
+}
+
+function _asPromptCurrentPassword(title, message, onConfirm) {
+    _asShowModal(
+        title,
+        '<p>' + _asEsc(message) + '</p>' +
+        '<input type="password" id="asModalCurrentPassword" placeholder="Current password" autocomplete="current-password" style="margin-top:10px">',
+        function () {
+            var password = (document.getElementById('asModalCurrentPassword') || {}).value || '';
+            var confirmBtn = document.getElementById('asModalConfirm');
+            if (!password) {
+                _asToast('Current password is required', 'error');
+                return;
+            }
+            _asBtnLoading(confirmBtn, true, 'Checking...');
+            Promise.resolve(onConfirm(password)).finally(function () {
+                _asBtnLoading(confirmBtn, false);
+            });
+        }
+    );
 }
 
 function _asCloseModal() {
