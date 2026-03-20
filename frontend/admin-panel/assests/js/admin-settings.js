@@ -1,15 +1,15 @@
-/* ============================================================
-   ADMIN SETTINGS v2 — Tab-Based Layout  (admin-settings.js)
-   Tab switching · Security Score Ring · Login Heatmap
-   Command Bar (Ctrl+K) · Notification Prefs · API calls
-   Loaded globally via index.html; called from router onLoad.
+﻿/* ============================================================
+   ADMIN SETTINGS v2 - Tab-Based Layout (admin-settings.js)
+   Tab switching, security score ring, login heatmap
+   Command bar (Ctrl+K), notification preferences, API calls
+   Loaded globally via index.html and called from router onLoad.
    ============================================================ */
 
 var _asProfileData = null;
 var _asSessionData = null;
 var _asCmdBound = false;
 
-/* ── Entry point ── */
+/* Entry point */
 function initAdminSettings() {
     _asInitTabs();
     _asInitCmdBar();
@@ -218,15 +218,11 @@ function _asCmdExec(action) {
 }
 
 /* ============================================================
-   NOTIFICATION PREFERENCES (localStorage-backed)
+   NOTIFICATION PREFERENCES
    ============================================================ */
 function _asInitNotifPrefs() {
-    var prefs = _asGetNotifPrefs();
-    var keys = ['Login', 'Pwd', 'Mfa', 'Failed', 'Digest'];
-    keys.forEach(function (k) {
-        var el = document.getElementById('asNotif' + k);
-        if (el) el.checked = prefs[k.toLowerCase()] !== false;
-    });
+    var saveBtn = document.getElementById('asSaveNotifs');
+    if (saveBtn && saveBtn.dataset.bound === 'true') return;
 
     _asFetch('/user/notification-preferences').then(function (data) {
         var loginToggle = document.getElementById('asNotifLogin');
@@ -241,24 +237,18 @@ function _asInitNotifPrefs() {
         if (digestToggle) digestToggle.checked = data.weekly_security_digest_enabled === true;
     }).catch(function () { });
 
-    var saveBtn = document.getElementById('asSaveNotifs');
     if (saveBtn) {
+        saveBtn.dataset.bound = 'true';
         saveBtn.addEventListener('click', function () {
-            var obj = {};
-            keys.forEach(function (k) {
-                var el = document.getElementById('asNotif' + k);
-                obj[k.toLowerCase()] = el ? el.checked : true;
-            });
-            try { localStorage.setItem('as_notif_prefs', JSON.stringify(obj)); } catch (e) { }
             _asFetch('/user/notification-preferences', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    new_login_alert_enabled: obj.login !== false,
-                    password_change_alert_enabled: obj.pwd !== false,
-                    mfa_change_alert_enabled: obj.mfa !== false,
-                    failed_login_alert_enabled: obj.failed !== false,
-                    weekly_security_digest_enabled: obj.digest === true
+                    new_login_alert_enabled: !!((document.getElementById('asNotifLogin') || {}).checked),
+                    password_change_alert_enabled: !!((document.getElementById('asNotifPwd') || {}).checked),
+                    mfa_change_alert_enabled: !!((document.getElementById('asNotifMfa') || {}).checked),
+                    failed_login_alert_enabled: !!((document.getElementById('asNotifFailed') || {}).checked),
+                    weekly_security_digest_enabled: !!((document.getElementById('asNotifDigest') || {}).checked)
                 })
             }).then(function () {
                 _asToast('Notification preferences saved', 'success');
@@ -267,13 +257,6 @@ function _asInitNotifPrefs() {
             });
         });
     }
-}
-
-function _asGetNotifPrefs() {
-    try {
-        var raw = localStorage.getItem('as_notif_prefs');
-        return raw ? JSON.parse(raw) : {};
-    } catch (e) { return {}; }
 }
 
 /* ============================================================
@@ -296,6 +279,7 @@ function loadAdminProfile() {
 
         if (nameEl) nameEl.textContent = _asEsc(data.full_name || 'Admin');
         if (emailEl) emailEl.textContent = _asEsc(data.email || '');
+        if (typeof setHeaderUserInfo === 'function') setHeaderUserInfo(data);
         if (fnEl) fnEl.value = data.full_name || '';
         if (emEl) emEl.value = data.email || '';
         if (geoEl) geoEl.value = data.allowed_countries || '';
@@ -376,7 +360,7 @@ function saveAdminProfile() {
         body: JSON.stringify({ full_name: name.trim(), email: email.trim() })
     }).then(function () {
         _asBtnLoading(btn, false);
-        _asToast('Profile updated · Timezone set to ' + _asGetTz(), 'success');
+        _asToast('Profile updated - Timezone set to ' + _asGetTz(), 'success');
         loadAdminProfile();
     }).catch(function (err) {
         _asBtnLoading(btn, false);
@@ -404,7 +388,6 @@ function handleAvatarUpload(file) {
             .then(function () {
                 _asToast('Avatar updated', 'success');
                 loadAdminProfile();
-                if (typeof loadUserInfo === 'function') loadUserInfo();
             })
             .catch(function (err) { _asToast('Upload failed: ' + err.message, 'error'); });
     };
@@ -596,7 +579,7 @@ function loadAdminSessions() {
             var tdIp = document.createElement('td');
             var ipCode = document.createElement('code');
             ipCode.style.fontSize = '12px';
-            ipCode.textContent = s.ip_address || '—';
+            ipCode.textContent = s.ip_address || '-';
             tdIp.appendChild(ipCode);
             tr.appendChild(tdIp);
 
@@ -607,7 +590,7 @@ function loadAdminSessions() {
             } else if (s.country === 'Local Network') {
                 locText.textContent = 'Local Network';
             } else {
-                locText.textContent = '—';
+                locText.textContent = '-';
             }
             tdLoc.appendChild(locText);
             
@@ -693,23 +676,23 @@ function _asRenderActivity(events) {
     }
 
     var iconMap = {
-        login: { cls: 'login', icon: '🔑' },
-        login_failed: { cls: 'danger', icon: '⚠' },
-        password_changed: { cls: 'password', icon: '🔒' },
-        profile_updated: { cls: 'login', icon: '✏' },
-        mfa_enabled: { cls: 'mfa', icon: '🛡' },
-        mfa_disabled: { cls: 'danger', icon: '⛔' },
-        session_revoked: { cls: 'session', icon: '✖' },
-        sessions_revoked_all: { cls: 'session', icon: '🔄' }
+        login: { cls: 'login', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>' },
+        login_failed: { cls: 'danger', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>' },
+        password_changed: { cls: 'password', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' },
+        profile_updated: { cls: 'login', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="m16.5 3.5 4 4L7 21H3v-4Z"/></svg>' },
+        mfa_enabled: { cls: 'mfa', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-4 8 4z"/><path d="m9 12 2 2 4-4"/></svg>' },
+        mfa_disabled: { cls: 'danger', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6l8-4 8 4z"/><path d="m9 9 6 6"/><path d="m15 9-6 6"/></svg>' },
+        session_revoked: { cls: 'session', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>' },
+        sessions_revoked_all: { cls: 'session', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg>' }
     };
 
     var html = events.slice(0, 25).map(function (ev) {
         var type = (ev.event_type || '').toLowerCase();
-        var info = iconMap[type] || { cls: 'default', icon: '📋' };
+        var info = iconMap[type] || { cls: 'default', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2h8"/><path d="M9 2v3"/><path d="M15 2v3"/><rect x="4" y="5" width="16" height="17" rx="2"/><path d="M8 10h8"/><path d="M8 14h8"/><path d="M8 18h5"/></svg>' };
         var label = type.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
         return '<div class="as-activity-item">' +
             '<div class="as-activity-icon ' + info.cls + '">' + info.icon + '</div>' +
-            '<div class="as-activity-info"><strong>' + _asEsc(label) + '</strong><span>' + _asEsc(ev.detail || '') + (ev.ip_address ? ' · ' + _asEsc(ev.ip_address) : '') + '</span></div>' +
+            '<div class="as-activity-info"><strong>' + _asEsc(label) + '</strong><span>' + _asEsc(ev.detail || '') + (ev.ip_address ? ' - ' + _asEsc(ev.ip_address) : '') + '</span></div>' +
             '<span class="as-activity-time">' + _asTimeAgo(ev.created_at) + '</span>' +
             '</div>';
     }).join('');
@@ -1042,7 +1025,7 @@ function _asBtnLoading(btn, loading) {
     if (loading) {
         btn._origHTML = btn.innerHTML;
         btn.classList.add('as-btn-saving');
-        btn.innerHTML = '<span class="as-btn-spinner"></span> Saving…';
+        btn.innerHTML = '<span class="as-btn-spinner"></span> Saving...';
     } else {
         btn.classList.remove('as-btn-saving');
         if (btn._origHTML) btn.innerHTML = btn._origHTML;
@@ -1070,7 +1053,7 @@ function _asCloseModal() {
    TIMEZONE HELPERS
    ============================================================ */
 
-/** Get currently selected timezone (localStorage → browser default) */
+/** Get currently selected timezone (localStorage -> browser default) */
 var _asTimezoneAliases = {
     'Asia/Calcutta': 'Asia/Kolkata'
 };
@@ -1103,9 +1086,9 @@ function _asGetTz() {
     return _asNormalizeTz(localStorage.getItem('as_timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
 }
 
-/** Format date in selected timezone: "Mar 19, 2026 · 5:30 PM" */
+/** Format date in selected timezone: "Mar 19, 2026, 5:30 PM" */
 function _asFormatDate(iso) {
-    if (!iso) return '—';
+    if (!iso) return '-';
     try {
         return new Intl.DateTimeFormat('en-US', {
             timeZone: _asGetTz(),
@@ -1119,7 +1102,7 @@ function _asFormatDate(iso) {
 
 /** Time-ago string + exact time in parens using timezone */
 function _asTimeAgo(iso) {
-    if (!iso) return '—';
+    if (!iso) return '-';
     var diff = Date.now() - new Date(iso).getTime();
     var s = Math.floor(diff / 1000);
     var rel;
@@ -1152,7 +1135,7 @@ function _asUpdateTzHint(tz) {
             hour: 'numeric', minute: '2-digit', hour12: true,
             timeZoneName: 'short'
         }).format(new Date());
-        hint.textContent = '🕐 Current time in this timezone: ' + now;
+        hint.textContent = 'Current time in this timezone: ' + now;
     } catch (e) {
         hint.textContent = 'Invalid timezone';
     }

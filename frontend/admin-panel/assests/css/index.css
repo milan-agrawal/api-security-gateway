@@ -1,4 +1,4 @@
-/* ============================================
+﻿/* ============================================
    ADMIN PANEL - SECURITY COMMAND CENTER
    Dark Premium Theme (Cloudflare + Datadog inspired)
    ============================================ */
@@ -1079,7 +1079,7 @@ body {
     color: var(--text-muted);
 }
 
-/* Scrollbar — hidden but still scrollable */
+/* Scrollbar - hidden but still scrollable */
 * {
     scrollbar-width: none;           /* Firefox */
     -ms-overflow-style: none;        /* IE / Edge */

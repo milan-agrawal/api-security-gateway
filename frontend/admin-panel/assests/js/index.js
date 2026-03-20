@@ -61,13 +61,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initSystemStatus();
 });
 
-// Load user information
-async function loadUserInfo() {
-    const email = localStorage.getItem('userEmail') || 'admin@example.com';
-    const fullName = localStorage.getItem('fullName') || 'Admin';
-    const token = localStorage.getItem('token');
-    
-    const userAvatar = document.getElementById('userAvatar');
+function setHeaderUserInfo(profile) {
+    const fullName = (profile && profile.full_name) || localStorage.getItem('fullName') || 'Admin';
     const userAvatarImage = document.getElementById('userAvatarImage');
     const userAvatarInitials = document.getElementById('userAvatarInitials');
     const userName = document.getElementById('userName');
@@ -85,6 +80,18 @@ async function loadUserInfo() {
         userName.textContent = fullName;
     }
 
+    if (profile && profile.avatar && userAvatarImage && userAvatarInitials) {
+        userAvatarImage.src = profile.avatar;
+        userAvatarImage.style.display = 'block';
+        userAvatarInitials.style.display = 'none';
+    }
+}
+
+// Load user information
+async function loadUserInfo() {
+    const token = localStorage.getItem('token');
+    setHeaderUserInfo(null);
+
     if (!token) return;
 
     try {
@@ -94,23 +101,7 @@ async function loadUserInfo() {
         if (!resp.ok) return;
 
         const data = await resp.json();
-        if (userName && data.full_name) {
-            userName.textContent = data.full_name;
-        }
-
-        if (userAvatar && userAvatarImage && userAvatarInitials) {
-            if (data.avatar) {
-                userAvatarImage.src = data.avatar;
-                userAvatarImage.style.display = 'block';
-                userAvatarInitials.style.display = 'none';
-            } else {
-                const profileInitials = (data.full_name || fullName).split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-                userAvatarInitials.textContent = profileInitials || initials;
-                userAvatarInitials.style.display = '';
-                userAvatarImage.style.display = 'none';
-                userAvatarImage.removeAttribute('src');
-            }
-        }
+        setHeaderUserInfo(data);
     } catch {
         // Keep the initials fallback if profile fetch fails.
     }
