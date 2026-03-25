@@ -2,7 +2,7 @@
 MFA (Multi-Factor Authentication) endpoints
 Handles TOTP-based 2FA for users and MFA for admins
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request, BackgroundTasks, Response
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from passlib.context import CryptContext
@@ -33,6 +33,7 @@ from utils import (
 )
 from utils import encrypt_secret, decrypt_secret
 from utils import log_audit
+from auth.session_auth import resolve_user_from_request, set_auth_cookie
 
 router = APIRouter(prefix="/auth/mfa", tags=["MFA"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -71,7 +72,7 @@ class MFAVerifySetupRequest(BaseModel):
 
 class MFAVerifySetupResponse(BaseModel):
     """Response after completing MFA setup - includes full auth token and backup codes"""
-    token: str
+    token: Optional[str] = None
     email: str
     role: str
     full_name: str
@@ -88,7 +89,7 @@ class MFAVerifyRequest(BaseModel):
 
 class MFAVerifyResponse(BaseModel):
     """Response after successful MFA verification"""
-    token: str
+    token: Optional[str] = None
     email: str
     role: str
     full_name: str
@@ -106,58 +107,12 @@ class MFAStatusResponse(BaseModel):
 # ============================================================================
 
 def get_current_user_from_token(
+    request: Request,
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ) -> User:
     """Extract and verify user from JWT token"""
-    if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authorization header missing"
-        )
-    
-    try:
-        if not authorization.startswith("Bearer "):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authorization header format"
-            )
-        
-        token = authorization.split(" ")[1]
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email = payload.get("sub")
-        
-        if not email:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token payload"
-            )
-        
-        user = db.query(User).filter(User.email == email).first()
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        # Enforce token_version for session invalidation
-        token_version = payload.get("token_version", 0)
-        if getattr(user, "token_version", 0) != token_version:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has been revoked"
-            )
-        return user
-        
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired"
-        )
-    except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
+    return resolve_user_from_request(request, db, authorization)
 
 
 def create_mfa_temp_token(email: str, user_id: int) -> str:
@@ -291,6 +246,7 @@ def setup_mfa(
 def verify_mfa_setup(
     request: MFAVerifySetupRequest,
     http_request: Request,
+    response: Response,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
@@ -428,9 +384,10 @@ def verify_mfa_setup(
 
     # Generate full access token
     token = create_full_access_token(user.email, user.role, user.full_name, user.id, token_version=getattr(user, "token_version", 0), session_id=session_id)
+    set_auth_cookie(response, token)
     
     return MFAVerifySetupResponse(
-        token=token,
+        token=None,
         email=user.email,
         role=user.role,
         full_name=user.full_name,
@@ -443,6 +400,7 @@ def verify_mfa_setup(
 def verify_mfa(
     request: MFAVerifyRequest,
     http_request: Request,
+    response: Response,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
@@ -566,9 +524,10 @@ def verify_mfa(
 
     # Generate full access token (include token_version)
     token = create_full_access_token(user.email, user.role, user.full_name, user.id, token_version=getattr(user, "token_version", 0), session_id=session_id)
+    set_auth_cookie(response, token)
     
     return MFAVerifyResponse(
-        token=token,
+        token=None,
         email=user.email,
         role=user.role,
         full_name=user.full_name

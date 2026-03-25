@@ -19,6 +19,7 @@ import sys
 import httpx
 import redis
 import mimetypes
+import logging
 from urllib.parse import quote
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -38,8 +39,10 @@ from support_storage import (
 )
 from rate_limit import is_rate_limited
 from db import DATABASE_URL, SessionLocal
+from auth.session_auth import resolve_user_from_request
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
+logger = logging.getLogger(__name__)
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -74,64 +77,18 @@ ALLOWED_SUPPORT_ATTACHMENT_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "p
 
 # Dependency to verify admin token
 def get_current_admin(
+    request: Request,
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
     """Verify JWT token and ensure user is admin"""
-    if not authorization:
+    admin = resolve_user_from_request(request, db, authorization, panel="admin", require_admin=True)
+    if not admin.is_active:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authorization header missing"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin account not found or inactive"
         )
-    
-    try:
-        # Extract token from "Bearer <token>"
-        if not authorization.startswith("Bearer "):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authorization header format"
-            )
-        
-        token = authorization.split(" ")[1]
-        
-        # Decode JWT
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email = payload.get("sub")
-        role = payload.get("role")
-        
-        if not email or role != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Admin access required"
-            )
-        
-        # Verify admin exists and is active
-        admin = db.query(User).filter(User.email == email, User.role == "admin").first()
-        if not admin or not admin.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Admin account not found or inactive"
-            )
-        # Enforce token_version for session invalidation
-        token_version = payload.get("token_version", 0)
-        if getattr(admin, "token_version", 0) != token_version:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has been revoked"
-            )
-        
-        return admin
-        
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired"
-        )
-    except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
+    return admin
 
 
 # Request/Response models
@@ -450,9 +407,9 @@ def activate_account_after_delay(user_id: int):
             user.is_active = True
             user.updated_at = datetime.now(timezone.utc)
             db.commit()
-            print(f"✓ Account activated for user ID {user_id} ({user.email})")
+            logger.info("Account activated for user ID %s (%s)", user_id, user.email)
     except Exception as e:
-        print(f"ERROR activating account for user ID {user_id}: {str(e)}")
+        logger.error("Error activating account for user ID %s: %s", user_id, str(e))
         db.rollback()
     finally:
         db.close()

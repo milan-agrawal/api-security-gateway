@@ -12,11 +12,13 @@ import urllib.request
 import urllib.error
 import json
 import ipaddress
+import logging
 from typing import Optional
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 # Optional encryption for secrets at rest (Fernet)
 try:
@@ -131,9 +133,9 @@ def send_credentials_email(
     from_email = os.getenv("FROM_EMAIL", smtp_user)
     
     if not smtp_user or not smtp_password:
-        print("ERROR: SMTP credentials not configured in .env file")
-        print(f"WARNING: Failed to send credentials email to {recipient_email}")
-        print(f"Please configure SMTP settings in .env file")
+        logger.error("SMTP credentials not configured in environment")
+        logger.warning("Failed to send credentials email to %s", recipient_email)
+        logger.warning("Please configure SMTP settings in the environment")
         # ⚠️ SECURITY: Never log passwords
         return False
     
@@ -714,12 +716,12 @@ Please do not reply to this email.
             server.login(smtp_user, smtp_password)
             server.send_message(msg)
         
-        print(f"✓ Credentials email sent successfully to {recipient_email}")
+        logger.info("Credentials email sent successfully to %s", recipient_email)
         return True
         
     except Exception as e:
-        print(f"ERROR sending email to {recipient_email}: {str(e)}")
-        print(f"WARNING: Failed to deliver credentials. Please send manually.")
+        logger.error("Error sending email to %s: %s", recipient_email, str(e))
+        logger.warning("Failed to deliver credentials. Please send manually.")
         # ⚠️ SECURITY: Never log passwords
         return False
 
@@ -904,7 +906,7 @@ def send_password_reset_email(recipient_email: str, token: str, expires_minutes:
     from_email = os.getenv("FROM_EMAIL", smtp_user)
 
     if not smtp_user or not smtp_password:
-        print("ERROR: SMTP credentials not configured in .env file")
+        logger.error("SMTP credentials not configured in environment")
         return False
 
     reset_link = f"http://localhost:3000/reset-password.html?token={token}"
@@ -937,7 +939,7 @@ def send_password_reset_email(recipient_email: str, token: str, expires_minutes:
         server.quit()
         return True
     except Exception as e:
-        print(f"ERROR: Failed to send password reset email to {recipient_email}: {str(e)}")
+        logger.error("Failed to send password reset email to %s: %s", recipient_email, str(e))
         return False
 
 
@@ -956,7 +958,7 @@ def send_password_changed_notification(recipient_email: str, ip_address: str = "
     from_email = os.getenv("FROM_EMAIL", smtp_user)
 
     if not smtp_user or not smtp_password:
-        print("ERROR: SMTP credentials not configured in .env file")
+        logger.error("SMTP credentials not configured in environment")
         return False
 
     change_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -997,7 +999,7 @@ def send_password_changed_notification(recipient_email: str, ip_address: str = "
         server.quit()
         return True
     except Exception as e:
-        print(f"ERROR: Failed to send password change notification to {recipient_email}: {str(e)}")
+        logger.error("Failed to send password change notification to %s: %s", recipient_email, str(e))
         return False
 
 
@@ -1017,7 +1019,7 @@ def send_email_change_verification_email(
     from_email = os.getenv("FROM_EMAIL", smtp_user)
 
     if not smtp_user or not smtp_password:
-        print("ERROR: SMTP credentials not configured in .env file")
+        logger.error("SMTP credentials not configured in environment")
         return False
 
     verify_link = f"http://localhost:3000/verify-email-change.html?token={token}"
@@ -1054,7 +1056,7 @@ def send_email_change_verification_email(
         server.quit()
         return True
     except Exception as e:
-        print(f"ERROR: Failed to send email change verification to {recipient_email}: {str(e)}")
+        logger.error("Failed to send email change verification to %s: %s", recipient_email, str(e))
         return False
 
 
@@ -1069,7 +1071,7 @@ def send_email_change_notice(previous_email: str, new_email: str) -> bool:
     from_email = os.getenv("FROM_EMAIL", smtp_user)
 
     if not smtp_user or not smtp_password:
-        print("ERROR: SMTP credentials not configured in .env file")
+        logger.error("SMTP credentials not configured in environment")
         return False
 
     try:
@@ -1101,7 +1103,7 @@ def send_email_change_notice(previous_email: str, new_email: str) -> bool:
         server.quit()
         return True
     except Exception as e:
-        print(f"ERROR: Failed to send email change notice to {previous_email}: {str(e)}")
+        logger.error("Failed to send email change notice to %s: %s", previous_email, str(e))
         return False
 
 
@@ -1125,7 +1127,7 @@ def send_new_login_alert_email(
     from_email = os.getenv("FROM_EMAIL", smtp_user)
 
     if not smtp_user or not smtp_password:
-        print("ERROR: SMTP credentials not configured in .env file")
+        logger.error("SMTP credentials not configured in environment")
         return False
 
     login_time = login_time or datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -1170,7 +1172,7 @@ def send_new_login_alert_email(
         server.quit()
         return True
     except Exception as e:
-        print(f"ERROR: Failed to send new login alert to {recipient_email}: {str(e)}")
+        logger.error("Failed to send new login alert to %s: %s", recipient_email, str(e))
         return False
 
 
@@ -1191,7 +1193,7 @@ def send_mfa_change_notification(
     from_email = os.getenv("FROM_EMAIL", smtp_user)
 
     if not smtp_user or not smtp_password:
-        print("ERROR: SMTP credentials not configured in .env file")
+        logger.error("SMTP credentials not configured in environment")
         return False
 
     action = "enabled" if enabled else "disabled"
@@ -1230,7 +1232,7 @@ def send_mfa_change_notification(
         server.quit()
         return True
     except Exception as e:
-        print(f"ERROR: Failed to send MFA change notification to {recipient_email}: {str(e)}")
+        logger.error("Failed to send MFA change notification to %s: %s", recipient_email, str(e))
         return False
 
 
@@ -1252,7 +1254,7 @@ def send_failed_login_attempts_alert(
     from_email = os.getenv("FROM_EMAIL", smtp_user)
 
     if not smtp_user or not smtp_password:
-        print("ERROR: SMTP credentials not configured in .env file")
+        logger.error("SMTP credentials not configured in environment")
         return False
 
     alert_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -1291,7 +1293,7 @@ def send_failed_login_attempts_alert(
         server.quit()
         return True
     except Exception as e:
-        print(f"ERROR: Failed to send failed-login alert to {recipient_email}: {str(e)}")
+        logger.error("Failed to send failed-login alert to %s: %s", recipient_email, str(e))
         return False
 
 
@@ -1306,7 +1308,7 @@ def send_weekly_security_digest_email(recipient_email: str, full_name: str, summ
     from_email = os.getenv("FROM_EMAIL", smtp_user)
 
     if not smtp_user or not smtp_password:
-        print("ERROR: SMTP credentials not configured in .env file")
+        logger.error("SMTP credentials not configured in environment")
         return False
 
     safe_name = full_name or recipient_email
@@ -1348,7 +1350,7 @@ def send_weekly_security_digest_email(recipient_email: str, full_name: str, summ
         server.quit()
         return True
     except Exception as e:
-        print(f"ERROR: Failed to send weekly security digest to {recipient_email}: {str(e)}")
+        logger.error("Failed to send weekly security digest to %s: %s", recipient_email, str(e))
         return False
 
 
@@ -1374,7 +1376,7 @@ def send_support_ticket_notification(
     support_recipient = from_email or smtp_user
 
     if not smtp_user or not smtp_password or not support_recipient:
-        print("ERROR: SMTP credentials not configured for support ticket notification")
+        logger.error("SMTP credentials not configured for support ticket notification")
         return False
 
     safe_name = full_name or user_email
@@ -1426,7 +1428,7 @@ def send_support_ticket_notification(
         server.quit()
         return True
     except Exception as e:
-        print(f"ERROR: Failed to send support ticket notification #{ticket_id}: {str(e)}")
+        logger.error("Failed to send support ticket notification #%s: %s", ticket_id, str(e))
         return False
 
 
@@ -1448,7 +1450,7 @@ def send_support_ticket_status_email(
     from_email = os.getenv("FROM_EMAIL", smtp_user)
 
     if not smtp_user or not smtp_password or not recipient_email:
-        print("ERROR: SMTP credentials not configured for support ticket status email")
+        logger.error("SMTP credentials not configured for support ticket status email")
         return False
 
     safe_name = html.escape(full_name or recipient_email)
@@ -1491,7 +1493,7 @@ def send_support_ticket_status_email(
         server.quit()
         return True
     except Exception as e:
-        print(f"ERROR: Failed to send support ticket status email #{ticket_id}: {str(e)}")
+        logger.error("Failed to send support ticket status email #%s: %s", ticket_id, str(e))
         return False
 
 
@@ -1633,7 +1635,7 @@ def get_ip_location(ip: str, db) -> Optional[dict]:
                     "country_code": data.get("country_code")
                 }
     except Exception as e:
-        print(f"IP Geo lookup failed for {ip}: {e}")
+        logger.warning("IP geo lookup failed for %s: %s", ip, e)
         # Gracefully fail so it doesn't break the login flow
         pass
         

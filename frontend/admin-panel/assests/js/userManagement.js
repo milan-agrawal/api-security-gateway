@@ -3,6 +3,30 @@ if (typeof API_URL === 'undefined') {
     var API_URL = 'http://localhost:8001';
 }
 
+(function patchUserManagementFetch() {
+    if (window.__userManagementFetchPatched) return;
+    window.__userManagementFetchPatched = true;
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = function(input, init) {
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+        const options = init ? Object.assign({}, init) : {};
+        if (url.indexOf('http://localhost:8001') === 0) {
+            options.credentials = options.credentials || 'include';
+        }
+        return originalFetch(input, options);
+    };
+})();
+
+async function bootstrapUserManagementSession() {
+    const response = await fetch('http://localhost:8001/auth/me?panel=admin');
+    if (!response.ok) throw new Error('Authentication required');
+    const session = await response.json();
+    localStorage.setItem('userEmail', session.email || '');
+    localStorage.setItem('userRole', session.role || '');
+    localStorage.setItem('fullName', session.full_name || '');
+    return session;
+}
+
 // Close modals on ESC key or clicking outside
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
@@ -26,46 +50,58 @@ if (!isSPAMode) {
     window.addEventListener('pageshow', function(event) {
         if (event.persisted) {
             // Page was loaded from cache via back/forward button
-            const token = localStorage.getItem('token');
             const loggedOut = sessionStorage.getItem('loggedOut');
-            if (!token || loggedOut === 'true') {
+            const userRole = localStorage.getItem('userRole');
+            if (!userRole || loggedOut === 'true') {
                 window.location.replace('http://localhost:3000/login.html');
             }
         }
     });
 
     // IMMEDIATE AUTH CHECK - runs before page renders
-    (function() {
+    (async function() {
         const urlParams = new URLSearchParams(window.location.search);
-        const urlToken = urlParams.get('token');
-        const urlEmail = urlParams.get('email');
-        const urlRole = urlParams.get('role');
-        const urlFullName = urlParams.get('fullName');
+        const handoffCode = urlParams.get('handoff');
 
-        if (urlToken && urlEmail && urlRole) {
-            localStorage.setItem('token', urlToken);
-            localStorage.setItem('userEmail', urlEmail);
-            localStorage.setItem('userRole', urlRole);
-            localStorage.setItem('fullName', urlFullName || '');
-            sessionStorage.removeItem('loggedOut');
-            window.history.replaceState({}, document.title, '/userManagement.html');
+        if (handoffCode) {
+            try {
+                const response = await fetch('http://localhost:8001/auth/panel-handoff/exchange', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ handoff_code: handoffCode })
+                });
+                const handoff = await response.json().catch(() => ({}));
+                if (!response.ok || !handoff.role) {
+                    throw new Error((handoff && handoff.detail) || 'Panel handoff failed');
+                }
+                localStorage.setItem('userEmail', handoff.email || '');
+                localStorage.setItem('userRole', handoff.role || '');
+                localStorage.setItem('fullName', handoff.full_name || '');
+                sessionStorage.removeItem('loggedOut');
+                window.history.replaceState({}, document.title, '/userManagement.html');
+            } catch (_) {
+                window.location.replace('http://localhost:3000/login.html');
+                return;
+            }
         }
 
-        const token = localStorage.getItem('token');
-        const userRole = localStorage.getItem('userRole');
         const loggedOut = sessionStorage.getItem('loggedOut');
         
         if (loggedOut === 'true') {
             window.location.replace('http://localhost:3000/login.html');
             return;
         }
-        
-        if (!token) {
+
+        let session;
+        try {
+            session = await bootstrapUserManagementSession();
+        } catch (_) {
             window.location.replace('http://localhost:3000/login.html');
             return;
         }
 
-        if (userRole !== 'admin') {
+        if (session.role !== 'admin') {
             alert('Access denied. This panel is for administrators only.');
             window.location.replace('http://localhost:3000/login.html');
             return;
@@ -88,7 +124,12 @@ if (!isSPAMode) {
 function logout() {
     sessionStorage.setItem('loggedOut', 'true');
     localStorage.clear();
-    window.location.replace('http://localhost:3000/login.html?logout=true');
+    fetch('http://localhost:8001/auth/logout?panel=admin', {
+        method: 'POST',
+        credentials: 'include'
+    }).finally(function () {
+        window.location.replace('http://localhost:3000/login.html?logout=true');
+    });
 }
 
 function refreshData() {
@@ -109,10 +150,8 @@ function escapeHtml(unsafe) {
 
 // Get auth headers
 function getAuthHeaders() {
-    const token = localStorage.getItem('token');
     return {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'application/json'
     };
 }
 
@@ -1079,10 +1118,8 @@ async function submitCsvImport() {
     formData.append('file', fileInput.files[0]);
 
     try {
-        const token = localStorage.getItem('token');
         const response = await fetch(`${API_URL}/admin/users/import-csv`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });
         const data = await response.json();

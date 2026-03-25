@@ -2,50 +2,102 @@
    API SECURITY GATEWAY - USER PANEL JavaScript
    ============================================================ */
 
+(function patchUserPanelFetch() {
+    if (window.__userPanelFetchPatched) return;
+    window.__userPanelFetchPatched = true;
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = function(input, init) {
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+        const options = init ? Object.assign({}, init) : {};
+        if (url.indexOf('http://localhost:8001') === 0) {
+            options.credentials = options.credentials || 'include';
+        }
+        return originalFetch(input, options);
+    };
+})();
+
+let __userSessionResolved = null;
+
+async function userSessionBootstrap() {
+    const response = await fetch('http://localhost:8001/auth/me?panel=user');
+    if (!response.ok) throw new Error('Authentication required');
+    const session = await response.json();
+    localStorage.setItem('userEmail', session.email || '');
+    localStorage.setItem('userRole', session.role || '');
+    localStorage.setItem('fullName', session.full_name || '');
+    __userSessionResolved = session;
+    return session;
+}
+
+async function userSessionBootstrapWithRetry(retries = 2, delayMs = 250) {
+    let lastError = null;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            return await userSessionBootstrap();
+        } catch (error) {
+            lastError = error;
+            if (attempt === retries) break;
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+    }
+    throw lastError || new Error('Authentication required');
+}
+
 // ============================================================
 // IMMEDIATE AUTH CHECK - runs before page renders
 // ============================================================
-(function() {
-    // First, check URL parameters for auth data from redirect
+window.__userPanelAuthReady = (async function() {
     const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('token');
-    const urlEmail = urlParams.get('email');
-    const urlRole = urlParams.get('role');
-    const urlFullName = urlParams.get('fullName');
+    const handoffCode = urlParams.get('handoff');
+    const hasLegacyAuthParams = ['token', 'email', 'role', 'fullName'].some((key) => urlParams.has(key));
 
-    // If URL has auth data, store it in localStorage immediately
-    if (urlToken && urlEmail && urlRole) {
-        localStorage.setItem('token', urlToken);
-        localStorage.setItem('userEmail', urlEmail);
-        localStorage.setItem('userRole', urlRole);
-        localStorage.setItem('fullName', urlFullName || '');
-        
-        // Clear logout flag when logging in
-        sessionStorage.removeItem('loggedOut');
-        
-        // Clean URL by removing parameters
-        window.history.replaceState({}, document.title, '/index.html');
+    // Clean up old query-string auth remnants from the pre-cookie flow.
+    if (hasLegacyAuthParams) {
+        localStorage.removeItem('token');
+        window.history.replaceState({}, document.title, '/index.html' + (window.location.hash || ''));
     }
 
-    // Now check localStorage
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole');
+    if (handoffCode) {
+        try {
+            const response = await fetch('http://localhost:8001/auth/panel-handoff/exchange', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ handoff_code: handoffCode })
+            });
+            const handoff = await response.json().catch(() => ({}));
+            if (!response.ok || !handoff.role) {
+                throw new Error((handoff && handoff.detail) || 'Panel handoff failed');
+            }
+
+            localStorage.removeItem('token');
+            localStorage.setItem('userEmail', handoff.email || '');
+            localStorage.setItem('userRole', handoff.role || '');
+            localStorage.setItem('fullName', handoff.full_name || '');
+            sessionStorage.removeItem('loggedOut');
+            window.history.replaceState({}, document.title, '/index.html');
+        } catch (_) {
+            window.location.replace('http://localhost:3000/login.html');
+            return;
+        }
+    }
+
     const loggedOut = sessionStorage.getItem('loggedOut');
     
-    // If user logged out in this session, block access
     if (loggedOut === 'true') {
         window.location.replace('http://localhost:3000/login.html');
         return;
     }
-    
-    // If no token, redirect immediately
-    if (!token) {
+
+    let session;
+    try {
+        session = await userSessionBootstrapWithRetry();
+    } catch (_) {
         window.location.replace('http://localhost:3000/login.html');
         return;
     }
 
-    // Check if user has correct role
-    if (userRole !== 'user') {
+    if (session.role !== 'user') {
         alert('Access denied. This panel is for users only.');
         window.location.replace('http://localhost:3000/login.html');
         return;
@@ -66,38 +118,18 @@ window.addEventListener('popstate', function() {
  * Check authentication on every page load (including back button)
  */
 function checkAuth() {
-    // Check URL parameters first (from redirect)
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('token');
-    const urlEmail = urlParams.get('email');
-    const urlRole = urlParams.get('role');
-    const urlFullName = urlParams.get('fullName');
+    localStorage.removeItem('token');
+    const session = __userSessionResolved;
+    const userEmail = (session && session.email) || localStorage.getItem('userEmail');
+    const userRole = (session && session.role) || localStorage.getItem('userRole');
+    const fullName = (session && session.full_name) || localStorage.getItem('fullName');
 
-    // If URL has auth data, store it in localStorage and clean URL
-    if (urlToken && urlEmail && urlRole) {
-        localStorage.setItem('token', urlToken);
-        localStorage.setItem('userEmail', urlEmail);
-        localStorage.setItem('userRole', urlRole);
-        localStorage.setItem('fullName', urlFullName || '');
-        
-        // Clean URL by removing parameters
-        window.history.replaceState({}, document.title, '/index.html');
-    }
-
-    // Now check localStorage
-    const token = localStorage.getItem('token');
-    const userEmail = localStorage.getItem('userEmail');
-    const userRole = localStorage.getItem('userRole');
-    const fullName = localStorage.getItem('fullName');
-
-    if (!token) {
+    if (!userRole) {
         window.location.replace('http://localhost:3000/login.html');
         return;
     }
 
-    // Check if user has correct role
     if (userRole !== 'user') {
-        alert('Access denied. This panel is for users only.');
         window.location.replace('http://localhost:3000/login.html');
         return;
     }
@@ -144,11 +176,9 @@ function updateUserDisplay(email, fullName) {
  * Fetch user profile to get avatar for sidebar
  */
 async function loadSidebarAvatar() {
-    const token = localStorage.getItem('token');
-    if (!token) return;
     try {
         const res = await fetch('http://localhost:8001/user/profile', {
-            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+            headers: { 'Content-Type': 'application/json' }
         });
         if (!res.ok) return;
         const data = await res.json();
@@ -190,9 +220,14 @@ function logout() {
     
     // Clear authentication data
     localStorage.clear();
-    
-    // Use replace with logout parameter to trigger port 3000 cleanup
-    window.location.replace('http://localhost:3000/login.html?logout=true');
+
+    fetch('http://localhost:8001/auth/logout?panel=user', {
+        method: 'POST',
+        credentials: 'include'
+    }).finally(function () {
+        // Use replace with logout parameter to trigger port 3000 cleanup
+        window.location.replace('http://localhost:3000/login.html?logout=true');
+    });
 }
 
 // ============================================================
@@ -425,7 +460,12 @@ async function copyToClipboard(text) {
 // ============================================================
 
 // Run auth check on page load
-window.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('DOMContentLoaded', async function() {
+    try {
+        await window.__userPanelAuthReady;
+    } catch (_) {
+        return;
+    }
     checkAuth();
     initSidebar();
     initDropdowns();

@@ -5,9 +5,10 @@ class RateLimiter:
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         
-    def allow_request(self, api_key: str) -> bool:
+    def allow_request(self, api_key: str, max_requests: int | None = None) -> bool:
         # Create a unique Redis key for this user's rate limit
         key = f"rate_limit:{api_key}"
+        limit = int(max_requests or self.max_requests)
         
         # Check current count
         current_count = redis_client.get(key)
@@ -17,7 +18,7 @@ class RateLimiter:
             redis_client.setex(key, self.window_seconds, 1)
             return True
         
-        if int(str(current_count)) < self.max_requests:
+        if int(str(current_count)) < limit:
             # Increment the counter
             redis_client.incr(key)
             return True

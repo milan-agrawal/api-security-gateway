@@ -89,7 +89,6 @@ window.addEventListener('beforeunload', function(e) {
  */
 function profileAuthHeaders() {
     return {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
         'Content-Type': 'application/json'
     };
 }

@@ -16,7 +16,6 @@ function initSupportDesk() {
 
 function _supportDeskAuthHeaders() {
     return {
-        'Authorization': 'Bearer ' + (localStorage.getItem('token') || ''),
         'Content-Type': 'application/json'
     };
 }
@@ -662,9 +661,6 @@ async function _supportDeskUploadAttachment() {
         formData.append('file', file);
         var response = await fetch('http://localhost:8001/admin/support-tickets/' + supportDeskSelectedTicketId + '/attachments', {
             method: 'POST',
-            headers: {
-                'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
-            },
             body: formData
         });
 
@@ -806,10 +802,7 @@ async function _supportDeskDownloadWithAuth(url, filename) {
     var fullUrl = url.indexOf('http') === 0 ? url : ('http://localhost:8001' + url);
     try {
         var response = await fetch(fullUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
-            }
+            method: 'GET'
         });
         if (response.status === 401) {
             localStorage.clear();

@@ -172,14 +172,6 @@ async function translateAndRender(locale, dateNodes, pageRoot, progressEl) {
     }
 
     const strings = collectStrings(PRIVACY_BASE_CONTENT);
-    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-    if (!token) {
-        setTranslateProgress(progressEl, '');
-        if (typeof showToast === 'function') {
-            showToast('Session token missing. Please login again.', 'error');
-        }
-        return;
-    }
 
     const startedAt = Date.now();
     try {
@@ -193,9 +185,9 @@ async function translateAndRender(locale, dateNodes, pageRoot, progressEl) {
             try {
                 const response = await fetch(`${PRIVACY_API_BASE}/user/privacy/translate`, {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ target_locale: locale, texts: strings })
                 });

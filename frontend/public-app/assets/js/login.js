@@ -3,16 +3,15 @@ window.addEventListener('pageshow', function(event) {
     // Only check on bfcache navigations (back/forward button)
     if (!event.persisted) return;
     
-    const token = localStorage.getItem('token');
     const loggedOut = sessionStorage.getItem('loggedOut');
+    const userRole = localStorage.getItem('userRole');
     
-    // If logged out or no token, stay on login page
-    if (loggedOut === 'true' || !token) {
+    // If logged out or no remembered role, stay on login page
+    if (loggedOut === 'true' || !userRole) {
         return;
     }
     
     // If still logged in, redirect back to appropriate dashboard
-    const userRole = localStorage.getItem('userRole');
     if (userRole === 'admin') {
         window.location.replace('http://localhost:3002/index.html');
     } else {
@@ -96,6 +95,17 @@ function showAlert(message, type = 'error') {
     }, duration);
 }
 
+async function clearExistingServerSession() {
+    try {
+        await fetch('http://localhost:8001/auth/logout?panel=public', {
+            method: 'POST',
+            credentials: 'include'
+        });
+    } catch (_) {
+        // Ignore cleanup failures here. Fresh login should still proceed.
+    }
+}
+
 // Shake animation trigger
 function triggerShake() {
     loginCard.classList.add('shake');
@@ -147,9 +157,14 @@ loginForm.addEventListener('submit', async (e) => {
     skeletonLoader.classList.add('active');
 
     try {
+        // Clear any stale authenticated cookie before starting a fresh login.
+        // This prevents cross-account MFA handoff from reusing an old admin session.
+        await clearExistingServerSession();
+
         // Call Auth API login endpoint
         const response = await fetch('http://localhost:8001/auth/login', {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -182,8 +197,10 @@ loginForm.addEventListener('submit', async (e) => {
                 if (data.mfa_setup_required) {
                     // Redirect to MFA setup page
                     showAlert('MFA setup required. Redirecting...', 'success');
+                    sessionStorage.setItem('mfaTempToken', mfaTempToken || '');
+                    sessionStorage.setItem('mfaEmail', mfaEmail || '');
                     setTimeout(() => {
-                        window.location.href = `mfa-setup.html?token=${encodeURIComponent(mfaTempToken)}&email=${encodeURIComponent(mfaEmail)}`;
+                        window.location.href = 'mfa-setup.html';
                     }, 1000);
                 } else {
                     // Show OTP form
@@ -200,7 +217,6 @@ loginForm.addEventListener('submit', async (e) => {
             sessionStorage.removeItem('loggedOut');
             
             // Store authentication data
-            localStorage.setItem('token', data.token);
             localStorage.setItem('userEmail', data.email);
             localStorage.setItem('userRole', data.role);
             localStorage.setItem('fullName', data.full_name);
@@ -208,9 +224,15 @@ loginForm.addEventListener('submit', async (e) => {
             // Show success message
             showAlert('Login successful! Redirecting...', 'success');
 
-            // Redirect based on user role with auth data in URL
+            // Redirect based on user role using one-time handoff code
             setTimeout(() => {
-                redirectToPanel(data);
+                redirectToPanel(data).catch((error) => {
+                    console.error('Panel redirect error:', error);
+                    showAlert(error.message || 'Unable to open dashboard securely.');
+                    loginCard.classList.remove('loading');
+                    skeletonLoader.classList.remove('active');
+                    submitButton.disabled = false;
+                });
             }, 1000);
         } else {
             // Show error message from server
@@ -269,22 +291,27 @@ function hideOTPForm() {
 }
 
 // Redirect to appropriate panel
-function redirectToPanel(data) {
-    // For cross-origin dashboards (different ports) we must pass the token
-    // so the target origin can store it in its own localStorage. Use query
-    // params and let the panel clean the URL after storing the values.
-    const qs = new URLSearchParams({
-        token: data.token || '',
-        email: data.email || '',
-        role: data.role || '',
-        fullName: data.full_name || ''
-    }).toString();
+async function redirectToPanel(data) {
+    const response = await fetch('http://localhost:8001/auth/panel-handoff', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            target_panel: data.role === 'admin' ? 'admin' : 'user'
+        })
+    });
 
-    if (data.role === 'admin') {
-        window.location.href = `http://localhost:3002/index.html?${qs}`;
-    } else {
-        window.location.href = `http://localhost:3001/index.html?${qs}`;
+    const handoff = await response.json().catch(() => ({}));
+    if (!response.ok || !handoff.handoff_code) {
+        throw new Error((handoff && handoff.detail) || 'Failed to open panel securely.');
     }
+
+    const targetUrl = data.role === 'admin'
+        ? `http://localhost:3002/index.html?handoff=${encodeURIComponent(handoff.handoff_code)}`
+        : `http://localhost:3001/index.html?handoff=${encodeURIComponent(handoff.handoff_code)}`;
+    window.location.href = targetUrl;
 }
 
 // OTP Form submission
@@ -306,6 +333,7 @@ otpForm.addEventListener('submit', async (e) => {
     try {
         const response = await fetch('http://localhost:8001/auth/mfa/verify', {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -323,7 +351,6 @@ otpForm.addEventListener('submit', async (e) => {
             sessionStorage.removeItem('loggedOut');
             
             // Store authentication data
-            localStorage.setItem('token', data.token);
             localStorage.setItem('userEmail', data.email);
             localStorage.setItem('userRole', data.role);
             localStorage.setItem('fullName', data.full_name);
@@ -331,7 +358,10 @@ otpForm.addEventListener('submit', async (e) => {
             showAlert('Verification successful! Redirecting...', 'success');
             
             setTimeout(() => {
-                redirectToPanel(data);
+                redirectToPanel(data).catch((error) => {
+                    console.error('Panel redirect error:', error);
+                    showAlert(error.message || 'Unable to open dashboard securely.');
+                });
             }, 1000);
         } else {
             showAlert(data.detail || 'Invalid code. Please try again.');

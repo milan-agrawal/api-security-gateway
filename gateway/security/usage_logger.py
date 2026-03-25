@@ -1,4 +1,7 @@
+import logging
 import time
+
+logger = logging.getLogger(__name__)
 
 def log_request(api_key, endpoint:str, allowed:bool):
     log_entry = {
@@ -7,4 +10,4 @@ def log_request(api_key, endpoint:str, allowed:bool):
         "endpoint": endpoint,
         "allowed": allowed
     }
-    print(log_entry)
+    logger.info("gateway_request %s", log_entry)

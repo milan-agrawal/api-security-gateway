@@ -2,6 +2,7 @@ from fastapi import FastAPI, Header, HTTPException, Depends, Request
 from contextlib import asynccontextmanager
 from gateway.init_db import init_db  # Reuse gateway's init_db
 from gateway.deps import get_db      # Reuse gateway's database dependency
+from gateway.shared_auth import get_gateway_shared_secret
 from backend_api.models import BackendEvent  # Step 4.4.4: For logging backend events
 import time  # Step 4.4.3: For latency measurement
 
@@ -14,7 +15,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Protected Backend API", lifespan=lifespan)
 
-GATEWAY_SECRET = "gateway-internal-secret"
+GATEWAY_SECRET = get_gateway_shared_secret()
 
 @app.get("/health")
 def health_check():

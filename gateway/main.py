@@ -1,13 +1,15 @@
-from fastapi import FastAPI, Request, Response, HTTPException, Depends
+from fastapi import FastAPI, Request, Response, Depends
 from gateway.security.rate_limiter import RateLimiter 
 from gateway.security.usage_logger import log_request
 from contextlib import asynccontextmanager
 from .logger import log_security_event
 from .init_db import init_db
 from .deps import get_db
+from .shared_auth import get_active_api_key_record, get_gateway_shared_secret
 import requests
 import asyncio
 import uuid
+import logging
 
 from gateway.ml.async_detector import schedule_behavior_analysis
 from gateway.cache.window_store import record_events
@@ -30,12 +32,16 @@ async def lifespan(app:FastAPI):
 app = FastAPI(title="API Security Gateway", lifespan=lifespan)
 
 BACKEND_URL = "http://127.0.0.1:9000"
-GATEWAY_SECRET = "gateway-internal-secret"
-
-VALID_API_KEYS = {
-    "secret123",
-    "client-demo-key",
-    "Testing-API-Key"
+GATEWAY_SECRET = get_gateway_shared_secret()
+logger = logging.getLogger(__name__)
+ALLOWED_BACKEND_RESPONSE_HEADERS = {
+    "cache-control",
+    "content-disposition",
+    "content-encoding",
+    "content-length",
+    "content-type",
+    "etag",
+    "last-modified",
 }
 
 rate_limiter = RateLimiter(
@@ -47,6 +53,14 @@ rate_limiter = RateLimiter(
 def health_check():
     return {"status": "ok", "service": "gateway"}
 
+
+def _filter_backend_response_headers(headers) -> dict:
+    safe_headers = {}
+    for key, value in (headers or {}).items():
+        if (key or "").lower() in ALLOWED_BACKEND_RESPONSE_HEADERS:
+            safe_headers[key] = value
+    return safe_headers
+
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def proxy(request: Request, path: str, db=Depends(get_db)):
     # Step 4.4.1: Generate unique request ID
@@ -54,9 +68,10 @@ async def proxy(request: Request, path: str, db=Depends(get_db)):
     
     api_key = request.headers.get("X-API-KEY")
     client_ip = request.client.host if request.client else "unknown"
+    api_key_record = get_active_api_key_record(db, api_key)
     
     # Validate API key first (security check)
-    if api_key not in VALID_API_KEYS:
+    if not api_key_record:
         log_security_event(
             db=db,
             client_ip=client_ip,
@@ -74,7 +89,7 @@ async def proxy(request: Request, path: str, db=Depends(get_db)):
         )
     
     # Phase 3: Rate Limiting Check
-    if not rate_limiter.allow_request(api_key):
+    if not rate_limiter.allow_request(api_key, max_requests=api_key_record.get("rate_limit")):
         log_security_event(
             db=db,
             client_ip=client_ip,
@@ -157,8 +172,7 @@ async def proxy(request: Request, path: str, db=Depends(get_db)):
     
     except Exception as e:
         # Fallback to safe default if Phase 5.4 fails
-        print(f"Phase 5.4 error: {e}")
-        rule_decision_value = "ALLOW"
+        logger.warning("Phase 5.4 error: %s", e)
         correlation = {"summary": "Phase 5.4 fallback"}
         ml_result = {"label": None, "score": None}
     
@@ -175,7 +189,8 @@ async def proxy(request: Request, path: str, db=Depends(get_db)):
         method=request.method,
         url=f"{BACKEND_URL}/{path}",
         headers=gateway_headers,
-        data=body
+        data=body,
+        timeout=15,
     )
     
     # Log successful request with Phase 5.4 data
@@ -217,7 +232,7 @@ async def proxy(request: Request, path: str, db=Depends(get_db)):
         content=backend_response.content,
         status_code=backend_response.status_code,
         headers={
-            **dict(backend_response.headers),
+            **_filter_backend_response_headers(dict(backend_response.headers)),
             "X-Request-ID": request_id
         }
     )

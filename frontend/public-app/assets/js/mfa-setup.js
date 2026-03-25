@@ -6,8 +6,19 @@ const API_URL = 'http://localhost:8001';
 
 // URL params
 const urlParams = new URLSearchParams(window.location.search);
-const tempToken = urlParams.get('token');
-const userEmail = urlParams.get('email');
+const urlTempToken = urlParams.get('token');
+const urlUserEmail = urlParams.get('email');
+if (urlTempToken) {
+    sessionStorage.setItem('mfaTempToken', urlTempToken);
+}
+if (urlUserEmail) {
+    sessionStorage.setItem('mfaEmail', urlUserEmail);
+}
+if (urlTempToken || urlUserEmail) {
+    window.history.replaceState({}, document.title, 'mfa-setup.html');
+}
+const tempToken = sessionStorage.getItem('mfaTempToken');
+const userEmail = sessionStorage.getItem('mfaEmail');
 
 // DOM refs
 const qrCodeContainer = document.getElementById('qrCode');
@@ -111,6 +122,7 @@ async function initMFASetup() {
     try {
         const res = await fetch(`${API_URL}/auth/mfa/setup`, {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ temp_token: tempToken })
         });
@@ -175,6 +187,7 @@ async function verifyAndComplete() {
     try {
         const res = await fetch(`${API_URL}/auth/mfa/verify-setup`, {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ temp_token: tempToken, otp_code: otpCode })
         });
@@ -183,11 +196,12 @@ async function verifyAndComplete() {
         if (res.ok) {
             setupDone = true;
             finalAuthData = data;
+            sessionStorage.removeItem('mfaTempToken');
+            sessionStorage.removeItem('mfaEmail');
 
             // Persist auth
             localStorage.clear();
             sessionStorage.removeItem('loggedOut');
-            localStorage.setItem('token', data.token);
             localStorage.setItem('userEmail', data.email);
             localStorage.setItem('userRole', data.role);
             localStorage.setItem('fullName', data.full_name);
@@ -262,21 +276,28 @@ async function copyBackupCodes() {
 }
 
 // ── Continue ────────────────────────────────────────────────
-function continueToDashboard() {
+async function continueToDashboard() {
     if (!finalAuthData) return;
-    // We are redirecting across origins/ports. Pass the token and user info
-    // as query params so the destination can persist them in its own localStorage.
-    const qs = new URLSearchParams({
-        token: finalAuthData.token || '',
-        email: finalAuthData.email || '',
-        role: finalAuthData.role || '',
-        fullName: finalAuthData.full_name || ''
-    }).toString();
+    const response = await fetch('http://localhost:8001/auth/panel-handoff', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            target_panel: finalAuthData.role === 'admin' ? 'admin' : 'user'
+        })
+    });
+    const handoff = await response.json().catch(() => ({}));
+    if (!response.ok || !handoff.handoff_code) {
+        showAlert((handoff && handoff.detail) || 'Failed to open dashboard securely.');
+        return;
+    }
 
     if (finalAuthData.role === 'admin') {
-        window.location.href = `http://localhost:3002/index.html?${qs}`;
+        window.location.href = `http://localhost:3002/index.html?handoff=${encodeURIComponent(handoff.handoff_code)}`;
     } else {
-        window.location.href = `http://localhost:3001/index.html?${qs}`;
+        window.location.href = `http://localhost:3001/index.html?handoff=${encodeURIComponent(handoff.handoff_code)}`;
     }
 }
 

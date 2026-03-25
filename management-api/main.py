@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Request, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, status, Request, BackgroundTasks, Header, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
@@ -9,12 +9,22 @@ import asyncio
 import jwt
 import os
 import uuid
+import secrets
+import logging
 
 from db import engine, Base
 from models import User, UserSession, AuditLog
 from deps import get_db
 from admin import router as admin_router
 from auth.mfa import router as mfa_router, create_mfa_temp_token
+from auth.session_auth import (
+    clear_auth_cookie,
+    clear_all_auth_cookies,
+    extract_access_token,
+    resolve_user_from_request,
+    resolve_user_from_token,
+    set_auth_cookie,
+)
 from auth.password_reset import router as password_reset_router
 from user import router as user_router
 from utils import (
@@ -27,6 +37,10 @@ from utils import (
     send_weekly_security_digest_email,
 )
 from db import SessionLocal
+
+logger = logging.getLogger(__name__)
+PANEL_HANDOFF_TTL_SECONDS = 60
+PANEL_HANDOFFS: dict[str, dict] = {}
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -61,7 +75,7 @@ async def _weekly_digest_scheduler():
         try:
             _run_weekly_digest_cycle()
         except Exception as exc:
-            print(f"Weekly digest worker error: {exc}")
+            logger.warning("Weekly digest worker error: %s", exc)
         await asyncio.sleep(3600)
 
 
@@ -143,6 +157,37 @@ class LoginResponse(BaseModel):
     mfa_setup_required: bool = False
     temp_token: Optional[str] = None
 
+
+class PanelHandoffCreateRequest(BaseModel):
+    target_panel: str
+
+
+class PanelHandoffCreateResponse(BaseModel):
+    handoff_code: str
+    expires_in_seconds: int
+
+
+class PanelHandoffExchangeRequest(BaseModel):
+    handoff_code: str
+
+
+class PanelHandoffExchangeResponse(BaseModel):
+    token: Optional[str] = None
+    email: str
+    role: str
+    full_name: str
+
+
+class SessionUserResponse(BaseModel):
+    email: str
+    role: str
+    full_name: str
+
+
+def _normalize_panel(panel: Optional[str]) -> str:
+    normalized = (panel or "").strip().lower()
+    return normalized if normalized in {"user", "admin", "public"} else ""
+
 # Helper functions
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify password against hash"""
@@ -159,6 +204,14 @@ def create_access_token(data: dict, token_version: int = 0, session_id: str = No
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
+def _prune_panel_handoffs():
+    now = datetime.utcnow()
+    expired_codes = [code for code, item in PANEL_HANDOFFS.items() if item.get("expires_at") <= now]
+    for code in expired_codes:
+        PANEL_HANDOFFS.pop(code, None)
+
+
 # Routes
 @app.get("/")
 def root():
@@ -168,10 +221,111 @@ def root():
         "status": "running"
     }
 
+
+@app.post("/auth/panel-handoff", response_model=PanelHandoffCreateResponse)
+def create_panel_handoff(
+    body: PanelHandoffCreateRequest,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    _prune_panel_handoffs()
+    token = extract_access_token(request, authorization, panel="public")
+    user = resolve_user_from_token(token, db)
+
+    target_panel = (body.target_panel or "").strip().lower()
+    if target_panel not in {"user", "admin"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid target panel")
+    if target_panel == "admin" and user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    handoff_code = secrets.token_urlsafe(24)
+    PANEL_HANDOFFS[handoff_code] = {
+        "token": token,
+        "email": user.email,
+        "role": user.role,
+        "full_name": user.full_name,
+        "target_panel": target_panel,
+        "expires_at": datetime.utcnow() + timedelta(seconds=PANEL_HANDOFF_TTL_SECONDS),
+    }
+    return PanelHandoffCreateResponse(
+        handoff_code=handoff_code,
+        expires_in_seconds=PANEL_HANDOFF_TTL_SECONDS,
+    )
+
+
+@app.post("/auth/panel-handoff/exchange", response_model=PanelHandoffExchangeResponse)
+def exchange_panel_handoff(body: PanelHandoffExchangeRequest, response: Response):
+    _prune_panel_handoffs()
+    handoff_code = (body.handoff_code or "").strip()
+    payload = PANEL_HANDOFFS.pop(handoff_code, None)
+    if not payload:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired handoff code")
+
+    set_auth_cookie(response, payload["token"], panel=payload.get("target_panel"))
+    clear_auth_cookie(response, panel="public")
+    return PanelHandoffExchangeResponse(
+        token=None,
+        email=payload["email"],
+        role=payload["role"],
+        full_name=payload["full_name"],
+    )
+
+
+@app.get("/auth/me", response_model=SessionUserResponse)
+def get_session_user(
+    request: Request,
+    panel: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    user = resolve_user_from_request(request, db, authorization, panel=_normalize_panel(panel))
+    return SessionUserResponse(
+        email=user.email,
+        role=user.role,
+        full_name=user.full_name,
+    )
+
+
+@app.post("/auth/logout")
+def logout(
+    request: Request,
+    response: Response,
+    panel: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    normalized_panel = _normalize_panel(panel)
+    try:
+        token = extract_access_token(request, authorization, panel=normalized_panel or None)
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user = resolve_user_from_token(token, db)
+        session_id = payload.get("session_id")
+        if session_id:
+            session = db.query(UserSession).filter(
+                UserSession.session_token == session_id,
+                UserSession.user_id == user.id,
+            ).first()
+            if session and not session.is_revoked:
+                session.is_revoked = True
+                session.revoked_at = datetime.utcnow()
+                db.commit()
+    except HTTPException:
+        pass
+    except jwt.InvalidTokenError:
+        pass
+
+    if normalized_panel:
+        clear_auth_cookie(response, panel=normalized_panel if normalized_panel != "public" else None)
+    else:
+        clear_all_auth_cookies(response)
+    return {"success": True, "message": "Logged out"}
+
 @app.post("/auth/login", response_model=LoginResponse)
 def login(
     credentials: LoginRequest,
     request: Request,
+    response: Response,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
@@ -346,8 +500,10 @@ def login(
             location_label=location_label,
         )
     
+    set_auth_cookie(response, token)
+
     return LoginResponse(
-        token=token,
+        token=None,
         email=user.email,
         role=user.role,
         full_name=user.full_name,

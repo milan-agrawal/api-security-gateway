@@ -1,60 +1,120 @@
 var API_URL = 'http://localhost:8001';
 
+(function patchAdminPanelFetch() {
+    if (window.__adminPanelFetchPatched) return;
+    window.__adminPanelFetchPatched = true;
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = function(input, init) {
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+        const options = init ? Object.assign({}, init) : {};
+        if (url.indexOf('http://localhost:8001') === 0) {
+            options.credentials = options.credentials || 'include';
+        }
+        return originalFetch(input, options);
+    };
+})();
+
+async function adminSessionBootstrap() {
+    const response = await fetch('http://localhost:8001/auth/me?panel=admin');
+    if (!response.ok) throw new Error('Authentication required');
+    const session = await response.json();
+    localStorage.setItem('userEmail', session.email || '');
+    localStorage.setItem('userRole', session.role || '');
+    localStorage.setItem('fullName', session.full_name || '');
+    return session;
+}
+
+async function adminSessionBootstrapWithRetry(retries = 2, delayMs = 250) {
+    let lastError = null;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            return await adminSessionBootstrap();
+        } catch (error) {
+            lastError = error;
+            if (attempt === retries) break;
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+    }
+    throw lastError || new Error('Authentication required');
+}
+
 // Handle back/forward navigation (bfcache)
 window.addEventListener('pageshow', function(event) {
     if (event.persisted) {
         // Page was loaded from cache via back/forward button
-        const token = localStorage.getItem('token');
         const loggedOut = sessionStorage.getItem('loggedOut');
-        if (!token || loggedOut === 'true') {
+        const userRole = localStorage.getItem('userRole');
+        if (!userRole || loggedOut === 'true') {
             window.location.replace('http://localhost:3000/login.html');
         }
     }
 });
 
 // IMMEDIATE AUTH CHECK - runs before page renders
-(function() {
+window.__adminPanelAuthReady = (async function() {
     const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('token');
-    const urlEmail = urlParams.get('email');
-    const urlRole = urlParams.get('role');  
-    const urlFullName = urlParams.get('fullName');
+    const handoffCode = urlParams.get('handoff');
+    const hasLegacyAuthParams = ['token', 'email', 'role', 'fullName'].some((key) => urlParams.has(key));
 
-    // If URL has auth params, store them and clean URL
-    if (urlToken && urlEmail && urlRole) {
-        localStorage.setItem('token', urlToken);
-        localStorage.setItem('userEmail', urlEmail);
-        localStorage.setItem('userRole', urlRole);
-        localStorage.setItem('fullName', urlFullName || '');
-        sessionStorage.removeItem('loggedOut');
-        window.history.replaceState({}, document.title, '/index.html');
+    // Clean up old query-string auth remnants from the pre-cookie flow.
+    if (hasLegacyAuthParams) {
+        localStorage.removeItem('token');
+        window.history.replaceState({}, document.title, '/index.html' + (window.location.hash || ''));
     }
 
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole');
+    if (handoffCode) {
+        try {
+            const response = await fetch('http://localhost:8001/auth/panel-handoff/exchange', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ handoff_code: handoffCode })
+            });
+            const handoff = await response.json().catch(() => ({}));
+            if (!response.ok || !handoff.role) {
+                throw new Error((handoff && handoff.detail) || 'Panel handoff failed');
+            }
+
+            localStorage.removeItem('token');
+            localStorage.setItem('userEmail', handoff.email || '');
+            localStorage.setItem('userRole', handoff.role || '');
+            localStorage.setItem('fullName', handoff.full_name || '');
+            sessionStorage.removeItem('loggedOut');
+            window.history.replaceState({}, document.title, '/index.html');
+        } catch (_) {
+            window.location.replace('http://localhost:3000/login.html');
+            return;
+        }
+    }
+
     const loggedOut = sessionStorage.getItem('loggedOut');
     
-    // Redirect if logged out
     if (loggedOut === 'true') {
         window.location.replace('http://localhost:3000/login.html');
         return;
     }
-    
-    // Redirect if no token
-    if (!token) {
+
+    let session;
+    try {
+        session = await adminSessionBootstrapWithRetry();
+    } catch (_) {
         window.location.replace('http://localhost:3000/login.html');
         return;
     }
     
-    // Redirect if not admin
-    if (userRole !== 'admin') {
+    if (session.role !== 'admin') {
         window.location.replace('http://localhost:3001/index.html');
         return;
     }
 })();
 
 // DOM Ready
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        await window.__adminPanelAuthReady;
+    } catch (_) {
+        return;
+    }
     loadUserInfo();
     initializeSidebar();
     initializeRouter();
@@ -89,15 +149,10 @@ function setHeaderUserInfo(profile) {
 
 // Load user information
 async function loadUserInfo() {
-    const token = localStorage.getItem('token');
     setHeaderUserInfo(null);
 
-    if (!token) return;
-
     try {
-        const resp = await fetch(`${API_URL}/user/profile`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const resp = await fetch(`${API_URL}/user/profile`);
         if (!resp.ok) return;
 
         const data = await resp.json();
@@ -186,13 +241,16 @@ function closeMobileSidebar() {
 // Logout function
 function logout() {
     // Clear this origin's storage (3002)
-    localStorage.removeItem('token');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userRole');
     localStorage.removeItem('fullName');
     sessionStorage.setItem('loggedOut', 'true');
-    // Redirect to login with ?logout=true to clear port 3000's localStorage
-    window.location.replace('http://localhost:3000/login.html?logout=true');
+    fetch('http://localhost:8001/auth/logout?panel=admin', {
+        method: 'POST',
+        credentials: 'include'
+    }).finally(function () {
+        window.location.replace('http://localhost:3000/login.html?logout=true');
+    });
 }
 
 // Add CSS for SPA loading state
@@ -320,13 +378,8 @@ async function checkSystemStatus() {
     const text = document.querySelector('.status-text');
     if (!indicator || !text) return;
 
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
     try {
-        const resp = await fetch(`${API_URL}/admin/system-status`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const resp = await fetch(`${API_URL}/admin/system-status`);
 
         if (!resp.ok) throw new Error('Request failed');
 

@@ -1057,10 +1057,9 @@ function bindAdminSettingsEvents() {
             btn.disabled = true;
             btn.innerHTML = 'Exporting...';
         }
-        var token = localStorage.getItem('token') || '';
         var query = _asBuildAuditLogQuery(false);
         fetch(API_URL + '/user/audit-log/export' + (query ? ('?' + query) : ''), {
-            headers: { 'Authorization': 'Bearer ' + token }
+            credentials: 'include'
         }).then(function(res) {
             if (!res.ok) throw new Error('Export failed. Check console.');
             
@@ -1125,9 +1124,7 @@ function _asClick(id, fn) {
 
 function _asFetch(url, opts) {
     opts = opts || {};
-    var token = localStorage.getItem('token') || '';
     var headers = opts.headers || {};
-    headers['Authorization'] = 'Bearer ' + token;
     if (opts.rawBody) {
         delete opts.rawBody;
     }

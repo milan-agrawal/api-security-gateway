@@ -46,6 +46,7 @@ from support_storage import (
     support_attachment_write_bytes,
 )
 from rate_limit import is_rate_limited
+from auth.session_auth import resolve_user_from_request
 
 router = APIRouter(prefix="/user", tags=["User Self-Service"])
 
@@ -79,74 +80,12 @@ PRIVACY_TRANSLATION_CACHE: dict[str, str] = {}
 # ============================================================================
 
 def get_current_user(
+    request: Request,
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ) -> User:
     """Extract and verify user from JWT token."""
-    if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authorization header missing"
-        )
-    try:
-        if not authorization.startswith("Bearer "):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authorization header format"
-            )
-        token = authorization.split(" ")[1]
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email = payload.get("sub")
-        if not email:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token payload"
-            )
-        user = db.query(User).filter(User.email == email).first()
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token is no longer valid for this account"
-            )
-        # Enforce token_version for session invalidation
-        token_version = payload.get("token_version", 0)
-        if getattr(user, "token_version", 0) != token_version:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has been revoked"
-            )
-        # Validate session if session_id is in token
-        session_id = payload.get("session_id")
-        if session_id:
-            session = db.query(UserSession).filter(
-                UserSession.session_token == session_id,
-                UserSession.user_id == user.id
-            ).first()
-            if not session or session.is_revoked:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Session has been revoked"
-                )
-            # Update last_active_at (throttled: only if > 1 minute since last update)
-            now = datetime.utcnow()
-            if not session.last_active_at or (now - session.last_active_at).total_seconds() > 60:
-                session.last_active_at = now
-                db.commit()
-            # Stash session_id on the user object for downstream use
-            user._current_session_id = session_id
-        else:
-            user._current_session_id = None
-        return user
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired"
-        )
-    except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
+    return resolve_user_from_request(request, db, authorization)
 
 
 # ============================================================================
