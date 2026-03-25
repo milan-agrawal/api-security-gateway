@@ -297,7 +297,7 @@ class AdminSupportTicketAttachmentCreateResponse(BaseModel):
 
 
 def _support_normalize_status(value: Optional[str]) -> str:
-    allowed = {'open', 'in_review', 'waiting_for_user', 'escalated', 'resolved', 'closed'}
+    allowed = {'open', 'in_review', 'waiting_for_user', 'escalated', 'resolved', 'closed', 'reopen_requested'}
     normalized = (value or 'open').strip().lower()
     return normalized if normalized in allowed else 'open'
 
@@ -1011,7 +1011,11 @@ def support_ticket_overview(
         'closed': 0,
     }
     for ticket in tickets:
-        counts[_support_normalize_status(ticket.status)] += 1
+        status_key = _support_normalize_status(ticket.status)
+        if status_key == 'reopen_requested':
+            counts['closed'] += 1
+        else:
+            counts[status_key] += 1
 
     return AdminSupportTicketOverviewResponse(
         total_tickets=len(tickets),
@@ -1079,6 +1083,11 @@ def create_support_ticket_message(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Support ticket SUP-{ticket_id} not found"
         )
+    if _support_normalize_status(ticket.status) in {"closed", "reopen_requested"}:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This ticket is locked until an admin reopens it."
+        )
 
     reply = SupportTicketMessage(
         ticket_id=ticket.id,
@@ -1124,6 +1133,11 @@ async def create_support_ticket_attachment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Support ticket SUP-{ticket_id} not found"
+        )
+    if _support_normalize_status(ticket.status) in {"closed", "reopen_requested"}:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This ticket is locked until an admin reopens it."
         )
 
     filename = _support_attachment_filename(file.filename or "")
@@ -1232,6 +1246,11 @@ def update_support_ticket_status(
             "ticket_id": ticket.id,
             "status": new_status,
         }
+    if old_status == "closed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Closed tickets are locked. Wait for a user reopen request first."
+        )
 
     ticket.status = new_status
     ticket.updated_at = datetime.now(timezone.utc)

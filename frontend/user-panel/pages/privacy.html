@@ -1,1 +1,197 @@
-﻿Need To be Done
+<link rel="stylesheet" href="assets/css/privacy.css?v=9">
+
+<div class="privacy-page" id="privacyPageRoot">
+    <section class="privacy-hero">
+        <div class="privacy-hero-shell">
+            <div class="privacy-kicker-row">
+                <span class="privacy-eyebrow" id="privacyEyebrow"></span>
+            </div>
+
+            <div class="privacy-toolbar">
+                <div class="privacy-toolbar-copy">
+                    <h1 id="privacyHeroTitle"></h1>
+                    <p id="privacyHeroDescription"></p>
+                </div>
+
+                <div class="privacy-toolbar-controls">
+                    <div class="privacy-locale">
+                        <label for="privacyLocale" id="privacyLocaleLabel"></label>
+                        <select id="privacyLocale"></select>
+                    </div>
+                    <button class="privacy-download-btn" type="button" id="privacyDownloadPdf"></button>
+                </div>
+            </div>
+
+            <div class="privacy-hero-meta">
+                <div class="privacy-meta-card">
+                    <span id="privacyEffectiveLabel"></span>
+                    <strong id="privacyEffectiveValue" data-privacy-date="2026-03-25T00:00:00+05:30"></strong>
+                </div>
+                <div class="privacy-meta-card">
+                    <span id="privacyReviewedLabel"></span>
+                    <strong id="privacyReviewedValue" data-privacy-date="2026-03-25T00:00:00+05:30"></strong>
+                </div>
+                <div class="privacy-meta-card">
+                    <span id="privacyAppliesLabel"></span>
+                    <strong id="privacyAppliesValue"></strong>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="privacy-layout">
+        <aside class="privacy-toc">
+            <div class="privacy-toc-card">
+                <span class="privacy-toc-title" id="privacyTocTitle"></span>
+                <button type="button" class="privacy-toc-link" data-target="privacy-collect" id="tocCollect"></button>
+                <button type="button" class="privacy-toc-link" data-target="privacy-avoid" id="tocAvoid"></button>
+                <button type="button" class="privacy-toc-link" data-target="privacy-use" id="tocUse"></button>
+                <button type="button" class="privacy-toc-link" data-target="privacy-rights" id="tocRights"></button>
+                <button type="button" class="privacy-toc-link" data-target="privacy-security" id="tocSecurity"></button>
+                <button type="button" class="privacy-toc-link" data-target="privacy-cookies" id="tocCookies"></button>
+                <button type="button" class="privacy-toc-link" data-target="privacy-third-party" id="tocThirdParty"></button>
+                <button type="button" class="privacy-toc-link" data-target="privacy-contact" id="tocContact"></button>
+                <button type="button" class="privacy-toc-link" data-target="privacy-changelog" id="tocChangelog"></button>
+            </div>
+        </aside>
+
+        <div class="privacy-content">
+            <article class="privacy-section" id="privacy-collect">
+                <div class="privacy-section-head">
+                    <span class="privacy-section-index">01</span>
+                    <div>
+                        <h2 id="sectionCollectTitle"></h2>
+                        <p id="sectionCollectDesc"></p>
+                    </div>
+                </div>
+                <div class="privacy-split">
+                    <div class="privacy-split-block">
+                        <h3 id="collectCoreTitle"></h3>
+                        <ul id="collectCoreList"></ul>
+                    </div>
+                    <div class="privacy-split-block">
+                        <h3 id="collectOpsTitle"></h3>
+                        <ul id="collectOpsList"></ul>
+                    </div>
+                </div>
+            </article>
+
+            <article class="privacy-section" id="privacy-avoid">
+                <div class="privacy-section-head">
+                    <span class="privacy-section-index">02</span>
+                    <div>
+                        <h2 id="sectionAvoidTitle"></h2>
+                        <p id="sectionAvoidDesc"></p>
+                    </div>
+                </div>
+                <ul id="avoidList"></ul>
+            </article>
+
+            <article class="privacy-section" id="privacy-use">
+                <div class="privacy-section-head">
+                    <span class="privacy-section-index">03</span>
+                    <div>
+                        <h2 id="sectionUseTitle"></h2>
+                        <p id="sectionUseDesc"></p>
+                    </div>
+                </div>
+                <div class="privacy-flow" id="useFlow"></div>
+            </article>
+
+            <article class="privacy-section" id="privacy-rights">
+                <div class="privacy-section-head">
+                    <span class="privacy-section-index">04</span>
+                    <div>
+                        <h2 id="sectionRightsTitle"></h2>
+                        <p id="sectionRightsDesc"></p>
+                    </div>
+                </div>
+                <ul id="rightsList"></ul>
+                <div class="privacy-inline-note" id="rightsNote"></div>
+            </article>
+
+            <article class="privacy-section" id="privacy-security">
+                <div class="privacy-section-head">
+                    <span class="privacy-section-index">05</span>
+                    <div>
+                        <h2 id="sectionSecurityTitle"></h2>
+                        <p id="sectionSecurityDesc"></p>
+                    </div>
+                </div>
+                <ul id="securityList"></ul>
+            </article>
+
+            <article class="privacy-section" id="privacy-cookies">
+                <div class="privacy-section-head">
+                    <span class="privacy-section-index">06</span>
+                    <div>
+                        <h2 id="sectionCookiesTitle"></h2>
+                        <p id="sectionCookiesDesc"></p>
+                    </div>
+                </div>
+                <p id="cookiesBody"></p>
+            </article>
+
+            <article class="privacy-section" id="privacy-third-party">
+                <div class="privacy-section-head">
+                    <span class="privacy-section-index">07</span>
+                    <div>
+                        <h2 id="sectionThirdPartyTitle"></h2>
+                        <p id="sectionThirdPartyDesc"></p>
+                    </div>
+                </div>
+                <ul id="thirdPartyList"></ul>
+            </article>
+
+            <article class="privacy-section" id="privacy-contact">
+                <div class="privacy-section-head">
+                    <span class="privacy-section-index">08</span>
+                    <div>
+                        <h2 id="sectionContactTitle"></h2>
+                        <p id="sectionContactDesc"></p>
+                    </div>
+                </div>
+                <p id="contactBody"></p>
+                <div class="privacy-contact">
+                    <div>
+                        <strong id="contactPrivacyLabel"></strong>
+                        <span id="contactPrivacyValue"></span>
+                    </div>
+                    <div>
+                        <strong id="contactSecurityLabel"></strong>
+                        <span id="contactSecurityValue"></span>
+                    </div>
+                </div>
+            </article>
+
+            <article class="privacy-section" id="privacy-changelog">
+                <div class="privacy-section-head">
+                    <span class="privacy-section-index">09</span>
+                    <div>
+                        <h2 id="sectionChangelogTitle"></h2>
+                        <p id="sectionChangelogDesc"></p>
+                    </div>
+                </div>
+                <div class="privacy-log-item">
+                    <strong id="changeLogDate" data-privacy-date="2026-03-25T00:00:00+05:30"></strong>
+                    <span id="changeLogText"></span>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <footer class="privacy-print-stamp" aria-hidden="true">
+        <div class="privacy-print-stamp-mark">ASG</div>
+        <div class="privacy-print-stamp-copy">
+            <strong>API SECURITY GATEWAY</strong>
+            <span>Official Logo & Trademark</span>
+        </div>
+    </footer>
+
+    <div class="privacy-translate-overlay" id="privacyTranslateOverlay" aria-hidden="true">
+        <div class="privacy-translate-overlay-content">
+            <div class="privacy-translate-spinner"></div>
+            <span id="privacyTranslateProgress">Translating...</span>
+        </div>
+    </div>
+</div>

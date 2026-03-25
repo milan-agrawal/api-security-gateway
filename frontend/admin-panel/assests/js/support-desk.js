@@ -1,4 +1,5 @@
 var supportDeskSelectedTicketId = null;
+var supportDeskSelectedTicketStatus = null;
 var supportDeskSearchDebounceTimer = null;
 var SUPPORT_DESK_SLA_MINUTES = {
     critical: 30,
@@ -199,6 +200,7 @@ async function _supportDeskLoadTickets() {
 
         listEl.innerHTML = tickets.map(function (ticket) {
             var isSelected = ticket.id === supportDeskSelectedTicketId;
+            var isClosed = String(ticket.status || '').toLowerCase() === 'closed';
             var attachmentLabel = ticket.attachment_count > 0 ? (' · ' + ticket.attachment_count + ' attachment' + (ticket.attachment_count === 1 ? '' : 's')) : '';
             var sla = _supportDeskTicketSla(ticket);
             return '' +
@@ -221,10 +223,10 @@ async function _supportDeskLoadTickets() {
                     '</div>' +
                     '<p class="support-desk-ticket-description">' + _supportDeskEscape(ticket.description) + '</p>' +
                     '<div class="support-desk-ticket-actions">' +
-                        '<select class="support-desk-status-select" data-ticket-id="' + ticket.id + '">' +
+                        '<select class="support-desk-status-select" data-ticket-id="' + ticket.id + '"' + (isClosed ? ' disabled' : '') + '>' +
                             _supportDeskStatusOptions(ticket.status) +
                         '</select>' +
-                        '<button type="button" class="support-desk-update-btn" data-ticket-id="' + ticket.id + '">Update Status</button>' +
+                        '<button type="button" class="support-desk-update-btn" data-ticket-id="' + ticket.id + '"' + (isClosed ? ' disabled' : '') + '>Update Status</button>' +
                     '</div>' +
                 '</div>';
         }).join('');
@@ -264,6 +266,7 @@ function _supportDeskBindUpdateButtons() {
             var ticketId = btn.getAttribute('data-ticket-id');
             var select = document.querySelector('.support-desk-status-select[data-ticket-id="' + ticketId + '"]');
             if (!ticketId || !select) return;
+            if (btn.disabled || select.disabled) return;
 
             var originalLabel = btn.textContent;
             btn.disabled = true;
@@ -370,6 +373,7 @@ function _supportDeskStatusClass(status) {
     status = (status || 'open').toLowerCase();
     if (status === 'in_review') return 'info';
     if (status === 'waiting_for_user') return 'warning';
+    if (status === 'reopen_requested') return 'warning';
     if (status === 'escalated') return 'danger';
     if (status === 'resolved') return 'success';
     if (status === 'closed') return 'neutral';
@@ -450,6 +454,7 @@ function _supportDeskRenderSelectedTicket(tickets) {
 
     if (emptyEl) emptyEl.style.display = 'none';
     if (panelEl) panelEl.style.display = '';
+    supportDeskSelectedTicketStatus = (ticket.status || 'open').toLowerCase();
 
     _supportDeskSetText('supportDeskDetailId', 'SUP-' + ticket.id);
     _supportDeskSetText('supportDeskDetailSubject', ticket.subject);
@@ -472,6 +477,7 @@ function _supportDeskRenderSelectedTicket(tickets) {
     var statusEl = document.getElementById('supportDeskDetailStatus');
     if (priorityEl) priorityEl.className = 'support-desk-pill ' + _supportDeskPriorityClass(ticket.priority);
     if (statusEl) statusEl.className = 'support-desk-pill ' + _supportDeskStatusClass(ticket.status);
+    _supportDeskApplyTicketEditState(ticket);
 
     if (attachmentCountEl) {
         var attachmentCount = Number(ticket.attachment_count || 0);
@@ -484,8 +490,10 @@ function _supportDeskRenderSelectedTicket(tickets) {
 function _supportDeskClearSelectedTicket() {
     var emptyEl = document.getElementById('supportDeskDetailEmpty');
     var panelEl = document.getElementById('supportDeskDetailPanel');
+    supportDeskSelectedTicketStatus = null;
     if (emptyEl) emptyEl.style.display = '';
     if (panelEl) panelEl.style.display = 'none';
+    _supportDeskApplyTicketEditState(null);
 }
 
 function _supportDeskSetText(id, value) {
@@ -504,6 +512,9 @@ async function _supportDeskLoadTicketThread(ticketId) {
         var result = await _supportDeskFetch('/admin/support-tickets/' + ticketId, {
             headers: _supportDeskAuthHeaders()
         });
+        var ticket = result.ticket || {};
+        supportDeskSelectedTicketStatus = (ticket.status || supportDeskSelectedTicketStatus || 'open').toLowerCase();
+        _supportDeskApplyTicketEditState(ticket);
         var messages = (result && result.messages) || [];
         if (countEl) countEl.textContent = messages.length + ' message' + (messages.length === 1 ? '' : 's');
 
@@ -515,15 +526,22 @@ async function _supportDeskLoadTicketThread(ticketId) {
         listEl.innerHTML = messages.map(function (message) {
             var roleLabel = _supportDeskThreadRoleLabel(message.author_type);
             var authorInitial = _supportDeskEscape(roleLabel.charAt(0).toUpperCase());
+            var reopenReason = _supportDeskExtractReopenReason(message.message);
+            var messageBody = reopenReason
+                ? (
+                    '<div class="support-desk-thread-event-label">Reopen Request</div>' +
+                    '<p class="support-desk-thread-event-text">' + _supportDeskEscape(reopenReason) + '</p>'
+                )
+                : ('<p>' + _supportDeskEscape(message.message) + '</p>');
             return '' +
-                '<div class="support-desk-thread-row ' + (message.author_type === 'admin' ? 'admin' : 'user') + '">' +
+                '<div class="support-desk-thread-row ' + (message.author_type === 'admin' ? 'admin' : 'user') + (reopenReason ? ' reopen-request' : '') + '">' +
                     '<div class="support-desk-thread-avatar">' + authorInitial + '</div>' +
-                    '<div class="support-desk-thread-message ' + (message.author_type === 'admin' ? 'admin' : 'user') + '">' +
+                    '<div class="support-desk-thread-message ' + (message.author_type === 'admin' ? 'admin' : 'user') + (reopenReason ? ' reopen-request' : '') + '">' +
                         '<div class="support-desk-thread-meta">' +
                             '<strong>' + _supportDeskEscape(roleLabel) + '</strong>' +
                             '<span>' + _supportDeskChatTime(message.created_at) + '</span>' +
                         '</div>' +
-                        '<p>' + _supportDeskEscape(message.message) + '</p>' +
+                        messageBody +
                     '</div>' +
                 '</div>';
         }).join('');
@@ -584,6 +602,10 @@ async function _supportDeskSendReply() {
     var replyInput = document.getElementById('supportDeskReplyInput');
     var replyBtn = document.getElementById('supportDeskReplyBtn');
     if (!supportDeskSelectedTicketId || !replyInput || !replyBtn) return;
+    if (['closed', 'reopen_requested'].indexOf((supportDeskSelectedTicketStatus || '').toLowerCase()) !== -1) {
+        if (typeof showToast === 'function') showToast('This ticket is locked until admin reopens it.', 'error');
+        return;
+    }
 
     var message = (replyInput.value || '').trim();
     if (message.length < 2) {
@@ -616,6 +638,10 @@ async function _supportDeskUploadAttachment() {
     var fileInput = document.getElementById('supportDeskAttachmentInput');
     var uploadBtn = document.getElementById('supportDeskAttachmentUploadBtn');
     if (!supportDeskSelectedTicketId || !fileInput || !uploadBtn) return;
+    if (['closed', 'reopen_requested'].indexOf((supportDeskSelectedTicketStatus || '').toLowerCase()) !== -1) {
+        if (typeof showToast === 'function') showToast('This ticket is locked until admin reopens it.', 'error');
+        return;
+    }
 
     if (!fileInput.files || !fileInput.files.length) {
         if (typeof showToast === 'function') showToast('Choose a file to upload first.', 'error');
@@ -821,6 +847,39 @@ function _supportDeskNormalizeErrorDetail(detail) {
         return JSON.stringify(detail);
     }
     return String(detail);
+}
+
+function _supportDeskExtractReopenReason(message) {
+    var text = String(message || '');
+    var prefix = 'Reopen request reason:';
+    if (text.indexOf(prefix) !== 0) return '';
+    return text.slice(prefix.length).trim();
+}
+
+function _supportDeskApplyTicketEditState(ticket) {
+    var status = (ticket && ticket.status ? String(ticket.status) : (supportDeskSelectedTicketStatus || 'open')).toLowerCase();
+    var isClosed = status === 'closed' || status === 'reopen_requested';
+    var closedNote = document.getElementById('supportDeskClosedNote');
+    var replyInput = document.getElementById('supportDeskReplyInput');
+    var replyBtn = document.getElementById('supportDeskReplyBtn');
+    var fileInput = document.getElementById('supportDeskAttachmentInput');
+    var uploadBtn = document.getElementById('supportDeskAttachmentUploadBtn');
+
+    if (closedNote) closedNote.style.display = isClosed ? '' : 'none';
+    if (replyInput) {
+        replyInput.disabled = isClosed;
+        replyInput.placeholder = status === 'reopen_requested'
+            ? 'User requested reopen. Set status to Open or In Review to unlock.'
+            : (isClosed ? 'Closed ticket: waiting for user reopen request.' : 'Type as a admin...');
+    }
+    if (replyBtn) replyBtn.disabled = isClosed;
+    if (fileInput) fileInput.disabled = isClosed;
+    if (uploadBtn) uploadBtn.disabled = isClosed;
+    if (closedNote) {
+        closedNote.textContent = status === 'reopen_requested'
+            ? 'Reopen request pending. Change status to Open or In Review to unlock this ticket.'
+            : 'This ticket is closed and locked. Wait for a user reopen request.';
+    }
 }
 
 window.initSupportDesk = initSupportDesk;

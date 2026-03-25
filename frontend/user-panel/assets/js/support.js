@@ -4,6 +4,7 @@
    ============================================================ */
 
 var supportSelectedTicketId = null;
+var supportSelectedTicketStatus = null;
 var supportSearchDebounceTimer = null;
 var SUPPORT_SLA_MINUTES = {
     critical: 30,
@@ -65,6 +66,7 @@ function _supportBindFormActions() {
     var searchInput = document.getElementById('supportTicketSearch');
     var searchClearBtn = document.getElementById('supportTicketSearchClear');
     var attachmentUploadBtn = document.getElementById('supportAttachmentUploadBtn');
+    var reopenBtn = document.getElementById('supportReopenBtn');
     var categoryInput = document.getElementById('supportCategory');
     var subjectInput = document.getElementById('supportSubject');
     var descriptionInput = document.getElementById('supportDescription');
@@ -92,6 +94,7 @@ function _supportBindFormActions() {
 
     if (searchInput) {
         searchInput.addEventListener('input', function () {
+            _supportSyncSearchClearButton();
             window.clearTimeout(supportSearchDebounceTimer);
             supportSearchDebounceTimer = window.setTimeout(function () {
                 _supportLoadTickets();
@@ -108,10 +111,20 @@ function _supportBindFormActions() {
 
     if (searchClearBtn) {
         searchClearBtn.addEventListener('click', function () {
-            if (searchInput) searchInput.value = '';
-            _supportLoadTickets();
+            var hadQuery = !!(searchInput && searchInput.value && searchInput.value.trim());
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
+            }
+            _supportSyncSearchClearButton();
+            if (hadQuery) {
+                window.clearTimeout(supportSearchDebounceTimer);
+                _supportLoadTickets();
+            }
         });
     }
+
+    _supportSyncSearchClearButton();
 
     if (replyBtn) {
         replyBtn.addEventListener('click', function () {
@@ -130,6 +143,12 @@ function _supportBindFormActions() {
     if (attachmentUploadBtn) {
         attachmentUploadBtn.addEventListener('click', function () {
             _supportUploadAttachment();
+        });
+    }
+
+    if (reopenBtn) {
+        reopenBtn.addEventListener('click', function () {
+            _supportRequestReopen();
         });
     }
 
@@ -441,6 +460,7 @@ function _supportStatusClass(status) {
     status = (status || 'open').toLowerCase();
     if (status === 'in_review') return 'review';
     if (status === 'waiting_for_user') return 'waiting';
+    if (status === 'reopen_requested') return 'waiting';
     if (status === 'escalated') return 'escalated';
     if (status === 'resolved') return 'resolved';
     if (status === 'closed') return 'closed';
@@ -451,6 +471,7 @@ function _supportStatusLabel(status) {
     status = (status || 'open').toLowerCase();
     if (status === 'in_review') return 'In Review';
     if (status === 'waiting_for_user') return 'Waiting For User';
+    if (status === 'reopen_requested') return 'Reopen Requested';
     if (status === 'escalated') return 'Escalated';
     if (status === 'resolved') return 'Resolved';
     if (status === 'closed') return 'Closed';
@@ -526,6 +547,7 @@ function _supportRenderSelectedTicket(tickets) {
 
     if (emptyEl) emptyEl.style.display = 'none';
     if (panelEl) panelEl.style.display = '';
+    supportSelectedTicketStatus = (ticket.status || 'open').toLowerCase();
 
     _supportSetText('supportDetailId', 'SUP-' + ticket.id);
     _supportSetText('supportDetailSubject', ticket.subject);
@@ -543,6 +565,7 @@ function _supportRenderSelectedTicket(tickets) {
         statusEl.className = 'ticket-status ' + _supportStatusClass(ticket.status);
         statusEl.textContent = _supportStatusLabel(ticket.status);
     }
+    _supportApplyTicketEditState(ticket);
 
     _supportLoadTicketDetail(ticket.id);
 }
@@ -562,6 +585,8 @@ async function _supportLoadTicketDetail(ticketId) {
             headers: _supportAuthHeaders()
         });
         var ticket = result.ticket || {};
+        supportSelectedTicketStatus = (ticket.status || supportSelectedTicketStatus || 'open').toLowerCase();
+        _supportApplyTicketEditState(ticket);
         var messages = result.messages || [];
         var attachments = result.attachments || [];
 
@@ -575,15 +600,22 @@ async function _supportLoadTicketDetail(ticketId) {
             listEl.innerHTML = messages.map(function (message) {
                 var roleLabel = _supportThreadRoleLabel(message.author_type);
                 var authorInitial = _supportEscape(roleLabel.charAt(0).toUpperCase());
+                var reopenReason = _supportExtractReopenReason(message.message);
+                var messageBody = reopenReason
+                    ? (
+                        '<div class="support-thread-event-label">Reopen Request</div>' +
+                        '<p class="support-thread-event-text">' + _supportEscape(reopenReason) + '</p>'
+                    )
+                    : ('<p>' + _supportEscape(message.message) + '</p>');
                 return '' +
-                    '<div class="support-thread-row ' + (message.author_type === 'user' ? 'user' : 'admin') + '">' +
+                    '<div class="support-thread-row ' + (message.author_type === 'user' ? 'user' : 'admin') + (reopenReason ? ' reopen-request' : '') + '">' +
                         '<div class="support-thread-avatar">' + authorInitial + '</div>' +
-                        '<div class="support-thread-message ' + (message.author_type === 'admin' ? 'admin' : 'user') + '">' +
+                        '<div class="support-thread-message ' + (message.author_type === 'admin' ? 'admin' : 'user') + (reopenReason ? ' reopen-request' : '') + '">' +
                             '<div class="support-thread-meta">' +
                                 '<strong>' + _supportEscape(roleLabel) + '</strong>' +
                                 '<span>' + _supportChatTime(message.created_at) + '</span>' +
                             '</div>' +
-                            '<p>' + _supportEscape(message.message) + '</p>' +
+                            messageBody +
                         '</div>' +
                 '</div>';
             }).join('');
@@ -620,6 +652,10 @@ async function _supportSendReply() {
     var replyInput = document.getElementById('supportReplyInput');
     var replyBtn = document.getElementById('supportReplyBtn');
     if (!supportSelectedTicketId || !replyInput || !replyBtn) return;
+    if ((supportSelectedTicketStatus || '').toLowerCase() === 'closed') {
+        _supportShowToast('Closed tickets are locked. Request reopen with a reason.', 'error');
+        return;
+    }
 
     var message = (replyInput.value || '').trim();
     if (message.length < 2) {
@@ -659,6 +695,10 @@ async function _supportUploadAttachment() {
     var fileInput = document.getElementById('supportAttachmentInput');
     var uploadBtn = document.getElementById('supportAttachmentUploadBtn');
     if (!supportSelectedTicketId || !fileInput || !uploadBtn) return;
+    if ((supportSelectedTicketStatus || '').toLowerCase() === 'closed') {
+        _supportShowToast('Closed tickets are locked. Request reopen with a reason.', 'error');
+        return;
+    }
 
     if (!fileInput.files || !fileInput.files.length) {
         _supportShowToast('Choose a file to upload first.', 'error');
@@ -714,13 +754,104 @@ async function _supportUploadAttachment() {
 function _supportClearTicketDetail() {
     var emptyEl = document.getElementById('supportTicketDetailEmpty');
     var panelEl = document.getElementById('supportTicketDetailPanel');
+    supportSelectedTicketStatus = null;
     if (emptyEl) emptyEl.style.display = '';
     if (panelEl) panelEl.style.display = 'none';
+    _supportApplyTicketEditState(null);
+}
+
+function _supportApplyTicketEditState(ticket) {
+    var status = (ticket && ticket.status ? String(ticket.status) : (supportSelectedTicketStatus || 'open')).toLowerCase();
+    var isClosed = status === 'closed' || status === 'reopen_requested';
+
+    var replyInput = document.getElementById('supportReplyInput');
+    var replyBtn = document.getElementById('supportReplyBtn');
+    var fileInput = document.getElementById('supportAttachmentInput');
+    var uploadBtn = document.getElementById('supportAttachmentUploadBtn');
+    var closedNote = document.getElementById('supportClosedNote');
+    var reopenBlock = document.getElementById('supportReopenBlock');
+    var reopenReason = document.getElementById('supportReopenReason');
+    var reopenBtn = document.getElementById('supportReopenBtn');
+
+    if (replyInput) {
+        replyInput.disabled = isClosed;
+        replyInput.placeholder = status === 'reopen_requested'
+            ? 'Reopen request pending admin review.'
+            : (isClosed ? 'Closed ticket: request reopen to send a message.' : 'Type as a user...');
+    }
+    if (replyBtn) replyBtn.disabled = isClosed;
+    if (fileInput) fileInput.disabled = isClosed;
+    if (uploadBtn) uploadBtn.disabled = isClosed;
+
+    if (closedNote) {
+        if (status === 'reopen_requested') {
+            closedNote.textContent = 'Reopen request sent. Ticket stays locked until admin approves it.';
+            closedNote.style.display = '';
+        } else {
+            closedNote.textContent = 'This ticket is closed. Add a reopen reason to continue.';
+            closedNote.style.display = isClosed ? '' : 'none';
+        }
+    }
+    if (reopenBlock) reopenBlock.style.display = status === 'closed' ? '' : 'none';
+    if (reopenReason) reopenReason.disabled = status !== 'closed';
+    if (reopenBtn) reopenBtn.disabled = status !== 'closed';
+}
+
+async function _supportRequestReopen() {
+    var reopenReason = document.getElementById('supportReopenReason');
+    var reopenBtn = document.getElementById('supportReopenBtn');
+    if (!supportSelectedTicketId || !reopenReason || !reopenBtn) return;
+
+    if ((supportSelectedTicketStatus || '').toLowerCase() !== 'closed') {
+        _supportShowToast('Only closed tickets can send a new reopen request.', 'error');
+        return;
+    }
+
+    var reason = (reopenReason.value || '').trim();
+    if (reason.length < 10) {
+        _supportShowToast('Please enter at least 10 characters for reopen reason.', 'error');
+        return;
+    }
+
+    reopenBtn.disabled = true;
+    reopenBtn.textContent = 'Submitting...';
+    try {
+        var result = await _supportFetch('/user/support-tickets/' + supportSelectedTicketId + '/reopen-request', {
+            method: 'POST',
+            headers: _supportAuthHeaders(),
+            body: JSON.stringify({ reason: reason })
+        });
+        reopenReason.value = '';
+        supportSelectedTicketStatus = 'reopen_requested';
+        _supportShowToast(result.message || 'Reopen request submitted.', 'success');
+        _supportLoadOverview();
+        _supportLoadTickets();
+    } catch (error) {
+        _supportShowToast(error.message || 'Failed to request reopen.', 'error');
+    } finally {
+        reopenBtn.disabled = false;
+        reopenBtn.textContent = 'Request Reopen';
+    }
 }
 
 function _supportSetText(id, value) {
     var el = document.getElementById(id);
     if (el) el.textContent = value || '';
+}
+
+function _supportSyncSearchClearButton() {
+    var searchInput = document.getElementById('supportTicketSearch');
+    var searchClearBtn = document.getElementById('supportTicketSearchClear');
+    if (!searchClearBtn) return;
+    var hasQuery = !!(searchInput && searchInput.value && searchInput.value.trim());
+    searchClearBtn.disabled = !hasQuery;
+}
+
+function _supportExtractReopenReason(message) {
+    var text = String(message || '');
+    var prefix = 'Reopen request reason:';
+    if (text.indexOf(prefix) !== 0) return '';
+    return text.slice(prefix.length).trim();
 }
 
 function _supportLabel(value) {
@@ -923,4 +1054,3 @@ function _supportNormalizeErrorDetail(detail) {
 }
 
 window.initSupportPage = initSupportPage;
-

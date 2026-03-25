@@ -15,11 +15,13 @@ import jwt
 import os
 import re
 import json
+import html
 import secrets
 import hashlib
 import hmac
 import mimetypes
 from urllib.parse import quote
+from urllib import request as urllib_request
 
 from deps import get_db
 from models import User, APIKey, UserSession, EmailChangeToken, SupportTicket, SupportTicketMessage, SupportTicketAttachment
@@ -67,6 +69,9 @@ ALLOWED_SUPPORT_ATTACHMENT_TYPES = {
     "application/json",
 }
 ALLOWED_SUPPORT_ATTACHMENT_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "pdf", "txt", "csv", "json", "log"}
+PRIVACY_TRANSLATE_RATE_LIMIT = int(os.getenv("PRIVACY_TRANSLATE_RATE_LIMIT", "40"))
+PRIVACY_TRANSLATE_WINDOW_SECONDS = int(os.getenv("PRIVACY_TRANSLATE_WINDOW_SECONDS", "60"))
+PRIVACY_TRANSLATION_CACHE: dict[str, str] = {}
 
 
 # ============================================================================
@@ -220,6 +225,42 @@ class DeleteAccountRequest(BaseModel):
     confirmation: str  # Must be "DELETE MY ACCOUNT"
 
 
+class PrivacyTranslateRequest(BaseModel):
+    target_locale: str
+    texts: list[str]
+
+    @validator("target_locale")
+    def validate_target_locale(cls, value: str) -> str:
+        normalized = (value or "").strip().lower()
+        if not re.fullmatch(r"[a-z]{2,3}(?:-[a-z0-9]{2,8})*", normalized):
+            raise ValueError("Invalid locale format")
+        return normalized
+
+    @validator("texts")
+    def validate_texts(cls, value: list[str]) -> list[str]:
+        if not value:
+            raise ValueError("texts cannot be empty")
+        if len(value) > 250:
+            raise ValueError("Too many text fragments")
+        total = 0
+        for item in value:
+            if not isinstance(item, str):
+                raise ValueError("All texts must be strings")
+            if len(item) > 2000:
+                raise ValueError("A text fragment is too large")
+            total += len(item)
+        if total > 60000:
+            raise ValueError("Total translation payload is too large")
+        return value
+
+
+class PrivacyTranslateResponse(BaseModel):
+    target_locale: str
+    texts: list[str]
+    provider_available: bool
+    provider_message: Optional[str] = None
+
+
 class VerifyEmailChangeRequest(BaseModel):
     token: str
 
@@ -339,6 +380,19 @@ class SupportTicketMessageCreateRequest(BaseModel):
         return value
 
 
+class SupportTicketReopenRequest(BaseModel):
+    reason: str
+
+    @validator("reason")
+    def validate_reason(cls, v):
+        value = (v or "").strip()
+        if len(value) < 10:
+            raise ValueError("Reopen reason must be at least 10 characters")
+        if len(value) > 1200:
+            raise ValueError("Reopen reason must be 1200 characters or fewer")
+        return value
+
+
 class SupportTicketMessageCreateResponse(BaseModel):
     success: bool
     message: str
@@ -380,7 +434,7 @@ def _get_pending_email_change(db: Session, user_id: int) -> Optional[EmailChange
 
 
 def _support_normalize_status(value: Optional[str]) -> str:
-    allowed = {"open", "in_review", "waiting_for_user", "escalated", "resolved", "closed"}
+    allowed = {"open", "in_review", "waiting_for_user", "escalated", "resolved", "closed", "reopen_requested"}
     normalized = (value or "open").strip().lower()
     return normalized if normalized in allowed else "open"
 
@@ -871,7 +925,11 @@ def support_ticket_overview(
         "closed": 0,
     }
     for ticket in tickets:
-        workflow_counts[_support_normalize_status(ticket.status)] += 1
+        status_key = _support_normalize_status(ticket.status)
+        if status_key == "reopen_requested":
+            workflow_counts["closed"] += 1
+        else:
+            workflow_counts[status_key] += 1
 
     open_tickets = workflow_counts["open"] + workflow_counts["in_review"] + workflow_counts["waiting_for_user"] + workflow_counts["escalated"]
     critical_open_tickets = sum(
@@ -1013,6 +1071,11 @@ def create_support_ticket_message(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Support ticket SUP-{ticket_id} not found"
         )
+    if _support_normalize_status(ticket.status) in {"closed", "reopen_requested"}:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This ticket is locked until support reopens it."
+        )
 
     reply = SupportTicketMessage(
         ticket_id=ticket.id,
@@ -1064,6 +1127,11 @@ async def create_support_ticket_attachment(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Support ticket SUP-{ticket_id} not found"
         )
+    if _support_normalize_status(ticket.status) in {"closed", "reopen_requested"}:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This ticket is locked until support reopens it."
+        )
 
     filename = _support_attachment_filename(file.filename or "")
     content = await file.read()
@@ -1107,6 +1175,70 @@ async def create_support_ticket_attachment(
         message="Attachment uploaded successfully.",
         attachment=_support_ticket_attachment_item(attachment),
     )
+
+
+@router.post("/support-tickets/{ticket_id}/reopen-request")
+def request_support_ticket_reopen(
+    ticket_id: int,
+    data: SupportTicketReopenRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _support_enforce_rate_limit(user.id, "ticket_reopen_request", limit=20)
+
+    ticket = db.query(SupportTicket).filter(
+        SupportTicket.id == ticket_id,
+        SupportTicket.user_id == user.id
+    ).first()
+    if not ticket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Support ticket SUP-{ticket_id} not found"
+        )
+
+    current_status = _support_normalize_status(ticket.status)
+    if current_status == "reopen_requested":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A reopen request is already pending admin review."
+        )
+    if current_status != "closed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only closed tickets can be reopened."
+        )
+
+    reason = (data.reason or "").strip()
+    now = datetime.now(timezone.utc)
+
+    reopen_message = SupportTicketMessage(
+        ticket_id=ticket.id,
+        author_user_id=user.id,
+        author_type="user",
+        message=f"Reopen request reason: {reason}",
+        created_at=now,
+    )
+    db.add(reopen_message)
+
+    ticket.status = "reopen_requested"
+    ticket.updated_at = now
+
+    log_audit(
+        db,
+        user.id,
+        "support_ticket_reopen_requested",
+        f"User requested reopen for support ticket SUP-{ticket.id}",
+        request,
+    )
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Reopen request submitted for SUP-{ticket.id}. Ticket stays locked until admin reopens it.",
+        "ticket_id": ticket.id,
+        "status": "reopen_requested",
+    }
 
 
 @router.get("/support-tickets/{ticket_id}/attachments/{attachment_id}/download")
@@ -1800,3 +1932,141 @@ def export_audit_log(
         "Content-Disposition": f"attachment; filename=audit_logs_{user.id}_{datetime.utcnow().strftime('%Y%m%d')}.csv"
     }
     return Response(content=output.getvalue(), media_type="text/csv", headers=headers)
+
+
+# ============================================================================
+# Privacy Translation
+# ============================================================================
+
+def _translate_text_fragment(target_locale: str, text: str) -> tuple[str, bool, Optional[str]]:
+    if not text.strip():
+        return text, True, None
+
+    cache_key = f"{target_locale}:{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
+    cached = PRIVACY_TRANSLATION_CACHE.get(cache_key)
+    if cached is not None:
+        return cached, True, None
+
+    try:
+        url = (
+            "https://translate.googleapis.com/translate_a/single"
+            f"?client=gtx&sl=auto&tl={quote(target_locale)}&dt=t&q={quote(text)}"
+        )
+        req = urllib_request.Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "application/json,text/plain,*/*",
+            },
+        )
+        with urllib_request.urlopen(req, timeout=8) as response:
+            payload = response.read().decode("utf-8")
+        parsed = json.loads(payload)
+        translated = "".join(part[0] for part in parsed[0] if part and part[0])
+        if not translated:
+            raise ValueError("Empty google translation")
+        PRIVACY_TRANSLATION_CACHE[cache_key] = translated
+        return translated, True, None
+    except Exception as google_exc:
+        try:
+            fallback_url = (
+                "https://api.mymemory.translated.net/get"
+                f"?q={quote(text)}&langpair=en|{quote(target_locale)}"
+            )
+            req = urllib_request.Request(
+                fallback_url,
+                headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json,text/plain,*/*"},
+            )
+            with urllib_request.urlopen(req, timeout=8) as response:
+                payload = response.read().decode("utf-8")
+            parsed = json.loads(payload)
+            translated = html.unescape(((parsed.get("responseData") or {}).get("translatedText") or "").strip())
+            if translated and translated.lower() != text.strip().lower():
+                PRIVACY_TRANSLATION_CACHE[cache_key] = translated
+                return translated, True, None
+        except Exception as mymemory_exc:
+            try:
+                libre_url = "https://libretranslate.de/translate"
+                libre_payload = json.dumps({
+                    "q": text,
+                    "source": "auto",
+                    "target": target_locale,
+                    "format": "text",
+                }).encode("utf-8")
+                libre_req = urllib_request.Request(
+                    libre_url,
+                    data=libre_payload,
+                    headers={
+                        "User-Agent": "Mozilla/5.0",
+                        "Accept": "application/json,text/plain,*/*",
+                        "Content-Type": "application/json",
+                    },
+                    method="POST",
+                )
+                with urllib_request.urlopen(libre_req, timeout=10) as response:
+                    payload = response.read().decode("utf-8")
+                parsed = json.loads(payload)
+                translated = (parsed.get("translatedText") or "").strip()
+                if translated and translated.lower() != text.strip().lower():
+                    PRIVACY_TRANSLATION_CACHE[cache_key] = translated
+                    return translated, True, None
+                return text, False, "libretranslate-empty"
+            except Exception as libre_exc:
+                reason = (
+                    f"google={type(google_exc).__name__}; "
+                    f"mymemory={type(mymemory_exc).__name__}; "
+                    f"libre={type(libre_exc).__name__}"
+                )
+                return text, False, reason
+        return text, False, f"google={type(google_exc).__name__}; mymemory=empty"
+
+
+@router.post("/privacy/translate", response_model=PrivacyTranslateResponse)
+def translate_privacy_text(
+    body: PrivacyTranslateRequest,
+    user: User = Depends(get_current_user),
+):
+    if body.target_locale.startswith("en"):
+        return PrivacyTranslateResponse(
+            target_locale=body.target_locale,
+            texts=body.texts,
+            provider_available=True,
+            provider_message="english-base",
+        )
+
+    if is_rate_limited(
+        namespace="privacy",
+        actor_scope="user",
+        actor_id=user.id,
+        action="translate",
+        limit=PRIVACY_TRANSLATE_RATE_LIMIT,
+        window_seconds=PRIVACY_TRANSLATE_WINDOW_SECONDS,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many translation requests. Please try again shortly.",
+        )
+
+    translated_texts: list[str] = []
+    provider_available = True
+    first_reason: Optional[str] = None
+    failed_count = 0
+    for text in body.texts:
+        translated, ok, reason = _translate_text_fragment(body.target_locale, text)
+        translated_texts.append(translated)
+        if not ok:
+            provider_available = False
+            failed_count += 1
+            if first_reason is None and reason:
+                first_reason = reason
+
+    # Keep UX consistent: avoid partial mixed-language pages.
+    if failed_count > 0:
+        translated_texts = body.texts
+
+    return PrivacyTranslateResponse(
+        target_locale=body.target_locale,
+        texts=translated_texts,
+        provider_available=provider_available,
+        provider_message=first_reason,
+    )

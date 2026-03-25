@@ -300,9 +300,19 @@
                         </div>
                     </div>
                     <div class="support-reply-block">
+                        <div class="support-closed-note" id="supportClosedNote" style="display:none;">
+                            This ticket is closed. Add a reopen reason to continue.
+                        </div>
                         <div class="support-reply-composer">
                             <textarea id="supportReplyInput" rows="1" placeholder="Type as a user..."></textarea>
                             <button class="support-btn primary support-chat-send" type="button" id="supportReplyBtn" aria-label="Send message">Send</button>
+                        </div>
+                        <div class="support-reopen-block" id="supportReopenBlock" style="display:none;">
+                            <label for="supportReopenReason">Reason to reopen ticket</label>
+                            <div class="support-reopen-composer">
+                                <textarea id="supportReopenReason" rows="2" placeholder="Explain why this ticket should be reopened..."></textarea>
+                                <button class="support-btn primary support-chat-send" type="button" id="supportReopenBtn" aria-label="Request reopen">Request Reopen</button>
+                            </div>
                         </div>
                     </div>
                 </div>
