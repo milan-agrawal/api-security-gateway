@@ -1,1 +1,224 @@
-﻿Need To be Done
+<link rel="stylesheet" href="assets/css/support.css?v=2">
+
+<div class="support-page" id="supportPageRoot">
+    <section class="support-hero">
+        <div class="support-hero-copy">
+            <span class="support-eyebrow">User Support Center</span>
+            <h1>Get help without losing momentum.</h1>
+            <p>
+                Report API issues, account problems, bug reports, or security concerns from one place.
+                We will route your request with the right priority and keep your recent cases visible here.
+            </p>
+            <div class="support-hero-badges">
+                <span class="support-pill neutral" id="supportHeroBadgePrimary">Loading support status...</span>
+                <span class="support-pill neutral" id="supportHeroBadgeSecondary">Loading ticket metrics...</span>
+                <span class="support-pill neutral" id="supportHeroBadgeTertiary">Checking delivery channel...</span>
+            </div>
+        </div>
+        <div class="support-hero-panel">
+            <div class="support-signal-card">
+                <div class="support-signal-head">
+                    <span class="signal-dot"></span>
+                    <span id="supportSignalHeadLabel">Support Overview</span>
+                </div>
+                <div class="support-signal-grid">
+                    <div class="signal-metric">
+                        <strong id="supportMetricOpen">0</strong>
+                        <span>Open Tickets</span>
+                    </div>
+                    <div class="signal-metric">
+                        <strong id="supportMetricCritical">0</strong>
+                        <span>Critical Open</span>
+                    </div>
+                    <div class="signal-metric">
+                        <strong id="supportMetricTracked">0</strong>
+                        <span>Tracked Total</span>
+                    </div>
+                    <div class="signal-metric">
+                        <strong id="supportMetricDelivery">--</strong>
+                        <span>Mailbox Status</span>
+                    </div>
+                </div>
+                <div class="support-signal-footer" id="supportSignalFooter">Loading support overview...</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="support-quick-grid">
+        <article class="support-quick-card accent-blue">
+            <div class="support-quick-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+            </div>
+            <h3>API Access Issue</h3>
+            <p>Key revoked, permission denied, quota confusion, or endpoints not responding as expected.</p>
+            <button class="support-link-btn" type="button" data-support-category="api_issue">Create API Ticket</button>
+        </article>
+
+        <article class="support-quick-card accent-green">
+            <div class="support-quick-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+            </div>
+            <h3>Account & MFA Help</h3>
+            <p>Problems with login, sessions, password recovery, MFA codes, or profile verification flows.</p>
+            <button class="support-link-btn" type="button" data-support-category="account_issue">Create Account Ticket</button>
+        </article>
+
+        <article class="support-quick-card accent-red">
+            <div class="support-quick-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <h3>Security Emergency</h3>
+            <p>Suspected key leak, suspicious login activity, blocked access, or any possible account compromise.</p>
+            <button class="support-link-btn danger" type="button" data-support-category="security_issue">Open Security Ticket</button>
+        </article>
+    </section>
+
+    <section class="support-layout">
+        <div class="support-main-column">
+            <article class="support-card support-form-card">
+                <div class="support-card-head">
+                    <div>
+                        <span class="support-card-kicker">Open A Request</span>
+                        <h2>Create a support ticket</h2>
+                    </div>
+                    <span class="support-card-badge" id="supportFormStatusBadge">Live Form</span>
+                </div>
+
+                <form class="support-form" id="supportTicketForm">
+                    <div class="support-form-grid">
+                        <div class="support-field">
+                            <label for="supportCategory">Category</label>
+                            <select id="supportCategory">
+                                <option value="api_issue">API Access Issue</option>
+                                <option value="account_issue">Account & MFA Help</option>
+                                <option value="security_issue">Security Emergency</option>
+                                <option value="bug_report">Bug Report</option>
+                                <option value="general_question">General Question</option>
+                            </select>
+                        </div>
+
+                        <div class="support-field">
+                            <label for="supportPriority">Priority</label>
+                            <select id="supportPriority">
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+
+                        <div class="support-field">
+                            <label for="supportRoute">Related Area</label>
+                            <input id="supportRoute" type="text" readonly>
+                        </div>
+
+                        <div class="support-field">
+                            <label for="supportContactEmail">Contact Email</label>
+                            <input id="supportContactEmail" type="email" placeholder="your@email.com">
+                        </div>
+                    </div>
+
+                    <div class="support-field">
+                        <label for="supportSubject">Subject</label>
+                        <input id="supportSubject" type="text" maxlength="120" minlength="5" placeholder="Short summary of the problem">
+                    </div>
+
+                    <div class="support-field">
+                        <label for="supportDescription">Description</label>
+                        <textarea id="supportDescription" rows="7" minlength="20" placeholder="Describe what happened, what you expected, and any error codes or timings you noticed."></textarea>
+                    </div>
+
+                    <div class="support-context-strip">
+                        <div class="context-item">
+                            <span class="context-label">Signed in as</span>
+                            <strong id="supportContextUser">user@example.com</strong>
+                        </div>
+                        <div class="context-item">
+                            <span class="context-label">Current route</span>
+                            <strong id="supportContextRoute">support</strong>
+                        </div>
+                        <div class="context-item">
+                            <span class="context-label">Suggested queue</span>
+                            <strong id="supportSuggestedQueue">General Support</strong>
+                        </div>
+                    </div>
+
+                    <div class="support-actions">
+                        <button class="support-btn ghost" type="button" id="supportResetForm">Reset</button>
+                        <button class="support-btn primary" type="submit" id="supportSubmitBtn">Submit Ticket</button>
+                    </div>
+                </form>
+            </article>
+
+            <article class="support-card">
+                <div class="support-card-head">
+                    <div>
+                        <span class="support-card-kicker">Recent Requests</span>
+                        <h2>My support activity</h2>
+                    </div>
+                    <button class="support-text-action" type="button" id="supportRefreshTickets">Refresh</button>
+                </div>
+
+                <div class="support-ticket-list" id="supportTicketList">
+                    <div class="support-ticket-item support-empty-state">
+                        <p>Your support tickets will appear here once submitted.</p>
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <aside class="support-side-column">
+            <article class="support-card support-side-card">
+                <div class="support-card-head compact">
+                    <div>
+                        <span class="support-card-kicker">Fast Paths</span>
+                        <h2>Try before opening a ticket</h2>
+                    </div>
+                </div>
+                <div class="support-resource-list">
+                    <a href="#troubleshooting" class="support-resource">
+                        <strong>Troubleshooting</strong>
+                        <span>Common recovery steps for login, API, and device issues.</span>
+                    </a>
+                    <a href="#documentation" class="support-resource">
+                        <strong>Documentation</strong>
+                        <span>Guides, examples, and setup instructions for users and developers.</span>
+                    </a>
+                    <a href="#security-logs" class="support-resource">
+                        <strong>Security Logs</strong>
+                        <span>Check recent account events before reporting suspicious behavior.</span>
+                    </a>
+                    <a href="#appeal" class="support-resource">
+                        <strong>Appeal Portal</strong>
+                        <span>Use this if your access was blocked or your request needs formal review.</span>
+                    </a>
+                </div>
+            </article>
+
+            <article class="support-card support-side-card security-escalation">
+                <div class="support-card-head compact">
+                    <div>
+                        <span class="support-card-kicker">Security Escalation</span>
+                        <h2>When it is urgent</h2>
+                    </div>
+                </div>
+                <ul class="support-checklist">
+                    <li>Rotate exposed API keys immediately.</li>
+                    <li>Revoke unfamiliar sessions from the Sessions page.</li>
+                    <li>Change your password if you suspect credential exposure.</li>
+                    <li>Use the Security Emergency path for anything active or high-risk.</li>
+                </ul>
+                <div class="support-escalation-footer">
+                    <span class="support-escalation-badge">Priority Queue</span>
+                    <p>Critical security tickets should include the affected key, route, and approximate time window.</p>
+                </div>
+            </article>
+        </aside>
+    </section>
+</div>

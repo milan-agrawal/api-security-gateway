@@ -4,6 +4,7 @@ Utility functions for password generation and email sending
 import string
 import secrets
 import smtplib
+import html
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
@@ -1348,6 +1349,84 @@ def send_weekly_security_digest_email(recipient_email: str, full_name: str, summ
         return True
     except Exception as e:
         print(f"ERROR: Failed to send weekly security digest to {recipient_email}: {str(e)}")
+        return False
+
+
+def send_support_ticket_notification(
+    ticket_id: int,
+    user_email: str,
+    full_name: str,
+    category: str,
+    priority: str,
+    subject: str,
+    description: str,
+    related_route: str = "",
+    contact_email: str = "",
+) -> bool:
+    """
+    Send a support ticket notification to the existing SMTP-configured mailbox.
+    """
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    from_email = os.getenv("FROM_EMAIL", smtp_user)
+    support_recipient = from_email or smtp_user
+
+    if not smtp_user or not smtp_password or not support_recipient:
+        print("ERROR: SMTP credentials not configured for support ticket notification")
+        return False
+
+    safe_name = full_name or user_email
+    safe_route = related_route or "support"
+    safe_contact = contact_email or user_email
+    safe_user_email = html.escape(user_email or "")
+    safe_name_html = html.escape(safe_name or "")
+    safe_category = html.escape(category or "")
+    safe_priority = html.escape(priority or "")
+    safe_subject = html.escape(subject or "")
+    safe_route_html = html.escape(safe_route or "")
+    safe_contact_html = html.escape(safe_contact or "")
+    safe_description = html.escape(description or "")
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"[Support Ticket] #{ticket_id} {subject}"
+        msg["From"] = f"API Security Gateway <{from_email}>"
+        msg["To"] = support_recipient
+
+        html_body = f"""
+        <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 680px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #2563EB;">New Support Ticket Submitted</h2>
+            <p>A new support request has been created by <strong>{safe_name_html}</strong> ({safe_user_email}).</p>
+            <table style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0; width: 100%;">
+                <tr><td><strong>Ticket ID:</strong></td><td>SUP-{ticket_id}</td></tr>
+                <tr><td><strong>Category:</strong></td><td>{safe_category}</td></tr>
+                <tr><td><strong>Priority:</strong></td><td>{safe_priority}</td></tr>
+                <tr><td><strong>Subject:</strong></td><td>{safe_subject}</td></tr>
+                <tr><td><strong>Contact Email:</strong></td><td>{safe_contact_html}</td></tr>
+                <tr><td><strong>Related Route:</strong></td><td>{safe_route_html}</td></tr>
+            </table>
+            <p><strong>Description</strong></p>
+            <div style="white-space: pre-wrap; background: #fafafa; border: 1px solid #e5e5e5; border-radius: 8px; padding: 14px;">{safe_description}</div>
+        </div>
+        </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(html_body, "html"))
+
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(from_email, support_recipient, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"ERROR: Failed to send support ticket notification #{ticket_id}: {str(e)}")
         return False
 
 

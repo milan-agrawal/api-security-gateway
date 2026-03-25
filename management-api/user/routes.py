@@ -6,7 +6,7 @@ Endpoints for the user panel — users manage their own profile, password, etc.
 
 from fastapi import APIRouter, Depends, HTTPException, status, Header, Request, Query
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 from passlib.context import CryptContext
 from typing import Optional
 from datetime import datetime, timezone, timedelta
@@ -19,7 +19,7 @@ import hashlib
 import hmac
 
 from deps import get_db
-from models import User, APIKey, UserSession, EmailChangeToken
+from models import User, APIKey, UserSession, EmailChangeToken, SupportTicket
 from utils import (
     generate_mfa_secret,
     generate_qr_code_base64,
@@ -33,6 +33,7 @@ from utils import (
     send_mfa_change_notification,
     send_email_change_verification_email,
     send_email_change_notice,
+    send_support_ticket_notification,
 )
 
 router = APIRouter(prefix="/user", tags=["User Self-Service"])
@@ -199,6 +200,88 @@ class DeleteAccountRequest(BaseModel):
 
 class VerifyEmailChangeRequest(BaseModel):
     token: str
+
+
+class SupportTicketCreateRequest(BaseModel):
+    category: str
+    priority: str
+    subject: str
+    description: str
+    contact_email: EmailStr
+    related_route: Optional[str] = None
+
+    @validator("category")
+    def validate_category(cls, v):
+        allowed = {"api_issue", "account_issue", "security_issue", "bug_report", "general_question"}
+        value = (v or "").strip().lower()
+        if value not in allowed:
+            raise ValueError("Invalid support ticket category")
+        return value
+
+    @validator("priority")
+    def validate_priority(cls, v):
+        allowed = {"low", "medium", "high", "critical"}
+        value = (v or "").strip().lower()
+        if value not in allowed:
+            raise ValueError("Invalid support ticket priority")
+        return value
+
+    @validator("subject")
+    def validate_subject(cls, v):
+        value = (v or "").strip()
+        if len(value) < 5:
+            raise ValueError("Subject must be at least 5 characters")
+        if len(value) > 120:
+            raise ValueError("Subject must be 120 characters or fewer")
+        return value
+
+    @validator("description")
+    def validate_description(cls, v):
+        value = (v or "").strip()
+        if len(value) < 20:
+            raise ValueError("Description must be at least 20 characters")
+        if len(value) > 5000:
+            raise ValueError("Description must be 5000 characters or fewer")
+        return value
+
+    @validator("related_route")
+    def validate_related_route(cls, v):
+        if v is None:
+            return None
+        value = v.strip()
+        return value[:80] if value else None
+
+
+class SupportTicketListItem(BaseModel):
+    id: int
+    category: str
+    priority: str
+    subject: str
+    description: str
+    contact_email: str
+    related_route: Optional[str] = None
+    status: str
+    created_at: str
+    updated_at: str
+
+
+class SupportTicketCreateResponse(BaseModel):
+    success: bool
+    message: str
+    ticket: SupportTicketListItem
+
+
+class SupportTicketListResponse(BaseModel):
+    tickets: list[SupportTicketListItem]
+
+
+class SupportTicketOverviewResponse(BaseModel):
+    total_tickets: int
+    open_tickets: int
+    critical_open_tickets: int
+    security_tickets: int
+    latest_ticket_updated_at: Optional[str] = None
+    smtp_ready: bool
 
 
 def _get_pending_email_change(db: Session, user_id: int) -> Optional[EmailChangeToken]:
@@ -505,6 +588,139 @@ def get_notification_preferences(user: User = Depends(get_current_user)):
         mfa_change_alert_enabled=user.mfa_change_alert_enabled,
         failed_login_alert_enabled=user.failed_login_alert_enabled,
         weekly_security_digest_enabled=user.weekly_security_digest_enabled,
+    )
+
+
+@router.get("/support-tickets", response_model=SupportTicketListResponse)
+def list_support_tickets(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    tickets = (
+        db.query(SupportTicket)
+        .filter(SupportTicket.user_id == user.id)
+        .order_by(SupportTicket.created_at.desc())
+        .all()
+    )
+
+    return SupportTicketListResponse(
+        tickets=[
+            SupportTicketListItem(
+                id=t.id,
+                category=t.category,
+                priority=t.priority,
+                subject=t.subject,
+                description=t.description,
+                contact_email=t.contact_email,
+                related_route=t.related_route,
+                status=t.status,
+                created_at=t.created_at.isoformat() if t.created_at else "",
+                updated_at=t.updated_at.isoformat() if t.updated_at else "",
+            )
+            for t in tickets
+        ]
+    )
+
+
+@router.get("/support-tickets/overview", response_model=SupportTicketOverviewResponse)
+def support_ticket_overview(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    tickets = (
+        db.query(SupportTicket)
+        .filter(SupportTicket.user_id == user.id)
+        .order_by(SupportTicket.updated_at.desc())
+        .all()
+    )
+
+    total_tickets = len(tickets)
+    open_tickets = sum(1 for t in tickets if (t.status or "open").lower() == "open")
+    critical_open_tickets = sum(
+        1 for t in tickets
+        if (t.status or "open").lower() == "open" and (t.priority or "").lower() == "critical"
+    )
+    security_tickets = sum(1 for t in tickets if (t.category or "").lower() == "security_issue")
+    latest_ticket_updated_at = tickets[0].updated_at.isoformat() if tickets and tickets[0].updated_at else None
+    smtp_ready = bool(os.getenv("SMTP_USER") and os.getenv("SMTP_PASSWORD") and (os.getenv("FROM_EMAIL") or os.getenv("SMTP_USER")))
+
+    return SupportTicketOverviewResponse(
+        total_tickets=total_tickets,
+        open_tickets=open_tickets,
+        critical_open_tickets=critical_open_tickets,
+        security_tickets=security_tickets,
+        latest_ticket_updated_at=latest_ticket_updated_at,
+        smtp_ready=smtp_ready,
+    )
+
+
+@router.post("/support-tickets", response_model=SupportTicketCreateResponse)
+def create_support_ticket(
+    data: SupportTicketCreateRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    priority = data.priority
+    if data.category == "security_issue" and priority in {"low", "medium"}:
+        priority = "high"
+
+    ticket = SupportTicket(
+        user_id=user.id,
+        category=data.category,
+        priority=priority,
+        subject=data.subject,
+        description=data.description,
+        contact_email=data.contact_email,
+        related_route=data.related_route,
+        status="open",
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db.add(ticket)
+    db.commit()
+    db.refresh(ticket)
+
+    log_audit(
+        db,
+        user.id,
+        "support_ticket_created",
+        f"Support ticket SUP-{ticket.id} created ({ticket.category}, {ticket.priority})",
+        request,
+    )
+    db.commit()
+
+    notified = send_support_ticket_notification(
+        ticket_id=ticket.id,
+        user_email=user.email,
+        full_name=user.full_name,
+        category=ticket.category,
+        priority=ticket.priority,
+        subject=ticket.subject,
+        description=ticket.description,
+        related_route=ticket.related_route or "support",
+        contact_email=ticket.contact_email,
+    )
+
+    message = "Support ticket submitted successfully."
+    if not notified:
+        message = "Support ticket saved, but email notification could not be sent right now."
+
+    return SupportTicketCreateResponse(
+        success=True,
+        message=message,
+        ticket=SupportTicketListItem(
+            id=ticket.id,
+            category=ticket.category,
+            priority=ticket.priority,
+            subject=ticket.subject,
+            description=ticket.description,
+            contact_email=ticket.contact_email,
+            related_route=ticket.related_route,
+            status=ticket.status,
+            created_at=ticket.created_at.isoformat() if ticket.created_at else "",
+            updated_at=ticket.updated_at.isoformat() if ticket.updated_at else "",
+        ),
     )
 
 

@@ -41,6 +41,7 @@ class User(Base):
     email_change_tokens = relationship("EmailChangeToken", back_populates="user", cascade="all, delete-orphan")
     # Relationship to sessions
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+    support_tickets = relationship("SupportTicket", back_populates="user", cascade="all, delete-orphan")
 
 
 class APIKey(Base):
@@ -154,3 +155,21 @@ class IpGeoCache(Base):
     longitude = Column(String, nullable=True)
     isp = Column(String, nullable=True)
     looked_up_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+
+
+class SupportTicket(Base):
+    __tablename__ = "support_tickets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    category = Column(String, nullable=False, index=True)
+    priority = Column(String, nullable=False, default="medium", index=True)
+    subject = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    contact_email = Column(String, nullable=False)
+    related_route = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="open", index=True)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False, index=True)
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), nullable=False)
+
+    user = relationship("User", back_populates="support_tickets")
