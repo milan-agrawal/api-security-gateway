@@ -50,6 +50,14 @@ const adminRoutes = {
         subtitle: 'Monitor and audit API key usage',
         file: 'pages/api-key-audit.html'
     },
+    'support-desk': {
+        title: 'Support Desk',
+        subtitle: 'Manage user support tickets and response workflow',
+        file: 'pages/support-desk.html',
+        onLoad: function() {
+            if (typeof initSupportDesk === 'function') initSupportDesk();
+        }
+    },
     'role-management': {
         title: 'Role Management',
         subtitle: 'Admin roles and permission policies',

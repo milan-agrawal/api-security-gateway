@@ -246,7 +246,15 @@ async function _supportLoadOverview() {
             critical_open_tickets: 0,
             security_tickets: 0,
             latest_ticket_updated_at: null,
-            smtp_ready: false
+            smtp_ready: false,
+            workflow_counts: {
+                open: 0,
+                in_review: 0,
+                waiting_for_user: 0,
+                escalated: 0,
+                resolved: 0,
+                closed: 0
+            }
         });
     }
 }
@@ -262,17 +270,37 @@ function _supportRenderOverview(overview) {
     var badgeSecondaryEl = document.getElementById('supportHeroBadgeSecondary');
     var badgeTertiaryEl = document.getElementById('supportHeroBadgeTertiary');
     var formBadgeEl = document.getElementById('supportFormStatusBadge');
+    var workflowOpenEl = document.getElementById('supportWorkflowOpen');
+    var workflowReviewEl = document.getElementById('supportWorkflowReview');
+    var workflowWaitingEl = document.getElementById('supportWorkflowWaiting');
+    var workflowEscalatedEl = document.getElementById('supportWorkflowEscalated');
+    var workflowResolvedEl = document.getElementById('supportWorkflowResolved');
+    var workflowClosedEl = document.getElementById('supportWorkflowClosed');
+    var workflowNoteEl = document.getElementById('supportWorkflowNote');
 
     var openCount = Number(overview.open_tickets || 0);
     var criticalCount = Number(overview.critical_open_tickets || 0);
     var totalCount = Number(overview.total_tickets || 0);
     var securityCount = Number(overview.security_tickets || 0);
     var smtpReady = !!overview.smtp_ready;
+    var workflow = overview.workflow_counts || {};
+    var workflowOpen = Number(workflow.open || 0);
+    var workflowReview = Number(workflow.in_review || 0);
+    var workflowWaiting = Number(workflow.waiting_for_user || 0);
+    var workflowEscalated = Number(workflow.escalated || 0);
+    var workflowResolved = Number(workflow.resolved || 0);
+    var workflowClosed = Number(workflow.closed || 0);
 
     if (openEl) openEl.textContent = String(openCount);
     if (criticalEl) criticalEl.textContent = String(criticalCount);
     if (trackedEl) trackedEl.textContent = String(totalCount);
     if (deliveryEl) deliveryEl.textContent = smtpReady ? 'Ready' : 'Check';
+    if (workflowOpenEl) workflowOpenEl.textContent = String(workflowOpen);
+    if (workflowReviewEl) workflowReviewEl.textContent = String(workflowReview);
+    if (workflowWaitingEl) workflowWaitingEl.textContent = String(workflowWaiting);
+    if (workflowEscalatedEl) workflowEscalatedEl.textContent = String(workflowEscalated);
+    if (workflowResolvedEl) workflowResolvedEl.textContent = String(workflowResolved);
+    if (workflowClosedEl) workflowClosedEl.textContent = String(workflowClosed);
     if (headLabelEl) headLabelEl.textContent = securityCount > 0 ? 'Support Overview | Security Watch Active' : 'Support Overview';
 
     if (badgePrimaryEl) {
@@ -288,7 +316,7 @@ function _supportRenderOverview(overview) {
         badgeTertiaryEl.textContent = smtpReady ? 'Delivery channel connected' : 'Delivery channel needs attention';
     }
     if (formBadgeEl) {
-        formBadgeEl.textContent = smtpReady ? 'Live Form' : 'Save Only';
+        formBadgeEl.textContent = workflowEscalated > 0 ? 'Priority Queue Active' : (smtpReady ? 'Live Form' : 'Save Only');
     }
 
     if (footerEl) {
@@ -296,6 +324,18 @@ function _supportRenderOverview(overview) {
             footerEl.textContent = 'Latest support activity updated ' + _supportTimeAgo(overview.latest_ticket_updated_at) + '. Security requests stay prioritized.';
         } else {
             footerEl.textContent = 'No previous tickets yet. Your first request will appear here immediately after submission.';
+        }
+    }
+
+    if (workflowNoteEl) {
+        if (workflowEscalated > 0) {
+            workflowNoteEl.textContent = workflowEscalated + ' ticket' + (workflowEscalated === 1 ? ' is' : 's are') + ' currently in escalation. Security and critical requests are routed there first.';
+        } else if (workflowWaiting > 0) {
+            workflowNoteEl.textContent = workflowWaiting + ' ticket' + (workflowWaiting === 1 ? ' is' : 's are') + ' waiting for your reply before support can continue.';
+        } else if (workflowReview > 0) {
+            workflowNoteEl.textContent = workflowReview + ' ticket' + (workflowReview === 1 ? ' is' : 's are') + ' actively under review by the support workflow.';
+        } else {
+            workflowNoteEl.textContent = 'New tickets open immediately. Security or critical requests are routed into escalation first.';
         }
     }
 }
@@ -313,15 +353,21 @@ function _supportCategoryLabel(category) {
 
 function _supportStatusClass(status) {
     status = (status || 'open').toLowerCase();
+    if (status === 'in_review') return 'review';
     if (status === 'waiting_for_user') return 'waiting';
+    if (status === 'escalated') return 'escalated';
     if (status === 'resolved') return 'resolved';
+    if (status === 'closed') return 'closed';
     return 'open';
 }
 
 function _supportStatusLabel(status) {
     status = (status || 'open').toLowerCase();
+    if (status === 'in_review') return 'In Review';
     if (status === 'waiting_for_user') return 'Waiting For User';
+    if (status === 'escalated') return 'Escalated';
     if (status === 'resolved') return 'Resolved';
+    if (status === 'closed') return 'Closed';
     return 'Open';
 }
 

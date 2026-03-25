@@ -1430,6 +1430,71 @@ def send_support_ticket_notification(
         return False
 
 
+def send_support_ticket_status_email(
+    recipient_email: str,
+    full_name: str,
+    ticket_id: int,
+    subject: str,
+    old_status: str,
+    new_status: str,
+) -> bool:
+    """
+    Send a user-facing email when support ticket status changes.
+    """
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    from_email = os.getenv("FROM_EMAIL", smtp_user)
+
+    if not smtp_user or not smtp_password or not recipient_email:
+        print("ERROR: SMTP credentials not configured for support ticket status email")
+        return False
+
+    safe_name = html.escape(full_name or recipient_email)
+    safe_subject = html.escape(subject or "")
+    safe_old_status = html.escape((old_status or "open").replace("_", " ").title())
+    safe_new_status = html.escape((new_status or "open").replace("_", " ").title())
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Your support ticket SUP-{ticket_id} is now {safe_new_status}"
+        msg["From"] = f"API Security Gateway <{from_email}>"
+        msg["To"] = recipient_email
+
+        html_body = f"""
+        <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 640px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #2563EB;">Support Ticket Update</h2>
+            <p>Hello {safe_name},</p>
+            <p>Your support ticket status has been updated.</p>
+            <table style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0; width: 100%;">
+                <tr><td><strong>Ticket ID:</strong></td><td>SUP-{ticket_id}</td></tr>
+                <tr><td><strong>Subject:</strong></td><td>{safe_subject}</td></tr>
+                <tr><td><strong>Previous Status:</strong></td><td>{safe_old_status}</td></tr>
+                <tr><td><strong>Current Status:</strong></td><td>{safe_new_status}</td></tr>
+            </table>
+            <p>You can sign in to the Support page to track the latest updates on this request.</p>
+        </div>
+        </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(html_body, "html"))
+
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+        server.ehlo()
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.sendmail(from_email, recipient_email, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"ERROR: Failed to send support ticket status email #{ticket_id}: {str(e)}")
+        return False
+
+
 # ============================================================================
 # User-Agent Parser — lightweight, no external dependency
 # ============================================================================

@@ -467,9 +467,24 @@
     background: var(--warning-soft);
 }
 
+.ticket-status.review {
+    color: var(--accent-primary);
+    background: rgba(88, 166, 255, 0.14);
+}
+
+.ticket-status.escalated {
+    color: var(--error);
+    background: var(--error-soft);
+}
+
 .ticket-status.resolved {
     color: var(--success);
     background: var(--success-soft);
+}
+
+.ticket-status.closed {
+    color: var(--text-secondary);
+    background: rgba(255,255,255,0.08);
 }
 
 .support-ticket-item p {
@@ -495,6 +510,59 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+.support-workflow-card {
+    background:
+        radial-gradient(circle at top right, rgba(88, 166, 255, 0.08), transparent 32%),
+        var(--bg-card);
+}
+
+.support-workflow-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.support-workflow-step {
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.03);
+}
+
+.support-workflow-step strong {
+    display: block;
+    font-size: 20px;
+    color: var(--text-primary);
+}
+
+.support-workflow-step span {
+    display: block;
+    margin-top: 4px;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.support-workflow-step.urgent {
+    border-color: rgba(248, 81, 73, 0.16);
+    background: rgba(248, 81, 73, 0.08);
+}
+
+.support-workflow-step.success {
+    border-color: rgba(63, 185, 80, 0.16);
+    background: rgba(63, 185, 80, 0.08);
+}
+
+.support-workflow-step.neutral {
+    background: rgba(255,255,255,0.02);
+}
+
+.support-workflow-note {
+    margin-top: 14px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.6;
 }
 
 .support-resource {
@@ -588,6 +656,10 @@
     .support-hero {
         grid-template-columns: 1fr;
     }
+
+    .support-workflow-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 760px) {
@@ -607,6 +679,10 @@
     .support-quick-grid,
     .support-form-grid,
     .support-context-strip {
+        grid-template-columns: 1fr;
+    }
+
+    .support-workflow-grid {
         grid-template-columns: 1fr;
     }
 

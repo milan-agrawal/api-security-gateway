@@ -275,6 +275,15 @@ class SupportTicketListResponse(BaseModel):
     tickets: list[SupportTicketListItem]
 
 
+class SupportWorkflowCounts(BaseModel):
+    open: int
+    in_review: int
+    waiting_for_user: int
+    escalated: int
+    resolved: int
+    closed: int
+
+
 class SupportTicketOverviewResponse(BaseModel):
     total_tickets: int
     open_tickets: int
@@ -282,6 +291,7 @@ class SupportTicketOverviewResponse(BaseModel):
     security_tickets: int
     latest_ticket_updated_at: Optional[str] = None
     smtp_ready: bool
+    workflow_counts: SupportWorkflowCounts
 
 
 def _get_pending_email_change(db: Session, user_id: int) -> Optional[EmailChangeToken]:
@@ -291,6 +301,20 @@ def _get_pending_email_change(db: Session, user_id: int) -> Optional[EmailChange
         EmailChangeToken.used == False,
         EmailChangeToken.expires_at > now
     ).order_by(EmailChangeToken.created_at.desc()).first()
+
+
+def _support_normalize_status(value: Optional[str]) -> str:
+    allowed = {"open", "in_review", "waiting_for_user", "escalated", "resolved", "closed"}
+    normalized = (value or "open").strip().lower()
+    return normalized if normalized in allowed else "open"
+
+
+def _support_initial_status(category: str, priority: str) -> str:
+    if (category or "").lower() == "security_issue":
+        return "escalated"
+    if (priority or "").lower() == "critical":
+        return "escalated"
+    return "open"
 
 
 # ============================================================================
@@ -613,7 +637,7 @@ def list_support_tickets(
                 description=t.description,
                 contact_email=t.contact_email,
                 related_route=t.related_route,
-                status=t.status,
+                status=_support_normalize_status(t.status),
                 created_at=t.created_at.isoformat() if t.created_at else "",
                 updated_at=t.updated_at.isoformat() if t.updated_at else "",
             )
@@ -635,10 +659,21 @@ def support_ticket_overview(
     )
 
     total_tickets = len(tickets)
-    open_tickets = sum(1 for t in tickets if (t.status or "open").lower() == "open")
+    workflow_counts = {
+        "open": 0,
+        "in_review": 0,
+        "waiting_for_user": 0,
+        "escalated": 0,
+        "resolved": 0,
+        "closed": 0,
+    }
+    for ticket in tickets:
+        workflow_counts[_support_normalize_status(ticket.status)] += 1
+
+    open_tickets = workflow_counts["open"] + workflow_counts["in_review"] + workflow_counts["waiting_for_user"] + workflow_counts["escalated"]
     critical_open_tickets = sum(
         1 for t in tickets
-        if (t.status or "open").lower() == "open" and (t.priority or "").lower() == "critical"
+        if _support_normalize_status(t.status) in {"open", "in_review", "waiting_for_user", "escalated"} and (t.priority or "").lower() == "critical"
     )
     security_tickets = sum(1 for t in tickets if (t.category or "").lower() == "security_issue")
     latest_ticket_updated_at = tickets[0].updated_at.isoformat() if tickets and tickets[0].updated_at else None
@@ -651,6 +686,7 @@ def support_ticket_overview(
         security_tickets=security_tickets,
         latest_ticket_updated_at=latest_ticket_updated_at,
         smtp_ready=smtp_ready,
+        workflow_counts=SupportWorkflowCounts(**workflow_counts),
     )
 
 
@@ -665,6 +701,8 @@ def create_support_ticket(
     if data.category == "security_issue" and priority in {"low", "medium"}:
         priority = "high"
 
+    initial_status = _support_initial_status(data.category, priority)
+
     ticket = SupportTicket(
         user_id=user.id,
         category=data.category,
@@ -673,7 +711,7 @@ def create_support_ticket(
         description=data.description,
         contact_email=data.contact_email,
         related_route=data.related_route,
-        status="open",
+        status=initial_status,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )
@@ -717,7 +755,7 @@ def create_support_ticket(
             description=ticket.description,
             contact_email=ticket.contact_email,
             related_route=ticket.related_route,
-            status=ticket.status,
+            status=_support_normalize_status(ticket.status),
             created_at=ticket.created_at.isoformat() if ticket.created_at else "",
             updated_at=ticket.updated_at.isoformat() if ticket.updated_at else "",
         ),

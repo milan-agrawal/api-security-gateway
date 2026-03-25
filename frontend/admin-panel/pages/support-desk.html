@@ -1,0 +1,177 @@
+<div class="support-desk-page">
+    <section class="support-desk-hero">
+        <div class="support-desk-copy">
+            <span class="support-desk-eyebrow">Support Operations</span>
+            <h2>Support Desk</h2>
+            <p>
+                Manage user support requests, triage urgent issues, and keep the response workflow moving
+                from one admin workspace.
+            </p>
+            <div class="support-desk-hero-chips">
+                <span class="support-desk-pill neutral" id="supportDeskHeroChipTotal">0 total tickets</span>
+                <span class="support-desk-pill danger" id="supportDeskHeroChipEscalated">0 escalated</span>
+                <span class="support-desk-pill warning" id="supportDeskHeroChipWaiting">0 waiting on user</span>
+                <span class="support-desk-pill success" id="supportDeskHeroChipDelivery">Status emails active</span>
+            </div>
+            <div class="support-desk-hero-actions">
+                <button type="button" class="support-desk-primary-action" id="supportDeskQuickEscalated">View Escalated</button>
+                <button type="button" class="support-desk-secondary-action" id="supportDeskQuickRefresh">Refresh Queue</button>
+            </div>
+            <p class="support-desk-summary-line" id="supportDeskSummaryLine">
+                Queue health will appear here as soon as the live support overview loads.
+            </p>
+        </div>
+        <div class="support-desk-status-card">
+            <div class="support-desk-status-head">
+                <span class="support-desk-dot"></span>
+                <span id="supportDeskStatusLabel">Support queue wiring is ready</span>
+            </div>
+            <div class="support-desk-status-grid">
+                <div class="support-desk-metric">
+                    <strong id="supportDeskMetricOpen">0</strong>
+                    <span>Open</span>
+                </div>
+                <div class="support-desk-metric">
+                    <strong id="supportDeskMetricEscalated">0</strong>
+                    <span>Escalated</span>
+                </div>
+                <div class="support-desk-metric">
+                    <strong id="supportDeskMetricResolved">0</strong>
+                    <span>Resolved</span>
+                </div>
+                <div class="support-desk-metric">
+                    <strong id="supportDeskMetricWaiting">0</strong>
+                    <span>Waiting</span>
+                </div>
+                <div class="support-desk-metric">
+                    <strong id="supportDeskMetricReview">0</strong>
+                    <span>In Review</span>
+                </div>
+                <div class="support-desk-metric">
+                    <strong id="supportDeskMetricClosed">0</strong>
+                    <span>Closed</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="support-desk-layout">
+        <article class="support-desk-card">
+            <div class="support-desk-card-head">
+                <div>
+                    <span class="support-desk-kicker">Queue</span>
+                    <h3>Incoming support workflow</h3>
+                </div>
+                <div class="support-desk-actions">
+                    <span class="support-desk-badge" id="supportDeskQueueBadge">Page connected</span>
+                    <button type="button" class="support-desk-refresh" id="supportDeskRefreshBtn">Refresh</button>
+                </div>
+            </div>
+
+            <div class="support-desk-quick-tabs">
+                <button type="button" class="support-desk-tab active" data-support-tab="all">All</button>
+                <button type="button" class="support-desk-tab" data-support-tab="escalated">Escalated</button>
+                <button type="button" class="support-desk-tab" data-support-tab="waiting_for_user">Waiting</button>
+                <button type="button" class="support-desk-tab" data-support-tab="resolved">Resolved</button>
+            </div>
+
+            <div class="support-desk-filter-row">
+                <select id="supportDeskStatusFilter">
+                    <option value="">All statuses</option>
+                    <option value="open">Open</option>
+                    <option value="in_review">In Review</option>
+                    <option value="waiting_for_user">Waiting For User</option>
+                    <option value="escalated">Escalated</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="closed">Closed</option>
+                </select>
+                <select id="supportDeskCategoryFilter">
+                    <option value="">All categories</option>
+                    <option value="api_issue">API Access Issue</option>
+                    <option value="account_issue">Account & MFA Help</option>
+                    <option value="security_issue">Security Emergency</option>
+                    <option value="bug_report">Bug Report</option>
+                    <option value="general_question">General Question</option>
+                </select>
+                <select id="supportDeskPriorityFilter">
+                    <option value="">All priorities</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                </select>
+            </div>
+
+            <div class="support-desk-placeholder-list" id="supportDeskTicketList">
+                <div class="support-desk-placeholder-item">
+                    <div>
+                        <strong>Loading support desk queue...</strong>
+                        <p>Live support tickets will appear here once the page finishes loading.</p>
+                    </div>
+                    <span class="support-desk-pill neutral">Loading</span>
+                </div>
+            </div>
+        </article>
+
+        <aside class="support-desk-side">
+            <article class="support-desk-card support-desk-side-card">
+                <div class="support-desk-card-head compact">
+                    <div>
+                        <span class="support-desk-kicker">Selected Ticket</span>
+                        <h3>Ticket details</h3>
+                    </div>
+                </div>
+                <div class="support-desk-detail-empty" id="supportDeskDetailEmpty">
+                    <strong>Select a ticket from the queue</strong>
+                    <p>Ticket details, user context, route information, and timestamps will appear here.</p>
+                </div>
+                <div class="support-desk-detail-panel" id="supportDeskDetailPanel" style="display:none;">
+                    <div class="support-desk-detail-header">
+                        <div>
+                            <strong id="supportDeskDetailId">SUP-0</strong>
+                            <p id="supportDeskDetailSubject">Ticket subject</p>
+                        </div>
+                        <div class="support-desk-detail-badges">
+                            <span class="support-desk-pill info" id="supportDeskDetailPriority">Medium</span>
+                            <span class="support-desk-pill neutral" id="supportDeskDetailStatus">Open</span>
+                        </div>
+                    </div>
+                    <div class="support-desk-detail-grid">
+                        <div class="support-desk-detail-item">
+                            <span>User</span>
+                            <strong id="supportDeskDetailUser">User Name</strong>
+                        </div>
+                        <div class="support-desk-detail-item">
+                            <span>Account Email</span>
+                            <strong id="supportDeskDetailUserEmail">user@example.com</strong>
+                        </div>
+                        <div class="support-desk-detail-item">
+                            <span>Contact Email</span>
+                            <strong id="supportDeskDetailContactEmail">user@example.com</strong>
+                        </div>
+                        <div class="support-desk-detail-item">
+                            <span>Category</span>
+                            <strong id="supportDeskDetailCategory">API Access Issue</strong>
+                        </div>
+                        <div class="support-desk-detail-item">
+                            <span>Route</span>
+                            <strong id="supportDeskDetailRoute">support</strong>
+                        </div>
+                        <div class="support-desk-detail-item">
+                            <span>Updated</span>
+                            <strong id="supportDeskDetailUpdated">just now</strong>
+                        </div>
+                        <div class="support-desk-detail-item">
+                            <span>Created</span>
+                            <strong id="supportDeskDetailCreated">just now</strong>
+                        </div>
+                    </div>
+                    <div class="support-desk-detail-description">
+                        <span>Description</span>
+                        <p id="supportDeskDetailDescription">Full ticket description will appear here.</p>
+                    </div>
+                </div>
+            </article>
+        </aside>
+    </section>
+</div>

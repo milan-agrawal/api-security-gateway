@@ -1,7 +1,7 @@
 """
 Admin endpoints for user management
 """
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Header, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Header, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text as sa_text
 from pydantic import BaseModel, EmailStr, validator
@@ -20,8 +20,14 @@ import redis
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from deps import get_db
-from models import User, APIKey, SecurityEvent, AuditLog
-from utils import generate_secure_password, send_credentials_email, send_password_changed_notification
+from models import User, APIKey, SecurityEvent, AuditLog, SupportTicket
+from utils import (
+    generate_secure_password,
+    send_credentials_email,
+    send_password_changed_notification,
+    send_support_ticket_status_email,
+    log_audit,
+)
 from db import DATABASE_URL, SessionLocal
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -169,6 +175,55 @@ class UserListItem(BaseModel):
 class UsersListResponse(BaseModel):
     users: list[UserListItem]
     total: int
+
+
+class AdminSupportTicketItem(BaseModel):
+    id: int
+    user_id: int
+    user_email: str
+    user_full_name: str
+    category: str
+    priority: str
+    subject: str
+    description: str
+    contact_email: str
+    related_route: Optional[str] = None
+    status: str
+    created_at: str
+    updated_at: str
+
+
+class AdminSupportTicketListResponse(BaseModel):
+    tickets: list[AdminSupportTicketItem]
+    total: int
+
+
+class AdminSupportTicketOverviewResponse(BaseModel):
+    total_tickets: int
+    open: int
+    in_review: int
+    waiting_for_user: int
+    escalated: int
+    resolved: int
+    closed: int
+
+
+class AdminSupportTicketStatusUpdateRequest(BaseModel):
+    status: str
+
+    @validator('status')
+    def validate_status(cls, v):
+        allowed = {'open', 'in_review', 'waiting_for_user', 'escalated', 'resolved', 'closed'}
+        value = (v or '').strip().lower()
+        if value not in allowed:
+            raise ValueError('Invalid support ticket status')
+        return value
+
+
+def _support_normalize_status(value: Optional[str]) -> str:
+    allowed = {'open', 'in_review', 'waiting_for_user', 'escalated', 'resolved', 'closed'}
+    normalized = (value or 'open').strip().lower()
+    return normalized if normalized in allowed else 'open'
 
 
 # Background task to activate account after 2 minutes
@@ -688,6 +743,132 @@ def get_user_activity(
             "last_activity": last_activity
         },
         "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None
+    }
+
+
+@router.get("/support-tickets", response_model=AdminSupportTicketListResponse)
+def list_support_tickets(
+    status_filter: Optional[str] = None,
+    category: Optional[str] = None,
+    priority: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    query = db.query(SupportTicket, User).join(User, SupportTicket.user_id == User.id)
+
+    if status_filter:
+        query = query.filter(SupportTicket.status == _support_normalize_status(status_filter))
+    if category:
+        query = query.filter(SupportTicket.category == category.strip().lower())
+    if priority:
+        query = query.filter(SupportTicket.priority == priority.strip().lower())
+
+    rows = query.order_by(SupportTicket.updated_at.desc()).all()
+
+    tickets = [
+        AdminSupportTicketItem(
+            id=ticket.id,
+            user_id=user.id,
+            user_email=user.email,
+            user_full_name=user.full_name,
+            category=ticket.category,
+            priority=ticket.priority,
+            subject=ticket.subject,
+            description=ticket.description,
+            contact_email=ticket.contact_email,
+            related_route=ticket.related_route,
+            status=_support_normalize_status(ticket.status),
+            created_at=ticket.created_at.isoformat() if ticket.created_at else "",
+            updated_at=ticket.updated_at.isoformat() if ticket.updated_at else "",
+        )
+        for ticket, user in rows
+    ]
+
+    return AdminSupportTicketListResponse(tickets=tickets, total=len(tickets))
+
+
+@router.get("/support-tickets/overview", response_model=AdminSupportTicketOverviewResponse)
+def support_ticket_overview(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    tickets = db.query(SupportTicket).all()
+    counts = {
+        'open': 0,
+        'in_review': 0,
+        'waiting_for_user': 0,
+        'escalated': 0,
+        'resolved': 0,
+        'closed': 0,
+    }
+    for ticket in tickets:
+        counts[_support_normalize_status(ticket.status)] += 1
+
+    return AdminSupportTicketOverviewResponse(
+        total_tickets=len(tickets),
+        open=counts['open'],
+        in_review=counts['in_review'],
+        waiting_for_user=counts['waiting_for_user'],
+        escalated=counts['escalated'],
+        resolved=counts['resolved'],
+        closed=counts['closed'],
+    )
+
+
+@router.patch("/support-tickets/{ticket_id}")
+def update_support_ticket_status(
+    ticket_id: int,
+    body: AdminSupportTicketStatusUpdateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    ticket = db.query(SupportTicket).filter(SupportTicket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Support ticket SUP-{ticket_id} not found"
+        )
+
+    new_status = _support_normalize_status(body.status)
+    old_status = _support_normalize_status(ticket.status)
+    if old_status == new_status:
+        return {
+            "success": True,
+            "message": f"Support ticket SUP-{ticket.id} is already {new_status.replace('_', ' ')}",
+            "ticket_id": ticket.id,
+            "status": new_status,
+        }
+
+    ticket.status = new_status
+    ticket.updated_at = datetime.now(timezone.utc)
+
+    log_audit(
+        db,
+        admin.id,
+        "support_ticket_status_updated",
+        f"Support ticket SUP-{ticket.id} status changed from {old_status} to {new_status}",
+        request,
+    )
+    db.commit()
+
+    try:
+        send_support_ticket_status_email(
+            recipient_email=ticket.user.email,
+            full_name=ticket.user.full_name if ticket.user else "",
+            ticket_id=ticket.id,
+            subject=ticket.subject,
+            old_status=old_status,
+            new_status=new_status,
+        )
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "message": f"Support ticket SUP-{ticket.id} moved to {new_status.replace('_', ' ')}",
+        "ticket_id": ticket.id,
+        "status": new_status,
     }
 
 
