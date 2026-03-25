@@ -42,6 +42,8 @@ class User(Base):
     # Relationship to sessions
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
     support_tickets = relationship("SupportTicket", back_populates="user", cascade="all, delete-orphan")
+    support_ticket_messages = relationship("SupportTicketMessage", back_populates="author", cascade="all, delete-orphan")
+    support_ticket_attachments = relationship("SupportTicketAttachment", back_populates="uploader", cascade="all, delete-orphan")
 
 
 class APIKey(Base):
@@ -173,3 +175,37 @@ class SupportTicket(Base):
     updated_at = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), nullable=False)
 
     user = relationship("User", back_populates="support_tickets")
+    messages = relationship("SupportTicketMessage", back_populates="ticket", cascade="all, delete-orphan")
+    attachments = relationship("SupportTicketAttachment", back_populates="ticket", cascade="all, delete-orphan")
+
+
+class SupportTicketMessage(Base):
+    __tablename__ = "support_ticket_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_id = Column(Integer, ForeignKey("support_tickets.id", ondelete="CASCADE"), nullable=False, index=True)
+    author_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    author_type = Column(String, nullable=False, index=True)  # user or admin
+    message = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False, index=True)
+
+    ticket = relationship("SupportTicket", back_populates="messages")
+    author = relationship("User", back_populates="support_ticket_messages")
+
+
+class SupportTicketAttachment(Base):
+    __tablename__ = "support_ticket_attachments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ticket_id = Column(Integer, ForeignKey("support_tickets.id", ondelete="CASCADE"), nullable=False, index=True)
+    uploaded_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    uploader_type = Column(String, nullable=False, index=True)  # user or admin
+    filename = Column(String, nullable=False)
+    content_type = Column(String, nullable=False)
+    file_size = Column(Integer, nullable=False)
+    file_data = Column(Text, nullable=False)  # Base64 payload
+    storage_ref = Column(String, nullable=True, index=True)  # Optional filesystem/object-storage reference
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False, index=True)
+
+    ticket = relationship("SupportTicket", back_populates="attachments")
+    uploader = relationship("User", back_populates="support_ticket_attachments")

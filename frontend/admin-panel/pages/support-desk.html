@@ -68,6 +68,13 @@
                 </div>
             </div>
 
+            <div class="support-desk-search-row">
+                <input id="supportDeskSearch" type="search" placeholder="Search tickets, users, routes, or text">
+                <div class="support-desk-search-actions">
+                    <button type="button" class="support-desk-refresh" id="supportDeskSearchClear">Clear</button>
+                </div>
+            </div>
+
             <div class="support-desk-quick-tabs">
                 <button type="button" class="support-desk-tab active" data-support-tab="all">All</button>
                 <button type="button" class="support-desk-tab" data-support-tab="escalated">Escalated</button>
@@ -165,10 +172,49 @@
                             <span>Created</span>
                             <strong id="supportDeskDetailCreated">just now</strong>
                         </div>
+                        <div class="support-desk-detail-item">
+                            <span>SLA Status</span>
+                            <strong id="supportDeskDetailSlaStatus">On track</strong>
+                        </div>
+                        <div class="support-desk-detail-item">
+                            <span>SLA Target</span>
+                            <strong id="supportDeskDetailSlaTarget">Target window active</strong>
+                        </div>
                     </div>
                     <div class="support-desk-detail-description">
                         <span>Description</span>
                         <p id="supportDeskDetailDescription">Full ticket description will appear here.</p>
+                    </div>
+                    <div class="support-desk-attachments-block">
+                        <div class="support-desk-thread-head">
+                            <span>Attachments</span>
+                            <strong id="supportDeskAttachmentCount">0 files</strong>
+                        </div>
+                        <div class="support-desk-attachment-list" id="supportDeskAttachmentList">
+                            <div class="support-desk-thread-empty">No attachments yet.</div>
+                        </div>
+                        <div class="support-desk-attachment-upload">
+                            <label for="supportDeskAttachmentInput">Add attachment</label>
+                            <div class="support-desk-attachment-row">
+                                <input id="supportDeskAttachmentInput" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.csv,.json,.log">
+                                <button type="button" class="support-desk-update-btn" id="supportDeskAttachmentUploadBtn">Upload</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="support-desk-thread-block">
+                        <div class="support-desk-thread-head">
+                            <span>Conversation</span>
+                            <strong id="supportDeskThreadCount">0 messages</strong>
+                        </div>
+                        <div class="support-desk-thread-list" id="supportDeskThreadList">
+                            <div class="support-desk-thread-empty">No replies yet.</div>
+                        </div>
+                    </div>
+                    <div class="support-desk-reply-block">
+                        <div class="support-desk-reply-composer">
+                            <textarea id="supportDeskReplyInput" rows="1" placeholder="Type as a admin..."></textarea>
+                            <button type="button" class="support-desk-update-btn support-desk-chat-send" id="supportDeskReplyBtn" aria-label="Send reply">Send</button>
+                        </div>
                     </div>
                 </div>
             </article>

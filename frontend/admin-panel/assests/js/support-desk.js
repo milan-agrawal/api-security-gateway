@@ -1,4 +1,11 @@
 var supportDeskSelectedTicketId = null;
+var supportDeskSearchDebounceTimer = null;
+var SUPPORT_DESK_SLA_MINUTES = {
+    critical: 30,
+    high: 120,
+    medium: 480,
+    low: 1440
+};
 
 function initSupportDesk() {
     _supportDeskBind();
@@ -27,7 +34,8 @@ async function _supportDeskFetch(path, options) {
     } catch (e) {}
 
     if (!response.ok) {
-        throw new Error((data && (data.detail || data.message)) || response.statusText || 'Request failed');
+        var detail = _supportDeskNormalizeErrorDetail(data && data.detail);
+        throw new Error(detail || (data && data.message) || response.statusText || 'Request failed');
     }
 
     return data;
@@ -40,6 +48,11 @@ function _supportDeskBind() {
     var statusFilter = document.getElementById('supportDeskStatusFilter');
     var categoryFilter = document.getElementById('supportDeskCategoryFilter');
     var priorityFilter = document.getElementById('supportDeskPriorityFilter');
+    var replyBtn = document.getElementById('supportDeskReplyBtn');
+    var replyInput = document.getElementById('supportDeskReplyInput');
+    var searchInput = document.getElementById('supportDeskSearch');
+    var searchClearBtn = document.getElementById('supportDeskSearchClear');
+    var attachmentUploadBtn = document.getElementById('supportDeskAttachmentUploadBtn');
 
     if (refreshBtn && !refreshBtn.dataset.bound) {
         refreshBtn.dataset.bound = 'true';
@@ -86,6 +99,54 @@ function _supportDeskBind() {
             _supportDeskLoadTickets();
         });
     });
+
+    if (replyBtn && !replyBtn.dataset.bound) {
+        replyBtn.dataset.bound = 'true';
+        replyBtn.addEventListener('click', function () {
+            _supportDeskSendReply();
+        });
+    }
+    if (replyInput && !replyInput.dataset.bound) {
+        replyInput.dataset.bound = 'true';
+        replyInput.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                _supportDeskSendReply();
+            }
+        });
+    }
+
+    if (searchInput && !searchInput.dataset.bound) {
+        searchInput.dataset.bound = 'true';
+        searchInput.addEventListener('input', function () {
+            window.clearTimeout(supportDeskSearchDebounceTimer);
+            supportDeskSearchDebounceTimer = window.setTimeout(function () {
+                _supportDeskLoadTickets();
+            }, 220);
+        });
+        searchInput.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                window.clearTimeout(supportDeskSearchDebounceTimer);
+                _supportDeskLoadTickets();
+            }
+        });
+    }
+
+    if (searchClearBtn && !searchClearBtn.dataset.bound) {
+        searchClearBtn.dataset.bound = 'true';
+        searchClearBtn.addEventListener('click', function () {
+            if (searchInput) searchInput.value = '';
+            _supportDeskLoadTickets();
+        });
+    }
+
+    if (attachmentUploadBtn && !attachmentUploadBtn.dataset.bound) {
+        attachmentUploadBtn.dataset.bound = 'true';
+        attachmentUploadBtn.addEventListener('click', function () {
+            _supportDeskUploadAttachment();
+        });
+    }
 }
 
 async function _supportDeskLoadOverview() {
@@ -108,9 +169,11 @@ async function _supportDeskLoadTickets() {
     listEl.innerHTML = '<div class="support-desk-placeholder-item"><div><strong>Loading support tickets...</strong><p>Please wait while the queue is refreshed.</p></div><span class="support-desk-pill neutral">Loading</span></div>';
 
     var query = new URLSearchParams();
+    var searchQuery = (document.getElementById('supportDeskSearch') || {}).value || '';
     var statusFilter = (document.getElementById('supportDeskStatusFilter') || {}).value || '';
     var categoryFilter = (document.getElementById('supportDeskCategoryFilter') || {}).value || '';
     var priorityFilter = (document.getElementById('supportDeskPriorityFilter') || {}).value || '';
+    if (searchQuery.trim()) query.set('q', searchQuery.trim());
     if (statusFilter) query.set('status_filter', statusFilter);
     if (categoryFilter) query.set('category', categoryFilter);
     if (priorityFilter) query.set('priority', priorityFilter);
@@ -136,6 +199,8 @@ async function _supportDeskLoadTickets() {
 
         listEl.innerHTML = tickets.map(function (ticket) {
             var isSelected = ticket.id === supportDeskSelectedTicketId;
+            var attachmentLabel = ticket.attachment_count > 0 ? (' · ' + ticket.attachment_count + ' attachment' + (ticket.attachment_count === 1 ? '' : 's')) : '';
+            var sla = _supportDeskTicketSla(ticket);
             return '' +
                 '<div class="support-desk-ticket' + (isSelected ? ' selected' : '') + '" data-ticket-card="' + ticket.id + '">' +
                     '<div class="support-desk-ticket-head">' +
@@ -146,12 +211,13 @@ async function _supportDeskLoadTickets() {
                         '<div class="support-desk-ticket-badges">' +
                             '<span class="support-desk-pill ' + _supportDeskPriorityClass(ticket.priority) + '">' + _supportDeskLabel(ticket.priority) + '</span>' +
                             '<span class="support-desk-pill ' + _supportDeskStatusClass(ticket.status) + '">' + _supportDeskLabel(ticket.status) + '</span>' +
+                            '<span class="support-desk-sla-badge ' + sla.className + '">' + _supportDeskEscape(sla.shortLabel) + '</span>' +
                         '</div>' +
                     '</div>' +
                     '<div class="support-desk-ticket-meta">' +
                         '<span>' + _supportDeskCategoryLabel(ticket.category) + '</span>' +
                         '<span>Route: ' + _supportDeskEscape(ticket.related_route || 'support') + '</span>' +
-                        '<span>Updated ' + _supportDeskTimeAgo(ticket.updated_at) + '</span>' +
+                        '<span>Updated ' + _supportDeskTimeAgo(ticket.updated_at) + attachmentLabel + '</span>' +
                     '</div>' +
                     '<p class="support-desk-ticket-description">' + _supportDeskEscape(ticket.description) + '</p>' +
                     '<div class="support-desk-ticket-actions">' +
@@ -162,6 +228,7 @@ async function _supportDeskLoadTickets() {
                     '</div>' +
                 '</div>';
         }).join('');
+        _supportDeskBindAttachmentDownloads(listEl);
 
         _supportDeskBindTicketCards(tickets);
         _supportDeskBindUpdateButtons();
@@ -327,14 +394,35 @@ function _supportDeskStatusOptions(currentStatus) {
 }
 
 function _supportDeskTimeAgo(iso) {
-    if (!iso) return 'just now';
-    var ts = new Date(/Z$|[+-]\d{2}:\d{2}$/.test(iso) ? iso : (iso + 'Z'));
-    if (isNaN(ts.getTime())) return 'just now';
-    var diff = Math.floor((Date.now() - ts.getTime()) / 1000);
-    if (diff < 60) return 'just now';
-    if (diff < 3600) return Math.floor(diff / 60) + ' min ago';
-    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-    return Math.floor(diff / 86400) + 'd ago';
+    return _supportDeskMumbaiDateTime(iso);
+}
+
+function _supportDeskChatTime(iso) {
+    if (!iso) return 'Unknown time';
+    var hasZone = /Z$|[+-]\d{2}:\d{2}$/.test(iso);
+    var ts = new Date(hasZone ? iso : (iso + '+05:30'));
+    if (isNaN(ts.getTime())) return 'Unknown time';
+    return ts.toLocaleTimeString('en-IN', {
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'Asia/Kolkata'
+    });
+}
+
+function _supportDeskMumbaiDateTime(iso) {
+    if (!iso) return 'Unknown time';
+    var hasZone = /Z$|[+-]\d{2}:\d{2}$/.test(iso);
+    var ts = new Date(hasZone ? iso : (iso + '+05:30'));
+    if (isNaN(ts.getTime())) return 'Unknown time';
+    return ts.toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kolkata'
+    }) + ' IST';
 }
 
 function _supportDeskEscape(value) {
@@ -343,9 +431,14 @@ function _supportDeskEscape(value) {
     return div.innerHTML;
 }
 
+function _supportDeskThreadRoleLabel(authorType) {
+    return (authorType || '').toLowerCase() === 'admin' ? 'Admin' : 'User';
+}
+
 function _supportDeskRenderSelectedTicket(tickets) {
     var emptyEl = document.getElementById('supportDeskDetailEmpty');
     var panelEl = document.getElementById('supportDeskDetailPanel');
+    var attachmentCountEl = document.getElementById('supportDeskAttachmentCount');
     var ticket = (tickets || []).find(function (item) {
         return item.id === supportDeskSelectedTicketId;
     });
@@ -370,11 +463,22 @@ function _supportDeskRenderSelectedTicket(tickets) {
     _supportDeskSetText('supportDeskDetailUpdated', _supportDeskTimeAgo(ticket.updated_at));
     _supportDeskSetText('supportDeskDetailCreated', _supportDeskTimeAgo(ticket.created_at));
     _supportDeskSetText('supportDeskDetailDescription', ticket.description);
+    var sla = _supportDeskTicketSla(ticket);
+    _supportDeskSetText('supportDeskDetailSlaStatus', sla.label);
+    _supportDeskSetText('supportDeskDetailSlaTarget', sla.target);
+    _supportDeskLoadTicketThread(ticket.id);
 
     var priorityEl = document.getElementById('supportDeskDetailPriority');
     var statusEl = document.getElementById('supportDeskDetailStatus');
     if (priorityEl) priorityEl.className = 'support-desk-pill ' + _supportDeskPriorityClass(ticket.priority);
     if (statusEl) statusEl.className = 'support-desk-pill ' + _supportDeskStatusClass(ticket.status);
+
+    if (attachmentCountEl) {
+        var attachmentCount = Number(ticket.attachment_count || 0);
+        attachmentCountEl.textContent = attachmentCount + ' file' + (attachmentCount === 1 ? '' : 's');
+    }
+
+    _supportDeskLoadTicketAttachments(ticket.id);
 }
 
 function _supportDeskClearSelectedTicket() {
@@ -389,6 +493,182 @@ function _supportDeskSetText(id, value) {
     if (el) el.textContent = value || '';
 }
 
+async function _supportDeskLoadTicketThread(ticketId) {
+    var listEl = document.getElementById('supportDeskThreadList');
+    var countEl = document.getElementById('supportDeskThreadCount');
+    if (!ticketId || !listEl) return;
+
+    listEl.innerHTML = '<div class="support-desk-thread-empty">Loading conversation...</div>';
+
+    try {
+        var result = await _supportDeskFetch('/admin/support-tickets/' + ticketId, {
+            headers: _supportDeskAuthHeaders()
+        });
+        var messages = (result && result.messages) || [];
+        if (countEl) countEl.textContent = messages.length + ' message' + (messages.length === 1 ? '' : 's');
+
+        if (!messages.length) {
+            listEl.innerHTML = '<div class="support-desk-thread-empty">No replies yet.</div>';
+            return;
+        }
+
+        listEl.innerHTML = messages.map(function (message) {
+            var roleLabel = _supportDeskThreadRoleLabel(message.author_type);
+            var authorInitial = _supportDeskEscape(roleLabel.charAt(0).toUpperCase());
+            return '' +
+                '<div class="support-desk-thread-row ' + (message.author_type === 'admin' ? 'admin' : 'user') + '">' +
+                    '<div class="support-desk-thread-avatar">' + authorInitial + '</div>' +
+                    '<div class="support-desk-thread-message ' + (message.author_type === 'admin' ? 'admin' : 'user') + '">' +
+                        '<div class="support-desk-thread-meta">' +
+                            '<strong>' + _supportDeskEscape(roleLabel) + '</strong>' +
+                            '<span>' + _supportDeskChatTime(message.created_at) + '</span>' +
+                        '</div>' +
+                        '<p>' + _supportDeskEscape(message.message) + '</p>' +
+                    '</div>' +
+                '</div>';
+        }).join('');
+        _supportDeskScrollThreadToBottom(listEl);
+    } catch (error) {
+        if (countEl) countEl.textContent = '0 messages';
+        listEl.innerHTML = '<div class="support-desk-thread-empty">Unable to load conversation right now.</div>';
+    }
+}
+
+function _supportDeskScrollThreadToBottom(listEl) {
+    if (!listEl) return;
+    window.requestAnimationFrame(function () {
+        listEl.scrollTop = listEl.scrollHeight;
+    });
+}
+
+async function _supportDeskLoadTicketAttachments(ticketId) {
+    var listEl = document.getElementById('supportDeskAttachmentList');
+    var countEl = document.getElementById('supportDeskAttachmentCount');
+    if (!ticketId || !listEl) return;
+
+    listEl.innerHTML = '<div class="support-desk-thread-empty">Loading attachments...</div>';
+
+    try {
+        var result = await _supportDeskFetch('/admin/support-tickets/' + ticketId, {
+            headers: _supportDeskAuthHeaders()
+        });
+        var attachments = (result && result.attachments) || [];
+
+        if (countEl) countEl.textContent = attachments.length + ' file' + (attachments.length === 1 ? '' : 's');
+
+        if (!attachments.length) {
+            listEl.innerHTML = '<div class="support-desk-thread-empty">No attachments yet.</div>';
+            return;
+        }
+
+        listEl.innerHTML = attachments.map(function (attachment) {
+            var sizeKb = Math.max(1, Math.round((attachment.file_size || 0) / 1024));
+            var roleLabel = _supportDeskThreadRoleLabel(attachment.uploader_type);
+            return '' +
+                '<div class="support-desk-attachment-item">' +
+                    '<div>' +
+                        '<strong>' + _supportDeskEscape(attachment.filename) + '</strong>' +
+                        '<p>' + _supportDeskEscape(roleLabel) + ' · ' + _supportDeskTimeAgo(attachment.created_at) + ' · ' + sizeKb + ' KB</p>' +
+                        '<span>' + _supportDeskEscape(attachment.content_type) + '</span>' +
+                    '</div>' +
+                    '<button type="button" class="support-desk-attachment-download" data-download-url="' + _supportDeskEscape(attachment.download_url) + '" data-download-filename="' + _supportDeskEscape(attachment.filename) + '">Download</button>' +
+                '</div>';
+        }).join('');
+    } catch (error) {
+        if (countEl) countEl.textContent = '0 files';
+        listEl.innerHTML = '<div class="support-desk-thread-empty">Unable to load attachments right now.</div>';
+    }
+}
+
+async function _supportDeskSendReply() {
+    var replyInput = document.getElementById('supportDeskReplyInput');
+    var replyBtn = document.getElementById('supportDeskReplyBtn');
+    if (!supportDeskSelectedTicketId || !replyInput || !replyBtn) return;
+
+    var message = (replyInput.value || '').trim();
+    if (message.length < 2) {
+        if (typeof showToast === 'function') showToast('Reply must be at least 2 characters.', 'error');
+        return;
+    }
+
+    replyBtn.disabled = true;
+    replyBtn.textContent = 'Sending...';
+
+    try {
+        var result = await _supportDeskFetch('/admin/support-tickets/' + supportDeskSelectedTicketId + '/messages', {
+            method: 'POST',
+            headers: _supportDeskAuthHeaders(),
+            body: JSON.stringify({ message: message })
+        });
+        replyInput.value = '';
+        if (typeof showToast === 'function') showToast(result.message || 'Reply sent successfully.', 'success');
+        _supportDeskLoadOverview();
+        _supportDeskLoadTickets();
+    } catch (error) {
+        if (typeof showToast === 'function') showToast(error.message || 'Failed to send reply.', 'error');
+    } finally {
+        replyBtn.disabled = false;
+        replyBtn.textContent = 'Send';
+    }
+}
+
+async function _supportDeskUploadAttachment() {
+    var fileInput = document.getElementById('supportDeskAttachmentInput');
+    var uploadBtn = document.getElementById('supportDeskAttachmentUploadBtn');
+    if (!supportDeskSelectedTicketId || !fileInput || !uploadBtn) return;
+
+    if (!fileInput.files || !fileInput.files.length) {
+        if (typeof showToast === 'function') showToast('Choose a file to upload first.', 'error');
+        return;
+    }
+
+    var file = fileInput.files[0];
+    if (file.size > 2 * 1024 * 1024) {
+        if (typeof showToast === 'function') showToast('Attachment must be 2 MB or smaller.', 'error');
+        return;
+    }
+
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = 'Uploading...';
+
+    try {
+        var formData = new FormData();
+        formData.append('file', file);
+        var response = await fetch('http://localhost:8001/admin/support-tickets/' + supportDeskSelectedTicketId + '/attachments', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
+            },
+            body: formData
+        });
+
+        if (response.status === 401) {
+            localStorage.clear();
+            window.location.replace('http://localhost:3000/login.html');
+            throw new Error('Session expired');
+        }
+
+        var data = {};
+        try {
+            data = await response.json();
+        } catch (e) {}
+
+        if (!response.ok) {
+            throw new Error((data && (data.detail || data.message)) || response.statusText || 'Upload failed');
+        }
+
+        fileInput.value = '';
+        if (typeof showToast === 'function') showToast(data.message || 'Attachment uploaded successfully.', 'success');
+        _supportDeskLoadOverview();
+        _supportDeskLoadTickets();
+    } catch (error) {
+        if (typeof showToast === 'function') showToast(error.message || 'Failed to upload attachment.', 'error');
+    } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Upload';
+    }
+}
+
 function _supportDeskSetActiveTab(status) {
     document.querySelectorAll('.support-desk-tab').forEach(function (tab) {
         var tabStatus = tab.getAttribute('data-support-tab') || 'all';
@@ -399,6 +679,148 @@ function _supportDeskSetActiveTab(status) {
 function _supportDeskSyncTabsWithStatus() {
     var statusFilter = (document.getElementById('supportDeskStatusFilter') || {}).value || '';
     _supportDeskSetActiveTab(statusFilter || 'all');
+}
+
+function _supportDeskParseTs(ts) {
+    if (!ts) return null;
+    var parsed = new Date(/Z$|[+-]\d{2}:\d{2}$/.test(ts) ? ts : (ts + 'Z'));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function _supportDeskFormatDuration(minutes) {
+    minutes = Math.max(0, Math.round(Number(minutes) || 0));
+    if (minutes < 60) return minutes + 'm';
+    var hours = Math.floor(minutes / 60);
+    var mins = minutes % 60;
+    if (hours < 24) return mins ? (hours + 'h ' + mins + 'm') : (hours + 'h');
+    var days = Math.floor(hours / 24);
+    var remHours = hours % 24;
+    return remHours ? (days + 'd ' + remHours + 'h') : (days + 'd');
+}
+
+function _supportDeskTicketSla(ticket) {
+    var priority = (ticket && ticket.priority ? String(ticket.priority) : 'medium').toLowerCase();
+    var targetMinutes = SUPPORT_DESK_SLA_MINUTES[priority] || SUPPORT_DESK_SLA_MINUTES.medium;
+    var createdAt = _supportDeskParseTs(ticket && ticket.created_at);
+    if (!createdAt) {
+        return {
+            className: 'ok',
+            shortLabel: 'SLA',
+            label: 'SLA unavailable',
+            target: 'Created time missing'
+        };
+    }
+
+    var status = (ticket && ticket.status ? String(ticket.status) : 'open').toLowerCase();
+    var closedLike = status === 'resolved' || status === 'closed';
+    var updatedAt = _supportDeskParseTs(ticket && ticket.updated_at);
+    var endTs = closedLike && updatedAt ? updatedAt : new Date();
+    var elapsedMinutes = Math.max(0, Math.floor((endTs.getTime() - createdAt.getTime()) / 60000));
+    var remainingMinutes = targetMinutes - elapsedMinutes;
+    var targetText = _supportDeskFormatDuration(targetMinutes);
+
+    if (closedLike) {
+        if (elapsedMinutes <= targetMinutes) {
+            return {
+                className: 'ok',
+                shortLabel: 'SLA met',
+                label: 'Resolved within SLA',
+                target: 'Resolved in ' + _supportDeskFormatDuration(elapsedMinutes) + ' (target ' + targetText + ')'
+            };
+        }
+        return {
+            className: 'breached',
+            shortLabel: 'Breached',
+            label: 'Resolved after SLA breach',
+            target: 'Resolved in ' + _supportDeskFormatDuration(elapsedMinutes) + ' (target ' + targetText + ')'
+        };
+    }
+
+    if (remainingMinutes <= 0) {
+        return {
+            className: 'breached',
+            shortLabel: 'Breached',
+            label: 'SLA breached',
+            target: 'Target was ' + targetText
+        };
+    }
+
+    if (remainingMinutes <= Math.ceil(targetMinutes * 0.25)) {
+        return {
+            className: 'risk',
+            shortLabel: 'At risk',
+            label: 'SLA at risk',
+            target: 'Due in ' + _supportDeskFormatDuration(remainingMinutes)
+        };
+    }
+
+    return {
+        className: 'ok',
+        shortLabel: 'On track',
+        label: 'SLA on track',
+        target: 'Due in ' + _supportDeskFormatDuration(remainingMinutes)
+    };
+}
+
+function _supportDeskBindAttachmentDownloads(rootEl) {
+    if (!rootEl) return;
+    rootEl.querySelectorAll('.support-desk-attachment-download').forEach(function (btn) {
+        if (btn.dataset.bound) return;
+        btn.dataset.bound = 'true';
+        btn.addEventListener('click', function () {
+            var url = btn.getAttribute('data-download-url') || '';
+            var filename = btn.getAttribute('data-download-filename') || 'attachment';
+            _supportDeskDownloadWithAuth(url, filename);
+        });
+    });
+}
+
+async function _supportDeskDownloadWithAuth(url, filename) {
+    if (!url) return;
+    var fullUrl = url.indexOf('http') === 0 ? url : ('http://localhost:8001' + url);
+    try {
+        var response = await fetch(fullUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
+            }
+        });
+        if (response.status === 401) {
+            localStorage.clear();
+            window.location.replace('http://localhost:3000/login.html');
+            return;
+        }
+        if (!response.ok) throw new Error('Download failed');
+
+        var blob = await response.blob();
+        var objectUrl = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = filename || 'attachment';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+        if (typeof showToast === 'function') showToast('Failed to download attachment.', 'error');
+    }
+}
+
+function _supportDeskNormalizeErrorDetail(detail) {
+    if (!detail) return '';
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+        return detail.map(function (item) {
+            return _supportDeskNormalizeErrorDetail(item);
+        }).filter(Boolean).join(', ');
+    }
+    if (typeof detail === 'object') {
+        if (detail.msg) return detail.msg;
+        if (detail.detail) return _supportDeskNormalizeErrorDetail(detail.detail);
+        if (detail.message) return detail.message;
+        return JSON.stringify(detail);
+    }
+    return String(detail);
 }
 
 window.initSupportDesk = initSupportDesk;

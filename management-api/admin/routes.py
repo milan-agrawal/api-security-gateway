@@ -1,9 +1,9 @@
 """
 Admin endpoints for user management
 """
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Header, UploadFile, File, Request
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Header, UploadFile, File, Request, Query, Response
 from sqlalchemy.orm import Session
-from sqlalchemy import func, text as sa_text
+from sqlalchemy import func, text as sa_text, or_
 from pydantic import BaseModel, EmailStr, validator
 from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
@@ -11,16 +11,19 @@ from typing import Optional, List
 from collections import defaultdict
 import asyncio
 import csv
+import base64
 import io
 import jwt
 import os
 import sys
 import httpx
 import redis
+import mimetypes
+from urllib.parse import quote
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from deps import get_db
-from models import User, APIKey, SecurityEvent, AuditLog, SupportTicket
+from models import User, APIKey, SecurityEvent, AuditLog, SupportTicket, SupportTicketMessage, SupportTicketAttachment
 from utils import (
     generate_secure_password,
     send_credentials_email,
@@ -28,6 +31,12 @@ from utils import (
     send_support_ticket_status_email,
     log_audit,
 )
+from support_storage import (
+    support_attachment_read_bytes,
+    support_attachment_safe_filename,
+    support_attachment_write_bytes,
+)
+from rate_limit import is_rate_limited
 from db import DATABASE_URL, SessionLocal
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -48,6 +57,19 @@ if not SECRET_KEY:
         "Please set it in .env file for security."
     )
 ALGORITHM = "HS256"
+MAX_SUPPORT_ATTACHMENT_BYTES = int(os.getenv("SUPPORT_ATTACHMENT_MAX_BYTES", str(2 * 1024 * 1024)))
+ALLOWED_SUPPORT_ATTACHMENT_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/gif",
+    "image/webp",
+    "application/pdf",
+    "text/plain",
+    "text/csv",
+    "application/json",
+}
+ALLOWED_SUPPORT_ATTACHMENT_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "pdf", "txt", "csv", "json", "log"}
 
 
 # Dependency to verify admin token
@@ -191,6 +213,29 @@ class AdminSupportTicketItem(BaseModel):
     status: str
     created_at: str
     updated_at: str
+    attachment_count: int = 0
+
+
+class AdminSupportTicketMessageItem(BaseModel):
+    id: int
+    author_type: str
+    author_name: str
+    author_email: str
+    message: str
+    created_at: str
+
+
+class AdminSupportTicketAttachmentItem(BaseModel):
+    id: int
+    filename: str
+    content_type: str
+    file_size: int
+    uploader_type: str
+    uploader_name: str
+    uploader_email: str
+    created_at: str
+    download_url: str
+    is_image: bool = False
 
 
 class AdminSupportTicketListResponse(BaseModel):
@@ -220,10 +265,175 @@ class AdminSupportTicketStatusUpdateRequest(BaseModel):
         return value
 
 
+class AdminSupportTicketDetailResponse(BaseModel):
+    ticket: AdminSupportTicketItem
+    messages: list[AdminSupportTicketMessageItem]
+    attachments: list[AdminSupportTicketAttachmentItem]
+
+
+class AdminSupportTicketMessageCreateRequest(BaseModel):
+    message: str
+
+    @validator('message')
+    def validate_message(cls, v):
+        value = (v or '').strip()
+        if len(value) < 2:
+            raise ValueError('Reply must be at least 2 characters')
+        if len(value) > 4000:
+            raise ValueError('Reply must be 4000 characters or fewer')
+        return value
+
+
+class AdminSupportTicketMessageCreateResponse(BaseModel):
+    success: bool
+    message: str
+    reply: AdminSupportTicketMessageItem
+
+
+class AdminSupportTicketAttachmentCreateResponse(BaseModel):
+    success: bool
+    message: str
+    attachment: AdminSupportTicketAttachmentItem
+
+
 def _support_normalize_status(value: Optional[str]) -> str:
     allowed = {'open', 'in_review', 'waiting_for_user', 'escalated', 'resolved', 'closed'}
     normalized = (value or 'open').strip().lower()
     return normalized if normalized in allowed else 'open'
+
+
+def _support_attachment_filename(filename: str) -> str:
+    return support_attachment_safe_filename(filename)
+
+
+def _support_attachment_extension(filename: str) -> str:
+    ext = os.path.splitext((filename or "").lower().strip())[1].lstrip(".")
+    return ext
+
+
+def _support_sniff_content_type(filename: str, content: bytes, declared_content_type: str) -> str:
+    ext = _support_attachment_extension(filename)
+    declared = (declared_content_type or "").lower().strip()
+    data = content or b""
+
+    if data.startswith(b"%PDF-"):
+        return "application/pdf"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data.startswith(b"GIF87a") or data.startswith(b"GIF89a"):
+        return "image/gif"
+    if len(data) >= 12 and data.startswith(b"RIFF") and data[8:12] == b"WEBP":
+        return "image/webp"
+
+    if ext == "json":
+        try:
+            import json
+            json.loads(data.decode("utf-8"))
+            return "application/json"
+        except Exception:
+            pass
+
+    if ext in {"txt", "csv", "log", "json"}:
+        try:
+            data.decode("utf-8")
+            if ext == "csv":
+                return "text/csv"
+            if ext == "json":
+                return "application/json"
+            return "text/plain"
+        except Exception:
+            pass
+
+    guessed = (mimetypes.guess_type(filename)[0] or "").lower().strip()
+    if guessed in ALLOWED_SUPPORT_ATTACHMENT_TYPES:
+        return guessed
+    if declared in ALLOWED_SUPPORT_ATTACHMENT_TYPES:
+        return declared
+    return "application/octet-stream"
+
+
+def _support_validate_attachment_type(filename: str, content: bytes, declared_content_type: str) -> str:
+    ext = _support_attachment_extension(filename)
+    if ext not in ALLOWED_SUPPORT_ATTACHMENT_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported attachment file type"
+        )
+
+    detected = _support_sniff_content_type(filename, content, declared_content_type)
+    if detected not in ALLOWED_SUPPORT_ATTACHMENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unsupported attachment file type"
+        )
+    return detected
+
+
+def _support_admin_enforce_rate_limit(actor_id: int, action: str, limit: int, window_seconds: int = 3600):
+    blocked = is_rate_limited(
+        namespace="support",
+        actor_scope="admin",
+        actor_id=actor_id,
+        action=action,
+        limit=limit,
+        window_seconds=window_seconds,
+    )
+    if blocked:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many support actions. Please try again shortly."
+        )
+
+
+def _admin_support_ticket_item(ticket: SupportTicket, user: User) -> AdminSupportTicketItem:
+    return AdminSupportTicketItem(
+        id=ticket.id,
+        user_id=user.id,
+        user_email=user.email,
+        user_full_name=user.full_name,
+        category=ticket.category,
+        priority=ticket.priority,
+        subject=ticket.subject,
+        description=ticket.description,
+        contact_email=ticket.contact_email,
+        related_route=ticket.related_route,
+        status=_support_normalize_status(ticket.status),
+        created_at=ticket.created_at.isoformat() if ticket.created_at else "",
+        updated_at=ticket.updated_at.isoformat() if ticket.updated_at else "",
+        attachment_count=len(getattr(ticket, "attachments", []) or []),
+    )
+
+
+def _admin_support_message_item(message: SupportTicketMessage) -> AdminSupportTicketMessageItem:
+    author = message.author
+    author_type = (message.author_type or "user").lower()
+    return AdminSupportTicketMessageItem(
+        id=message.id,
+        author_type=author_type,
+        author_name="User" if author_type == "user" else "Admin",
+        author_email="",
+        message=message.message,
+        created_at=message.created_at.isoformat() if message.created_at else "",
+    )
+
+
+def _admin_support_attachment_item(attachment: SupportTicketAttachment) -> AdminSupportTicketAttachmentItem:
+    content_type = attachment.content_type or "application/octet-stream"
+    uploader_type = (attachment.uploader_type or "user").lower()
+    return AdminSupportTicketAttachmentItem(
+        id=attachment.id,
+        filename=attachment.filename,
+        content_type=content_type,
+        file_size=attachment.file_size,
+        uploader_type=uploader_type,
+        uploader_name="User" if uploader_type == "user" else "Admin",
+        uploader_email="",
+        created_at=attachment.created_at.isoformat() if attachment.created_at else "",
+        download_url=f"/admin/support-tickets/{attachment.ticket_id}/attachments/{attachment.id}/download",
+        is_image=content_type.startswith("image/"),
+    )
 
 
 # Background task to activate account after 2 minutes
@@ -748,6 +958,7 @@ def get_user_activity(
 
 @router.get("/support-tickets", response_model=AdminSupportTicketListResponse)
 def list_support_tickets(
+    q: Optional[str] = Query(None),
     status_filter: Optional[str] = None,
     category: Optional[str] = None,
     priority: Optional[str] = None,
@@ -756,6 +967,21 @@ def list_support_tickets(
 ):
     query = db.query(SupportTicket, User).join(User, SupportTicket.user_id == User.id)
 
+    if q:
+        search = f"%{q.strip()}%"
+        search_terms = [
+            SupportTicket.subject.ilike(search),
+            SupportTicket.description.ilike(search),
+            SupportTicket.contact_email.ilike(search),
+            SupportTicket.related_route.ilike(search),
+            SupportTicket.category.ilike(search),
+            SupportTicket.status.ilike(search),
+            User.email.ilike(search),
+            User.full_name.ilike(search),
+        ]
+        if q.strip().isdigit():
+            search_terms.append(SupportTicket.id == int(q.strip()))
+        query = query.filter(or_(*search_terms))
     if status_filter:
         query = query.filter(SupportTicket.status == _support_normalize_status(status_filter))
     if category:
@@ -765,24 +991,7 @@ def list_support_tickets(
 
     rows = query.order_by(SupportTicket.updated_at.desc()).all()
 
-    tickets = [
-        AdminSupportTicketItem(
-            id=ticket.id,
-            user_id=user.id,
-            user_email=user.email,
-            user_full_name=user.full_name,
-            category=ticket.category,
-            priority=ticket.priority,
-            subject=ticket.subject,
-            description=ticket.description,
-            contact_email=ticket.contact_email,
-            related_route=ticket.related_route,
-            status=_support_normalize_status(ticket.status),
-            created_at=ticket.created_at.isoformat() if ticket.created_at else "",
-            updated_at=ticket.updated_at.isoformat() if ticket.updated_at else "",
-        )
-        for ticket, user in rows
-    ]
+    tickets = [_admin_support_ticket_item(ticket, user) for ticket, user in rows]
 
     return AdminSupportTicketListResponse(tickets=tickets, total=len(tickets))
 
@@ -815,6 +1024,188 @@ def support_ticket_overview(
     )
 
 
+@router.get("/support-tickets/{ticket_id}", response_model=AdminSupportTicketDetailResponse)
+def get_support_ticket_detail(
+    ticket_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    row = (
+        db.query(SupportTicket, User)
+        .join(User, SupportTicket.user_id == User.id)
+        .filter(SupportTicket.id == ticket_id)
+        .first()
+    )
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Support ticket SUP-{ticket_id} not found"
+        )
+
+    ticket, user = row
+    messages = (
+        db.query(SupportTicketMessage)
+        .filter(SupportTicketMessage.ticket_id == ticket.id)
+        .order_by(SupportTicketMessage.created_at.asc())
+        .all()
+    )
+    attachments = (
+        db.query(SupportTicketAttachment)
+        .filter(SupportTicketAttachment.ticket_id == ticket.id)
+        .order_by(SupportTicketAttachment.created_at.asc())
+        .all()
+    )
+
+    return AdminSupportTicketDetailResponse(
+        ticket=_admin_support_ticket_item(ticket, user),
+        messages=[_admin_support_message_item(message) for message in messages],
+        attachments=[_admin_support_attachment_item(attachment) for attachment in attachments],
+    )
+
+
+@router.post("/support-tickets/{ticket_id}/messages", response_model=AdminSupportTicketMessageCreateResponse)
+def create_support_ticket_message(
+    ticket_id: int,
+    body: AdminSupportTicketMessageCreateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    _support_admin_enforce_rate_limit(admin.id, "ticket_message", limit=120)
+
+    ticket = db.query(SupportTicket).filter(SupportTicket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Support ticket SUP-{ticket_id} not found"
+        )
+
+    reply = SupportTicketMessage(
+        ticket_id=ticket.id,
+        author_user_id=admin.id,
+        author_type="admin",
+        message=body.message,
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(reply)
+    ticket.updated_at = datetime.now(timezone.utc)
+    if _support_normalize_status(ticket.status) == "open":
+        ticket.status = "in_review"
+
+    log_audit(
+        db,
+        admin.id,
+        "support_ticket_admin_replied",
+        f"Admin replied on support ticket SUP-{ticket.id}",
+        request,
+    )
+    db.commit()
+    db.refresh(reply)
+
+    return AdminSupportTicketMessageCreateResponse(
+        success=True,
+        message="Reply sent successfully.",
+        reply=_admin_support_message_item(reply),
+    )
+
+
+@router.post("/support-tickets/{ticket_id}/attachments", response_model=AdminSupportTicketAttachmentCreateResponse)
+async def create_support_ticket_attachment(
+    ticket_id: int,
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    _support_admin_enforce_rate_limit(admin.id, "ticket_attachment", limit=80)
+
+    ticket = db.query(SupportTicket).filter(SupportTicket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Support ticket SUP-{ticket_id} not found"
+        )
+
+    filename = _support_attachment_filename(file.filename or "")
+    content = await file.read()
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Attachment file is empty"
+        )
+    if len(content) > MAX_SUPPORT_ATTACHMENT_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Attachment exceeds the allowed size limit"
+        )
+    content_type = _support_validate_attachment_type(filename, content, file.content_type or "")
+
+    attachment = SupportTicketAttachment(
+        ticket_id=ticket.id,
+        uploaded_by_user_id=admin.id,
+        uploader_type="admin",
+        filename=filename,
+        content_type=content_type,
+        file_size=len(content),
+        file_data="",
+        storage_ref=support_attachment_write_bytes(ticket.id, filename, content),
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(attachment)
+    ticket.updated_at = datetime.now(timezone.utc)
+    log_audit(
+        db,
+        admin.id,
+        "support_ticket_attachment_added",
+        f"Admin added attachment to support ticket SUP-{ticket.id}",
+        request,
+    )
+    db.commit()
+    db.refresh(attachment)
+
+    return AdminSupportTicketAttachmentCreateResponse(
+        success=True,
+        message="Attachment uploaded successfully.",
+        attachment=_admin_support_attachment_item(attachment),
+    )
+
+
+@router.get("/support-tickets/{ticket_id}/attachments/{attachment_id}/download")
+def download_support_ticket_attachment(
+    ticket_id: int,
+    attachment_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin)
+):
+    ticket = db.query(SupportTicket).filter(SupportTicket.id == ticket_id).first()
+    if not ticket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Support ticket SUP-{ticket_id} not found"
+        )
+
+    attachment = db.query(SupportTicketAttachment).filter(
+        SupportTicketAttachment.id == attachment_id,
+        SupportTicketAttachment.ticket_id == ticket.id
+    ).first()
+    if not attachment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Attachment not found"
+        )
+
+    content = support_attachment_read_bytes(attachment)
+    if content is None:
+        content = b""
+    filename = _support_attachment_filename(attachment.filename or "attachment")
+    disposition = f"attachment; filename*=UTF-8''{quote(filename)}"
+    return Response(
+        content=content,
+        media_type=attachment.content_type or "application/octet-stream",
+        headers={"Content-Disposition": disposition},
+    )
+
+
 @router.patch("/support-tickets/{ticket_id}")
 def update_support_ticket_status(
     ticket_id: int,
@@ -823,6 +1214,8 @@ def update_support_ticket_status(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin)
 ):
+    _support_admin_enforce_rate_limit(admin.id, "ticket_status_update", limit=240)
+
     ticket = db.query(SupportTicket).filter(SupportTicket.id == ticket_id).first()
     if not ticket:
         raise HTTPException(

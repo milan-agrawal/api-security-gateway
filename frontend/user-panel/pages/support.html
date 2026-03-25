@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="assets/css/support.css?v=2">
+<link rel="stylesheet" href="assets/css/support.css?v=10">
 
 <div class="support-page" id="supportPageRoot">
     <section class="support-hero">
@@ -134,6 +134,14 @@
                         <textarea id="supportDescription" rows="7" minlength="20" placeholder="Describe what happened, what you expected, and any error codes or timings you noticed."></textarea>
                     </div>
 
+                    <div class="support-kb-suggestions" id="supportKbSuggestions">
+                        <div class="support-kb-head">
+                            <span>Suggested help articles</span>
+                            <strong id="supportKbHint">Based on your ticket draft</strong>
+                        </div>
+                        <div class="support-kb-list" id="supportKbList"></div>
+                    </div>
+
                     <div class="support-context-strip">
                         <div class="context-item">
                             <span class="context-label">Signed in as</span>
@@ -162,7 +170,13 @@
                         <span class="support-card-kicker">Recent Requests</span>
                         <h2>My support activity</h2>
                     </div>
-                    <button class="support-text-action" type="button" id="supportRefreshTickets">Refresh</button>
+                    <div class="support-list-actions">
+                        <div class="support-search">
+                            <input id="supportTicketSearch" type="search" placeholder="Search tickets">
+                            <button type="button" id="supportTicketSearchClear">Clear</button>
+                        </div>
+                        <button class="support-text-action" type="button" id="supportRefreshTickets">Refresh</button>
+                    </div>
                 </div>
 
                 <div class="support-ticket-list" id="supportTicketList">
@@ -215,8 +229,90 @@
             <article class="support-card support-side-card">
                 <div class="support-card-head compact">
                     <div>
-                        <span class="support-card-kicker">Fast Paths</span>
-                        <h2>Try before opening a ticket</h2>
+                        <span class="support-card-kicker">Selected Ticket</span>
+                        <h2>Ticket details & conversation</h2>
+                    </div>
+                </div>
+                <div class="support-ticket-detail-empty" id="supportTicketDetailEmpty">
+                    <p>Select one of your support tickets to read the full conversation and send a reply.</p>
+                </div>
+                <div class="support-ticket-detail-panel" id="supportTicketDetailPanel" style="display:none;">
+                    <div class="support-ticket-detail-head">
+                        <div>
+                            <strong id="supportDetailId">SUP-0</strong>
+                            <p id="supportDetailSubject">Ticket subject</p>
+                        </div>
+                        <span class="ticket-status open" id="supportDetailStatus">Open</span>
+                    </div>
+                    <div class="support-ticket-detail-grid">
+                        <div class="support-detail-item">
+                            <span>Category</span>
+                            <strong id="supportDetailCategory">Support</strong>
+                        </div>
+                        <div class="support-detail-item">
+                            <span>Priority</span>
+                            <strong id="supportDetailPriority">Medium</strong>
+                        </div>
+                        <div class="support-detail-item">
+                            <span>Route</span>
+                            <strong id="supportDetailRoute">support</strong>
+                        </div>
+                        <div class="support-detail-item">
+                            <span>Updated</span>
+                            <strong id="supportDetailUpdated">just now</strong>
+                        </div>
+                        <div class="support-detail-item">
+                            <span>SLA Status</span>
+                            <strong id="supportDetailSlaStatus">On track</strong>
+                        </div>
+                        <div class="support-detail-item">
+                            <span>SLA Target</span>
+                            <strong id="supportDetailSlaTarget">Resolution target active</strong>
+                        </div>
+                    </div>
+                    <div class="support-detail-description">
+                        <span>Description</span>
+                        <p id="supportDetailDescription">Full ticket description will appear here.</p>
+                    </div>
+                    <div class="support-attachments-block">
+                        <div class="support-thread-head">
+                            <span>Attachments</span>
+                            <strong id="supportAttachmentCount">0 files</strong>
+                        </div>
+                        <div class="support-attachment-list" id="supportAttachmentList">
+                            <div class="support-thread-empty">No attachments yet.</div>
+                        </div>
+                        <div class="support-attachment-upload">
+                            <label for="supportAttachmentInput">Add attachment</label>
+                            <div class="support-attachment-row">
+                                <input id="supportAttachmentInput" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.csv,.json,.log">
+                                <button type="button" class="support-btn primary" id="supportAttachmentUploadBtn">Upload</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="support-thread-block">
+                        <div class="support-thread-head">
+                            <span>Conversation</span>
+                            <strong id="supportThreadCount">0 messages</strong>
+                        </div>
+                        <div class="support-thread-list" id="supportThreadList">
+                            <div class="support-thread-empty">No replies yet.</div>
+                        </div>
+                    </div>
+                    <div class="support-reply-block">
+                        <div class="support-reply-composer">
+                            <textarea id="supportReplyInput" rows="1" placeholder="Type as a user..."></textarea>
+                            <button class="support-btn primary support-chat-send" type="button" id="supportReplyBtn" aria-label="Send message">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+        <article class="support-card support-side-card">
+            <div class="support-card-head compact">
+                <div>
+                    <span class="support-card-kicker">Fast Paths</span>
+                    <h2>Try before opening a ticket</h2>
                     </div>
                 </div>
                 <div class="support-resource-list">
@@ -239,7 +335,7 @@
                 </div>
             </article>
 
-            <article class="support-card support-side-card security-escalation">
+            <article class="support-card security-escalation">
                 <div class="support-card-head compact">
                     <div>
                         <span class="support-card-kicker">Security Escalation</span>
@@ -257,6 +353,7 @@
                     <p>Critical security tickets should include the affected key, route, and approximate time window.</p>
                 </div>
             </article>
+
         </aside>
     </section>
 </div>
