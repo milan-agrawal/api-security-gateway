@@ -102,7 +102,6 @@ if (!isSPAMode) {
         }
 
         if (session.role !== 'admin') {
-            alert('Access denied. This panel is for administrators only.');
             window.location.replace('http://localhost:3000/login.html');
             return;
         }

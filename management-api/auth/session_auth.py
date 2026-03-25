@@ -72,9 +72,9 @@ def extract_access_token(request: Request, authorization: Optional[str] = None, 
 
     normalized = (panel or "").strip().lower()
     if normalized == "user":
-        cookie_names = [USER_ACCESS_COOKIE_NAME, ACCESS_COOKIE_NAME]
+        cookie_names = [USER_ACCESS_COOKIE_NAME]
     elif normalized == "admin":
-        cookie_names = [ADMIN_ACCESS_COOKIE_NAME, ACCESS_COOKIE_NAME]
+        cookie_names = [ADMIN_ACCESS_COOKIE_NAME]
     elif normalized == "public":
         cookie_names = [ACCESS_COOKIE_NAME]
     else:

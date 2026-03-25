@@ -98,7 +98,6 @@ window.__userPanelAuthReady = (async function() {
     }
 
     if (session.role !== 'user') {
-        alert('Access denied. This panel is for users only.');
         window.location.replace('http://localhost:3000/login.html');
         return;
     }
