@@ -51,6 +51,7 @@ const capsLockWarning = document.getElementById('capsLockWarning');
 // MFA state
 let mfaTempToken = null;
 let mfaEmail = null;
+let mfaVerifyInProgress = false;
 
 // Password visibility toggle
 togglePasswordBtn.addEventListener('click', () => {
@@ -317,6 +318,7 @@ async function redirectToPanel(data) {
 // OTP Form submission
 otpForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (mfaVerifyInProgress) return;
     
     const otpCode = otpInput.value.trim();
     
@@ -327,8 +329,10 @@ otpForm.addEventListener('submit', async (e) => {
     }
     
     const otpSubmitBtn = otpForm.querySelector('button[type="submit"]');
+    mfaVerifyInProgress = true;
     otpSubmitBtn.disabled = true;
     otpSubmitBtn.textContent = 'Verifying...';
+    otpInput.disabled = true;
     
     try {
         const response = await fetch('http://localhost:8001/auth/mfa/verify', {
@@ -366,8 +370,10 @@ otpForm.addEventListener('submit', async (e) => {
         } else {
             showAlert(data.detail || 'Invalid code. Please try again.');
             triggerShake();
+            mfaVerifyInProgress = false;
             otpSubmitBtn.disabled = false;
             otpSubmitBtn.textContent = 'Verify Code';
+            otpInput.disabled = false;
             otpInput.value = '';
             otpInput.focus();
         }
@@ -375,8 +381,10 @@ otpForm.addEventListener('submit', async (e) => {
         console.error('MFA verify error:', error);
         showAlert('Unable to verify code. Please try again.');
         triggerShake();
+        mfaVerifyInProgress = false;
         otpSubmitBtn.disabled = false;
         otpSubmitBtn.textContent = 'Verify Code';
+        otpInput.disabled = false;
     }
 });
 

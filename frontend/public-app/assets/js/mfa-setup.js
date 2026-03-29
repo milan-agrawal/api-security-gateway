@@ -44,6 +44,7 @@ let mfaSecret    = null;
 let backupCodes  = [];
 let setupDone    = false;
 let finalAuthData = null;
+let verifySetupInProgress = false;
 
 // ── Guard ───────────────────────────────────────────────────
 if (!tempToken || !userEmail) {
@@ -175,14 +176,17 @@ async function copySecret() {
 
 // ── Verify & Complete ───────────────────────────────────────
 async function verifyAndComplete() {
+    if (verifySetupInProgress) return;
     const otpCode = getOTPValue();
     if (otpCode.length !== 6 || !/^\d{6}$/.test(otpCode)) {
         showAlert('Please enter a valid 6-digit code');
         return;
     }
 
+    verifySetupInProgress = true;
     completeBtn.disabled = true;
     completeBtn.classList.add('loading');
+    otpDigits.forEach(d => { d.disabled = true; });
 
     try {
         const res = await fetch(`${API_URL}/auth/mfa/verify-setup`, {
@@ -236,8 +240,10 @@ async function verifyAndComplete() {
 }
 
 function resetVerifyBtn() {
+    verifySetupInProgress = false;
     completeBtn.disabled = false;
     completeBtn.classList.remove('loading');
+    otpDigits.forEach(d => { d.disabled = false; });
 }
 
 function clearOTP() {
